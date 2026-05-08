@@ -228,6 +228,16 @@ type Team struct {
 	Players     []Player `json:"players,omitempty"`
 }
 
+type NationSummary struct {
+	Name                 string `json:"name"`
+	NationalityISO       string `json:"nationalityIso,omitempty"`
+	PlayerCount          int    `json:"playerCount"`
+	BestFormationOverall int    `json:"bestFormationOverall"`
+	AttRating            int    `json:"attRating"`
+	MidRating            int    `json:"midRating"`
+	DefRating            int    `json:"defRating"`
+}
+
 // getMaxUploadSize reads the MAX_UPLOAD_SIZE environment variable and returns the size in bytes.
 // If not set or invalid, defaults to 20MB.
 func getMaxUploadSize() int64 {
@@ -3793,6 +3803,607 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 		"player_count", len(playersWithPercentiles))
 }
 
+func nationTopPlayersHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/nation-top-players/"), "/")
+	if len(pathParts) < 2 || pathParts[0] == "" || pathParts[1] == "" {
+		http.Error(w, "Invalid URL format. Expected: /api/nation-top-players/{datasetID}/{nationName}", http.StatusBadRequest)
+		return
+	}
+
+	datasetID := pathParts[0]
+	nationName, err := url.PathUnescape(pathParts[1])
+	if err != nil {
+		http.Error(w, "Invalid nation name", http.StatusBadRequest)
+		return
+	}
+
+	limit := 35
+	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr == nil && parsedLimit > 0 && parsedLimit < limit {
+			limit = parsedLimit
+		}
+	}
+
+	cacheKey := fmt.Sprintf("nation_top_players_v2_%s_%s_%d", datasetID, nationName, limit)
+	if cached, found := getFromMemCache(cacheKey); found {
+		if response, ok := cached.(map[string]interface{}); ok {
+			writeGenericJSONDataResponse(ctx, w, r, response, datasetID, "nation", nationName)
+			return
+		}
+	}
+
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	if !found {
+		logError(ctx, "Failed to get dataset for nation top players",
+			"dataset_id", datasetID,
+			"nation", nationName)
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	nationPlayers := prepareNationPlayersForRatings(players, nationName)
+	topPlayers := selectTopNationPlayers(nationPlayers, nationName, limit)
+	if len(topPlayers) == 0 {
+		http.Error(w, fmt.Sprintf("No players found for nation: %s", nationName), http.StatusNotFound)
+		return
+	}
+
+	response := map[string]interface{}{
+		"players":         topPlayers,
+		"dataset_id":      datasetID,
+		"currency_symbol": currencySymbol,
+		"type":            "nation",
+		"name":            nationName,
+		"player_count":    len(topPlayers),
+		"limit":           limit,
+	}
+
+	setInMemCache(cacheKey, response, 5*time.Minute)
+	writeGenericJSONDataResponse(ctx, w, r, response, datasetID, "nation", nationName)
+}
+
+func writeGenericJSONDataResponse(ctx context.Context, w http.ResponseWriter, r *http.Request, response map[string]interface{}, datasetID, dataType, name string) {
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logError(ctx, "Failed to marshal generic data response",
+			"error", err,
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", name)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	protoResponse := &pb.GenericResponse{
+		Data: string(jsonData),
+	}
+
+	if err := WriteResponse(w, r, protoResponse); err != nil {
+		logError(ctx, "Failed to write generic data response",
+			"error", err,
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", name)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func selectTopNationPlayers(players []Player, nationName string, limit int) []Player {
+	if limit <= 0 {
+		return []Player{}
+	}
+
+	positionOrder := []string{
+		"GK",
+		"DR",
+		"DL",
+		"DC",
+		"WBR",
+		"WBL",
+		"DM",
+		"MR",
+		"ML",
+		"MC",
+		"AMR",
+		"AML",
+		"AMC",
+		"ST",
+	}
+
+	positionQuotas := map[string]int{
+		"GK":  3,
+		"DR":  3,
+		"DL":  3,
+		"DC":  6,
+		"WBR": 3,
+		"WBL": 3,
+		"DM":  6,
+		"MR":  3,
+		"ML":  3,
+		"MC":  6,
+		"AMR": 3,
+		"AML": 3,
+		"AMC": 6,
+		"ST":  6,
+	}
+	topByPosition := make(map[string][]Player, len(positionOrder))
+	nationPlayerCount := 0
+
+	for i := range players {
+		player := players[i]
+		if player.Nationality != nationName {
+			continue
+		}
+
+		nationPlayerCount++
+		positions := player.ShortPositions
+		if len(positions) == 0 && player.Position != "" {
+			positions = []string{player.Position}
+		}
+
+		for _, position := range positions {
+			canonicalPosition := strings.ToUpper(strings.TrimSpace(position))
+			if canonicalPosition == "" {
+				continue
+			}
+			if !isNationTopPlayerPosition(canonicalPosition) {
+				continue
+			}
+
+			topByPosition[canonicalPosition] = insertRankedPlayer(
+				topByPosition[canonicalPosition],
+				player,
+				canonicalPosition,
+				positionQuotas[canonicalPosition],
+			)
+		}
+	}
+
+	if nationPlayerCount == 0 {
+		return []Player{}
+	}
+
+	provisionalPool := make([]Player, 0, limit*2)
+	provisionalByUID := make(map[int64]struct{}, limit*2)
+	provisionalByName := make(map[string]struct{}, limit*2)
+
+	addProvisionalPlayer := func(player Player) {
+		if player.UID != 0 {
+			if _, exists := provisionalByUID[player.UID]; exists {
+				return
+			}
+			provisionalByUID[player.UID] = struct{}{}
+		} else {
+			nameKey := strings.ToLower(strings.TrimSpace(player.Name))
+			if _, exists := provisionalByName[nameKey]; exists {
+				return
+			}
+			provisionalByName[nameKey] = struct{}{}
+		}
+		provisionalPool = append(provisionalPool, player)
+	}
+
+	for _, position := range positionOrder {
+		for _, player := range topByPosition[position] {
+			addProvisionalPlayer(player)
+		}
+	}
+
+	if len(provisionalPool) == 0 {
+		return []Player{}
+	}
+
+	bestFormation := selectBestNationFormation(provisionalPool)
+	requiredRoleDepth := make(map[string]int)
+	if len(bestFormation.slots) > 0 {
+		for _, slot := range bestFormation.slots {
+			requiredRoleDepth[slot]++
+		}
+		for role, count := range requiredRoleDepth {
+			requiredRoleDepth[role] = count * 2
+		}
+	}
+
+	selected := make([]Player, 0, limit)
+	selectedByUID := make(map[int64]struct{}, limit)
+	selectedByName := make(map[string]struct{}, limit)
+
+	addPlayer := func(player Player) {
+		if len(selected) >= limit {
+			return
+		}
+		if player.UID != 0 {
+			if _, exists := selectedByUID[player.UID]; exists {
+				return
+			}
+			selectedByUID[player.UID] = struct{}{}
+		} else {
+			nameKey := strings.ToLower(strings.TrimSpace(player.Name))
+			if _, exists := selectedByName[nameKey]; exists {
+				return
+			}
+			selectedByName[nameKey] = struct{}{}
+		}
+		selected = append(selected, player)
+	}
+
+	for _, player := range bestFormation.starters {
+		addPlayer(player)
+	}
+
+	positionSideMap, fallbackPositionMap, _, _ := nationSelectionRoleMaps()
+	playerCanCoverRole := func(player Player, role string) bool {
+		return playerMatchesAnyPosition(player, positionSideMap[role]) ||
+			playerMatchesAnyPosition(player, fallbackPositionMap[role])
+	}
+
+	countSelectedForRole := func(role string) int {
+		count := 0
+		for _, player := range selected {
+			if playerCanCoverRole(player, role) {
+				count++
+			}
+		}
+		return count
+	}
+
+	for _, role := range bestFormation.roleOrder {
+		requiredDepth := requiredRoleDepth[role]
+		if requiredDepth <= 0 {
+			continue
+		}
+
+		rolePlayers := rankedPlayersForRole(provisionalPool, role)
+		for _, player := range rolePlayers {
+			if countSelectedForRole(role) >= requiredDepth {
+				break
+			}
+			addPlayer(player)
+			if len(selected) >= limit {
+				break
+			}
+		}
+	}
+
+	sort.Slice(provisionalPool, func(i, j int) bool {
+		return provisionalPool[i].Overall > provisionalPool[j].Overall
+	})
+	for _, player := range provisionalPool {
+		addPlayer(player)
+		if len(selected) >= limit {
+			break
+		}
+	}
+
+	if len(selected) < limit {
+		fallbackPlayers := make([]Player, 0, nationPlayerCount)
+		for i := range players {
+			if players[i].Nationality == nationName {
+				fallbackPlayers = append(fallbackPlayers, players[i])
+			}
+		}
+		sort.Slice(fallbackPlayers, func(i, j int) bool {
+			return fallbackPlayers[i].Overall > fallbackPlayers[j].Overall
+		})
+		for _, player := range fallbackPlayers {
+			addPlayer(player)
+			if len(selected) >= limit {
+				break
+			}
+		}
+	}
+
+	sort.Slice(selected, func(i, j int) bool {
+		return selected[i].Overall > selected[j].Overall
+	})
+
+	return selected
+}
+
+type nationFormationSelection struct {
+	slots     []string
+	roleOrder []string
+	starters  []Player
+	overall   int
+}
+
+func selectBestNationFormation(players []Player) nationFormationSelection {
+	formations := nationSelectionFormations()
+	positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix := nationSelectionRoleMaps()
+
+	bestSelection := nationFormationSelection{}
+	for _, formationSlots := range formations {
+		selection := assignNationFormationPlayers(players, formationSlots, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix)
+		if len(selection.starters) > len(bestSelection.starters) ||
+			len(selection.starters) == len(bestSelection.starters) && selection.overall > bestSelection.overall {
+			bestSelection = selection
+		}
+	}
+
+	return bestSelection
+}
+
+func assignNationFormationPlayers(players []Player, slots []string, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher map[string][]string, fmMatcherToRoleKeyPrefix map[string]string) nationFormationSelection {
+	usedPlayers := make(map[string]bool)
+	starters := make([]Player, 0, len(slots))
+	totalRating := 0
+
+	for _, slot := range slots {
+		var bestPlayer Player
+		bestSortScore := -1
+		bestRating := 0
+
+		for _, player := range players {
+			if usedPlayers[playerSelectionKey(player)] {
+				continue
+			}
+
+			rating := getPlayerOverallForRoleGo(player, slot, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix)
+			if rating < 10 {
+				continue
+			}
+
+			exactMatch := playerMatchesAnyPosition(player, positionSideMap[slot])
+			fallbackMatch := playerMatchesAnyPosition(player, fallbackPositionMap[slot])
+			if !exactMatch && !fallbackMatch {
+				continue
+			}
+
+			sortScore := rating
+			if exactMatch {
+				sortScore += 10000
+			} else {
+				sortScore -= 5000
+			}
+
+			if sortScore > bestSortScore {
+				bestSortScore = sortScore
+				bestRating = rating
+				bestPlayer = player
+			}
+		}
+
+		if bestPlayer.Name != "" {
+			starters = append(starters, bestPlayer)
+			usedPlayers[playerSelectionKey(bestPlayer)] = true
+			totalRating += bestRating
+		}
+	}
+
+	overall := 0
+	if len(starters) > 0 {
+		overall = totalRating / len(starters)
+	}
+
+	return nationFormationSelection{
+		slots:     slots,
+		roleOrder: uniqueRoleOrder(slots),
+		starters:  starters,
+		overall:   overall,
+	}
+}
+
+func rankedPlayersForRole(players []Player, role string) []Player {
+	positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix := nationSelectionRoleMaps()
+	ranked := make([]Player, 0, len(players))
+	for _, player := range players {
+		if playerMatchesAnyPosition(player, positionSideMap[role]) || playerMatchesAnyPosition(player, fallbackPositionMap[role]) {
+			ranked = append(ranked, player)
+		}
+	}
+	sort.Slice(ranked, func(i, j int) bool {
+		iScore := getPlayerOverallForRoleGo(ranked[i], role, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix)
+		jScore := getPlayerOverallForRoleGo(ranked[j], role, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix)
+		if iScore != jScore {
+			return iScore > jScore
+		}
+		return ranked[i].Overall > ranked[j].Overall
+	})
+	return ranked
+}
+
+func playerMatchesAnyPosition(player Player, positions []string) bool {
+	for _, playerPosition := range player.ShortPositions {
+		for _, position := range positions {
+			if strings.EqualFold(strings.TrimSpace(playerPosition), strings.TrimSpace(position)) {
+				return true
+			}
+		}
+	}
+	if player.Position != "" {
+		for _, position := range positions {
+			if strings.EqualFold(strings.TrimSpace(player.Position), strings.TrimSpace(position)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func playerSelectionKey(player Player) string {
+	if player.UID != 0 {
+		return strconv.FormatInt(player.UID, 10)
+	}
+	return strings.ToLower(strings.TrimSpace(player.Name))
+}
+
+func uniqueRoleOrder(slots []string) []string {
+	seen := make(map[string]struct{}, len(slots))
+	roles := make([]string, 0, len(slots))
+	for _, slot := range slots {
+		if _, exists := seen[slot]; exists {
+			continue
+		}
+		seen[slot] = struct{}{}
+		roles = append(roles, slot)
+	}
+	return roles
+}
+
+func nationSelectionFormations() [][]string {
+	return [][]string{
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "DM (C)", "M (C)", "M (C)", "AM (L)", "ST (C)", "AM (R)"},
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "DM (C)", "DM (C)", "AM (L)", "AM (C)", "AM (R)", "ST (C)"},
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "M (R)", "M (C)", "M (C)", "M (L)", "ST (C)", "ST (C)"},
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "DM (C)", "M (R)", "M (C)", "M (L)", "ST (C)", "ST (C)"},
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "M (R)", "M (C)", "M (C)", "M (L)", "AM (C)", "ST (C)"},
+		{"GK", "WB (R)", "D (C)", "D (C)", "D (C)", "WB (L)", "M (C)", "M (C)", "M (C)", "ST (C)", "ST (C)"},
+		{"GK", "WB (R)", "D (C)", "D (C)", "D (C)", "WB (L)", "M (C)", "M (C)", "AM (L)", "ST (C)", "AM (R)"},
+		{"GK", "WB (R)", "D (C)", "D (C)", "D (C)", "WB (L)", "DM (C)", "M (C)", "M (C)", "ST (C)", "ST (C)"},
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "M (C)", "M (C)", "AM (L)", "ST (C)", "ST (C)", "AM (R)"},
+		{"GK", "D (R)", "D (C)", "D (C)", "D (L)", "DM (C)", "M (C)", "M (C)", "M (C)", "M (L)", "ST (C)"},
+	}
+}
+
+func nationSelectionRoleMaps() (map[string][]string, map[string][]string, map[string][]string, map[string]string) {
+	positionSideMap := map[string][]string{
+		"D (R)":  {"DR"},
+		"D (L)":  {"DL"},
+		"D (C)":  {"DC"},
+		"WB (R)": {"WBR"},
+		"WB (L)": {"WBL"},
+		"DM (C)": {"DM"},
+		"M (R)":  {"MR"},
+		"M (L)":  {"ML"},
+		"M (C)":  {"MC"},
+		"AM (R)": {"AMR"},
+		"AM (L)": {"AML"},
+		"AM (C)": {"AMC"},
+		"ST (C)": {"ST"},
+		"GK":     {"GK"},
+	}
+	fallbackPositionMap := map[string][]string{
+		"D (R)":  {"DR", "WBR", "MR"},
+		"D (L)":  {"DL", "WBL", "ML"},
+		"D (C)":  {"DC", "DM"},
+		"WB (R)": {"WBR", "DR", "MR"},
+		"WB (L)": {"WBL", "DL", "ML"},
+		"DM (C)": {"DM", "DC", "MC"},
+		"M (R)":  {"MR", "WBR", "AMR"},
+		"M (L)":  {"ML", "WBL", "AML"},
+		"M (C)":  {"MC", "DM"},
+		"AM (R)": {"AMR", "MR"},
+		"AM (L)": {"AML", "ML"},
+		"AM (C)": {"AMC", "MC"},
+		"ST (C)": {"ST", "AMC"},
+		"GK":     {"GK"},
+	}
+	fmSlotRoleMatcher := map[string][]string{
+		"GK":     {"Goalkeeper"},
+		"D (R)":  {"Defender (Right)", "Right Back"},
+		"D (L)":  {"Defender (Left)", "Left Back"},
+		"D (C)":  {"Defender (Centre)", "Centre Back"},
+		"WB (R)": {"Wing-Back (Right)", "Right Wing-Back"},
+		"WB (L)": {"Wing-Back (Left)", "Left Wing-Back"},
+		"DM (C)": {"Defensive Midfielder (Centre)", "Centre Defensive Midfielder"},
+		"M (R)":  {"Midfielder (Right)", "Right Midfielder"},
+		"M (L)":  {"Midfielder (Left)", "Left Midfielder"},
+		"M (C)":  {"Midfielder (Centre)", "Centre Midfielder"},
+		"AM (R)": {"Attacking Midfielder (Right)", "Right Attacking Midfielder", "Winger (Right)"},
+		"AM (L)": {"Attacking Midfielder (Left)", "Left Attacking Midfielder", "Winger (Left)"},
+		"AM (C)": {"Attacking Midfielder (Centre)", "Centre Attacking Midfielder"},
+		"ST (C)": {"Striker (Centre)", "Striker"},
+	}
+	fmMatcherToRoleKeyPrefix := map[string]string{
+		"GOALKEEPER":                    "GK",
+		"SWEEPER":                       "DC",
+		"DEFENDER (RIGHT)":              "DR",
+		"RIGHT BACK":                    "DR",
+		"DEFENDER (LEFT)":               "DL",
+		"LEFT BACK":                     "DL",
+		"DEFENDER (CENTRE)":             "DC",
+		"CENTRE BACK":                   "DC",
+		"WING-BACK (RIGHT)":             "WBR",
+		"RIGHT WING-BACK":               "WBR",
+		"WING-BACK (LEFT)":              "WBL",
+		"LEFT WING-BACK":                "WBL",
+		"DEFENSIVE MIDFIELDER (CENTRE)": "DM",
+		"CENTRE DEFENSIVE MIDFIELDER":   "DM",
+		"MIDFIELDER (RIGHT)":            "MR",
+		"RIGHT MIDFIELDER":              "MR",
+		"MIDFIELDER (LEFT)":             "ML",
+		"LEFT MIDFIELDER":               "ML",
+		"MIDFIELDER (CENTRE)":           "MC",
+		"CENTRE MIDFIELDER":             "MC",
+		"ATTACKING MIDFIELDER (RIGHT)":  "AMR",
+		"RIGHT ATTACKING MIDFIELDER":    "AMR",
+		"WINGER (RIGHT)":                "AMR",
+		"ATTACKING MIDFIELDER (LEFT)":   "AML",
+		"LEFT ATTACKING MIDFIELDER":     "AML",
+		"WINGER (LEFT)":                 "AML",
+		"ATTACKING MIDFIELDER (CENTRE)": "AMC",
+		"CENTRE ATTACKING MIDFIELDER":   "AMC",
+		"STRIKER (CENTRE)":              "ST",
+		"STRIKER":                       "ST",
+	}
+	return positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix
+}
+
+func prepareNationPlayersForRatings(players []Player, nationName string) []Player {
+	nationPlayers := make([]Player, 0, 64)
+	for i := range players {
+		if players[i].Nationality != nationName {
+			continue
+		}
+
+		player := players[i]
+		if playerNeedsRatingEnhancement(player) {
+			EnhancePlayerWithCalculations(&player)
+		}
+		nationPlayers = append(nationPlayers, player)
+	}
+
+	return RecalculateAllPlayersRatings(nationPlayers)
+}
+
+func playerNeedsRatingEnhancement(player Player) bool {
+	return len(player.ShortPositions) == 0 ||
+		len(player.RoleSpecificOveralls) == 0 ||
+		player.PAC == 0 && player.SHO == 0 && player.PAS == 0 && player.DRI == 0 && player.DEF == 0 && player.PHY == 0 && player.GK == 0
+}
+
+func isNationTopPlayerPosition(position string) bool {
+	switch position {
+	case "GK", "DR", "DL", "DC", "WBR", "WBL", "DM", "MR", "ML", "MC", "AMR", "AML", "AMC", "ST":
+		return true
+	default:
+		return false
+	}
+}
+
+func insertRankedPlayer(players []Player, candidate Player, position string, limit int) []Player {
+	players = append(players, candidate)
+	sort.Slice(players, func(i, j int) bool {
+		iScore := playerScoreForPosition(players[i], position)
+		jScore := playerScoreForPosition(players[j], position)
+		if iScore != jScore {
+			return iScore > jScore
+		}
+		return players[i].Overall > players[j].Overall
+	})
+	if len(players) > limit {
+		return players[:limit]
+	}
+	return players
+}
+
+func playerScoreForPosition(player Player, position string) int {
+	bestScore := 0
+	for _, roleOverall := range player.RoleSpecificOveralls {
+		roleName := strings.ToUpper(roleOverall.RoleName)
+		if strings.Contains(roleName, position) && roleOverall.Score > bestScore {
+			bestScore = roleOverall.Score
+		}
+	}
+	if bestScore > 0 {
+		return bestScore
+	}
+	return player.Overall
+}
+
 // performanceDataHandler handles GET requests for retrieving detailed performance data by dataset ID.
 func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -5331,6 +5942,109 @@ func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
 		"limit", limit,
 		"team_count", len(teamsData),
 		"processing_time_ms", time.Since(startTime).Milliseconds())
+}
+
+func nationsSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/nations-summary/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	cacheKey := fmt.Sprintf("nations_summary_v2_%s", datasetID)
+	if cached, found := getFromMemCache(cacheKey); found {
+		if summaryData, ok := cached.([]NationSummary); ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache-Source", "memory")
+			w.Header().Set("Cache-Control", "public, max-age=300")
+			setCORSHeaders(w, r)
+			if err := json.NewEncoder(w).Encode(summaryData); err != nil {
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	summaryData := processNationsSummaryData(players)
+	setInMemCache(cacheKey, summaryData, 5*time.Minute)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Source", "computed")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(summaryData); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		logError(ctx, "Error encoding JSON response for nations summary", "dataset_id", sanitizeForLogging(datasetID), "error", err)
+		return
+	}
+
+	logInfo(ctx, "Nations summary request completed",
+		"dataset_id", datasetID,
+		"nation_count", len(summaryData),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
+}
+
+func processNationsSummaryData(players []Player) []NationSummary {
+	nations := make(map[string][]Player)
+	nationISO := make(map[string]string)
+
+	for i := range players {
+		player := players[i]
+		nationName := strings.TrimSpace(player.Nationality)
+		if nationName == "" {
+			continue
+		}
+		if playerNeedsRatingEnhancement(player) {
+			EnhancePlayerWithCalculations(&player)
+		}
+		nations[nationName] = append(nations[nationName], player)
+		if nationISO[nationName] == "" && player.NationalityISO != "" {
+			nationISO[nationName] = player.NationalityISO
+		}
+	}
+
+	summaries := make([]NationSummary, 0, len(nations))
+	for nationName, nationPlayers := range nations {
+		nationPlayers = RecalculateAllPlayersRatings(nationPlayers)
+		ratings := calculateTeamRatings(selectTopNationPlayers(nationPlayers, nationName, 35))
+		summaries = append(summaries, NationSummary{
+			Name:                 nationName,
+			NationalityISO:       nationISO[nationName],
+			PlayerCount:          len(nationPlayers),
+			BestFormationOverall: ratings.BestOverall,
+			AttRating:            ratings.AttRating,
+			MidRating:            ratings.MidRating,
+			DefRating:            ratings.DefRating,
+		})
+	}
+
+	sort.Slice(summaries, func(i, j int) bool {
+		if summaries[i].BestFormationOverall != summaries[j].BestFormationOverall {
+			return summaries[i].BestFormationOverall > summaries[j].BestFormationOverall
+		}
+		if summaries[i].PlayerCount != summaries[j].PlayerCount {
+			return summaries[i].PlayerCount > summaries[j].PlayerCount
+		}
+		return summaries[i].Name < summaries[j].Name
+	})
+
+	return summaries
 }
 
 // divisionsHandler returns unique divisions for a dataset

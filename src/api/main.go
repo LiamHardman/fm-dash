@@ -227,6 +227,7 @@ func main() {
 	mux.Handle("/api/divisions/", wrapHandler(http.HandlerFunc(divisionsHandler), "divisions"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
 	mux.Handle("/api/top-teams/", wrapHandler(http.HandlerFunc(topTeamsHandler), "top-teams"))
+	mux.Handle("/api/nations-summary/", wrapHandler(http.HandlerFunc(nationsSummaryHandler), "nations-summary"))
 	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 	mux.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
 	mux.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
@@ -259,6 +260,7 @@ func main() {
 
 	// API endpoint for detailed player stats
 	mux.Handle("/api/fullplayerstats/", wrapHandler(http.HandlerFunc(fullPlayerStatsHandler), "full-player-stats"))
+	mux.Handle("/api/nation-top-players/", wrapHandler(http.HandlerFunc(nationTopPlayersHandler), "nation-top-players"))
 	mux.Handle("/api/team-data/", wrapHandler(http.HandlerFunc(teamDataHandler), "team-data"))
 
 	// API endpoint for finding player upgrades

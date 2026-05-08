@@ -688,7 +688,9 @@ export default {
 
     const teamOfSeasonLineup = computed(() => {
       const selectedLeague = selectedLeagueName.value
-      const players = Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : []
+      const players = Array.isArray(leagueTeams.value)
+        ? leagueTeams.value.flatMap((team) => (Array.isArray(team.players) ? team.players : []))
+        : []
 
       const eligiblePlayers = []
       let totalPlayers = 0
@@ -777,15 +779,13 @@ export default {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
+        playerStore.setCurrentDatasetId(datasetId)
         const response = await fetch(`/api/leagues/${datasetId}`)
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
         const leaguesData = await response.json()
         allLeaguesData.value = leaguesData || []
-
-        // Also fetch currency symbol from player store
-        await playerStore.fetchPlayersByDatasetId(datasetId)
       } catch (err) {
         pageLoadingError.value = `Failed to load leagues data: ${err.message || 'Unknown server error'}. Please try uploading again.`
       } finally {

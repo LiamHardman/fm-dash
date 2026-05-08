@@ -308,7 +308,7 @@
 
             <!-- Nations Overview Card - When no nation is selected -->
             <q-card
-                v-if="!pageLoading && !pageLoadingError && !selectedNationName && !loadingNation && allPlayersData.length > 0"
+                v-if="!pageLoading && !pageLoadingError && !selectedNationName && !loadingNation && nationsData.length > 0"
                 class="nations-overview-card"
             >
                 <q-card-section>
@@ -360,7 +360,7 @@
                             :popup-content-class="quasarInstance.dark.isActive ? 'bg-grey-8 text-white' : 'bg-white text-dark'"
                             clearable
                             @clear="clearNationSelection"
-                            :disable="pageLoading || allPlayersData.length === 0"
+                            :disable="pageLoading || nationsData.length === 0"
                             class="nation-select"
                         >
                             <template v-slot:no-option>
@@ -489,7 +489,7 @@
                     </div>
                     
                     <!-- Show More Button -->
-                    <div v-if="!showAllNations && allPlayersData.length > 0" class="text-center q-mt-md">
+                    <div v-if="!showAllNations && nationsData.length > 10" class="text-center q-mt-md">
                         <q-btn
                             flat
                             color="primary"
@@ -505,7 +505,7 @@
 
             <!-- Additional Banners -->
             <q-banner
-                v-else-if="!pageLoading && !loadingNation && allPlayersData.length > 0 && !selectedNationName"
+                v-else-if="!pageLoading && !loadingNation && nationsData.length > 0 && !selectedNationName"
                 class="info-banner"
             >
                 <template v-slot:avatar>
@@ -515,7 +515,7 @@
             </q-banner>
             
             <q-banner
-                v-else-if="!pageLoading && !loadingNation && allPlayersData.length === 0 && !pageLoadingError"
+                v-else-if="!pageLoading && !loadingNation && !selectedNationName && nationsData.length === 0 && !pageLoadingError"
                 class="warning-banner"
             >
                 <template v-slot:avatar>
@@ -550,7 +550,11 @@ import GradientBackground from '../components/GradientBackground.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
-import { fetchTeamData } from '../services/playerService'
+import {
+  fetchNationsSummary,
+  fetchNationTopPlayers,
+  fetchTeamData,
+} from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
@@ -619,7 +623,7 @@ export default {
     const cacheKey = ref(null)
 
     // NEW: Generate cache key based on dataset and player data
-    const generateCacheKey = () => {
+    const _generateCacheKey = () => {
       if (!currentDatasetId.value || !allPlayersData.value.length) {
         return null
       }
@@ -687,7 +691,7 @@ export default {
     }
 
     // NEW: Load nation ratings from cache
-    const loadNationRatingsFromCache = async () => {
+    const _loadNationRatingsFromCache = async () => {
       if (!cacheKey.value) {
         return false
       }
@@ -884,7 +888,7 @@ export default {
     })
 
     // NEW: Initialize nations with basic data (no ratings yet)
-    const initializeNationsData = () => {
+    const _initializeNationsData = () => {
       if (!allPlayersData.value || allPlayersData.value.length === 0) {
         nationsData.value = []
         return
@@ -1296,7 +1300,7 @@ export default {
     }
 
     // NEW: Start rating calculations
-    const startRatingCalculations = () => {
+    const _startRatingCalculations = () => {
       if (nationsData.value.length === 0) return
 
       // console.log('[NationRatings] Starting calculations for', nationsData.value.length, 'nations')
@@ -1309,14 +1313,49 @@ export default {
       processCalculationQueue()
     }
 
-    const fetchPlayersAndCurrency = async (datasetId, signal = null) => {
+    const fetchNationsOverview = async (datasetId, signal = null) => {
+      pageLoading.value = true
+      pageLoadingError.value = ''
+      cacheLoading.value = false
+      isCalculatingRatings.value = false
+      calculationQueue.value = []
+      calculationProgress.value = { current: 0, total: 0 }
+      cacheKey.value = null
+
+      try {
+        playerStore.setCurrentDatasetId(datasetId)
+        const summaries = await fetchNationsSummary(datasetId)
+        if (signal?.aborted) return
+
+        nationsData.value = (Array.isArray(summaries) ? summaries : []).map((nation) => ({
+          ...nation,
+          isCalculating: false,
+          players: [],
+          topPlayersByPosition: {},
+        }))
+        populateNationFilterOptions()
+      } catch (err) {
+        if (!signal?.aborted) {
+          pageLoadingError.value = `Failed to load nations summary: ${err.message || 'Unknown server error'}. Please try uploading again.`
+          nationsData.value = []
+          allNationNamesCache.value = []
+          nationOptions.value = []
+        }
+      } finally {
+        if (!signal?.aborted) {
+          pageLoading.value = false
+        }
+      }
+    }
+
+    const fetchDatasetMetadata = async (datasetId, signal = null) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
-        await playerStore.fetchPlayersByDatasetId(datasetId)
+        playerStore.setCurrentDatasetId(datasetId)
       } catch (err) {
         if (!signal?.aborted) {
-          pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+          pageLoadingError.value = `Failed to initialize dataset: ${err.message || 'Unknown error'}.`
         }
       } finally {
         if (!signal?.aborted) {
@@ -1341,36 +1380,34 @@ export default {
         } else if (!datasetIdFromQuery && sessionStorage.getItem('currentDatasetId')) {
           router.replace({ query: { datasetId: finalDatasetId } })
         }
-        await fetchPlayersAndCurrency(finalDatasetId)
+        if (nationFromQuery && nationFromQuery.trim() !== '') {
+          selectedNationName.value = nationFromQuery
+          await fetchDatasetMetadata(finalDatasetId)
+        } else {
+          await fetchNationsOverview(finalDatasetId)
+        }
       } else {
         pageLoadingError.value =
           'No player dataset ID found. Please upload a file on the main page.'
         pageLoading.value = false
       }
 
-      if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-        populateNationFilterOptions()
-
-        // --- DISABLE NATION RATINGS CACHE AND FORCE RECALCULATION ---
-        // const cacheLoaded = await loadNationRatingsFromCache()
-        // if (!cacheLoaded) {
-        initializeNationsData()
-        setTimeout(() => {
-          startRatingCalculations()
-        }, 100) // Small delay to let UI render first
-        // } else {
-        // }
-
-        if (nationFromQuery && nationFromQuery.trim() !== '') {
-          selectedNationName.value = nationFromQuery
-          loadNationPlayers()
-        } else if (selectedNationName.value) {
-          loadNationPlayers()
-        }
+      if (!pageLoadingError.value && selectedNationName.value) {
+        loadNationPlayers()
       }
     })
 
     const populateNationFilterOptions = () => {
+      if (nationsData.value.length > 0) {
+        const nationNames = nationsData.value
+          .map((nation) => nation.name)
+          .filter(Boolean)
+          .sort()
+        allNationNamesCache.value = nationNames
+        nationOptions.value = nationNames
+        return
+      }
+
       if (!allPlayersData.value || allPlayersData.value.length === 0) {
         allNationNamesCache.value = []
         nationOptions.value = []
@@ -1418,15 +1455,18 @@ export default {
       loadingNation.value = true
 
       try {
-        // Use the new team data API to get all detailed player data in one request
-        const nationData = await fetchTeamData(
+        const nationData = await fetchNationTopPlayers(
           currentDatasetId.value,
-          'nation',
-          selectedNationName.value
+          selectedNationName.value,
+          35
         )
 
         if (nationData.data?.players) {
           nationPlayers.value = nationData.data.players
+
+          if (nationData.data.currency_symbol) {
+            playerStore.setCurrencySymbol(nationData.data.currency_symbol)
+          }
 
           if (nationData.data.players.length > 0) {
             const bestFormation = calculateBestFormationForNation()
@@ -2109,7 +2149,7 @@ export default {
       const { player, fromSlotId, toSlotId, toSlotRole } = moveData
 
       const currentStarters = JSON.parse(JSON.stringify(bestNationPlayersForPitch.value))
-      const playerToMoveFullData = allPlayersData.value.find((p) => p.name === player.name)
+      const playerToMoveFullData = nationPlayers.value.find((p) => p.name === player.name)
 
       if (!playerToMoveFullData) return
 
@@ -2120,7 +2160,7 @@ export default {
       const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
       const playerCurrentlyInTargetSlotFullData = currentStarters[toSlotId]
-        ? allPlayersData.value.find((p) => p.name === currentStarters[toSlotId].name)
+        ? nationPlayers.value.find((p) => p.name === currentStarters[toSlotId].name)
         : null
 
       currentStarters[toSlotId] = {
@@ -2177,43 +2217,12 @@ export default {
         : 'bg-blue-2 text-primary'
     }
 
-    let isMounted = true
+    let _isMounted = true
     let nationsFetchController = null
     onUnmounted(() => {
-      isMounted = false
+      _isMounted = false
       nationsFetchController?.abort()
     })
-
-    watch(
-      () => allPlayersData.value,
-      async (newVal) => {
-        if (pageLoading.value) return
-        if (newVal && newVal.length > 0) {
-          populateNationFilterOptions()
-
-          cacheKey.value = generateCacheKey()
-
-          const cacheLoaded = await loadNationRatingsFromCache()
-          if (!isMounted) return
-
-          if (!cacheLoaded) {
-            initializeNationsData()
-            setTimeout(() => {
-              startRatingCalculations()
-            }, 100)
-          }
-
-          if (selectedNationName.value) loadNationPlayers()
-        } else if (!pageLoadingError.value) {
-          clearNationSelection()
-          allNationNamesCache.value = []
-          nationOptions.value = []
-          nationsData.value = []
-          cacheKey.value = null
-        }
-      },
-      { immediate: false }
-    )
 
     watch(
       () => route.query.datasetId,
@@ -2223,23 +2232,21 @@ export default {
         nationsFetchController = new AbortController()
         const signal = nationsFetchController.signal
         sessionStorage.setItem('currentDatasetId', newId)
-        await fetchPlayersAndCurrency(newId, signal)
-        if (signal.aborted) return
+
+        if (route.query.nation && route.query.nation.trim() !== '') {
+          selectedNationName.value = route.query.nation
+          await fetchDatasetMetadata(newId, signal)
+          if (signal.aborted) return
+          clearNationSelection()
+          selectedNationName.value = route.query.nation
+          loadNationPlayers()
+          return
+        }
+
         clearNationSelection()
         nationsData.value = []
-        cacheKey.value = null
-        if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-          populateNationFilterOptions()
-          cacheKey.value = generateCacheKey()
-          const cacheLoaded = await loadNationRatingsFromCache()
-          if (signal.aborted) return
-          if (!cacheLoaded) {
-            initializeNationsData()
-            setTimeout(() => {
-              startRatingCalculations()
-            }, 100)
-          }
-        }
+        await fetchNationsOverview(newId, signal)
+        if (signal.aborted) return
       }
     )
 
@@ -2293,6 +2300,8 @@ export default {
     // Add computed property for current nation flag ISO
     const currentNationFlagISO = computed(() => {
       if (!selectedNationName.value) return null
+      const loadedNationPlayer = nationPlayers.value.find((player) => player.nationalityIso)
+      if (loadedNationPlayer?.nationalityIso) return loadedNationPlayer.nationalityIso
       const nation = nationsWithRatings.value.find((n) => n.name === selectedNationName.value)
       return nation?.nationalityIso || null
     })

@@ -316,6 +316,45 @@ export async function fetchTeamData(datasetID, type, name) {
 }
 
 /**
+ * Fetch a capped ranked player pool for a nation.
+ * @param {string} datasetID - The dataset ID
+ * @param {string} nationName - The nation name
+ * @param {number} limit - Maximum number of players to return
+ * @returns {Promise<Object>} - Nation data with a capped player list
+ */
+export async function fetchNationTopPlayers(datasetID, nationName, limit = 35) {
+  try {
+    const url = `/api/nation-top-players/${datasetID}/${encodeURIComponent(nationName)}?limit=${limit}`
+
+    const responseData = await fetchJsonResponse(url)
+
+    if (responseData.data !== undefined && responseData.data !== null) {
+      return { data: parseResponseDataField(responseData, 'nation top players'), format: 'json' }
+    }
+
+    return { data: responseData, format: 'json' }
+  } catch (error) {
+    logger.error('Error fetching nation top players:', error)
+    throw error
+  }
+}
+
+/**
+ * Fetch compact summary ratings for all nations in a dataset.
+ * @param {string} datasetID - The dataset ID
+ * @returns {Promise<Array>} - Nation summaries with aggregate ratings only
+ */
+export async function fetchNationsSummary(datasetID) {
+  try {
+    const url = `/api/nations-summary/${datasetID}`
+    return await fetchJsonResponse(url)
+  } catch (error) {
+    logger.error('Error fetching nations summary:', error)
+    throw error
+  }
+}
+
+/**
  * Fetch top teams data across all divisions
  * @param {string} datasetID - The dataset ID
  * @param {number} limit - Maximum number of teams to return (default: 100)
