@@ -1,6 +1,15 @@
 <template>
-    <div class="fifa-card" :class="[cardTypeClass, rarityClass, cardDesignClass]" @click="handleCardClick">
+    <div
+        class="fifa-card"
+        :class="[cardTypeClass, rarityClass, cardDesignClass, cardRendererClass]"
+        @click="handleCardClick"
+        @pointermove="updateCardPointer"
+        @pointerleave="resetCardPointer"
+        @pointercancel="resetCardPointer"
+        @blur.capture="resetCardPointer"
+    >
         <div class="card-bg"></div>
+        <div class="card-finish" aria-hidden="true"></div>
         <div class="card-content">
             <div class="card-header">
                 <div class="rating-block">
@@ -460,6 +469,16 @@ export default defineComponent({
 
       return designByTypeAndRarity[cardType.value]?.[rarityClass.value] || 'card-design--aged-plate'
     })
+    const cardRendererClass = computed(() => {
+      const prestigeDesigns = new Set([
+        'card-design--bronze-season-ribbon',
+        'card-design--silver-season-laurel',
+        'card-design--gold-season-trophy',
+        'card-design--tots-crown-aurora',
+      ])
+
+      return prestigeDesigns.has(cardDesignClass.value) ? 'card-renderer--prestige' : null
+    })
 
     // Check if player is a goalkeeper
     const isGoalkeeper = computed(() => {
@@ -560,6 +579,30 @@ export default defineComponent({
 
     const handleCardClick = () => emit('click')
 
+    const resetCardPointer = (event) => {
+      const card = event.currentTarget
+      card.style.setProperty('--card-shift-x', '0px')
+      card.style.setProperty('--card-shift-y', '0px')
+      card.style.setProperty('--card-tilt-x', '0deg')
+      card.style.setProperty('--card-tilt-y', '0deg')
+    }
+
+    const updateCardPointer = (event) => {
+      const card = event.currentTarget
+      const bounds = card.getBoundingClientRect()
+      const pointerX = (event.clientX - bounds.left) / bounds.width
+      const pointerY = (event.clientY - bounds.top) / bounds.height
+      const clampedX = Math.min(Math.max(pointerX, 0), 1)
+      const clampedY = Math.min(Math.max(pointerY, 0), 1)
+      const centeredX = clampedX - 0.5
+      const centeredY = clampedY - 0.5
+
+      card.style.setProperty('--card-shift-x', `${(centeredX * 8).toFixed(2)}px`)
+      card.style.setProperty('--card-shift-y', `${(centeredY * 6).toFixed(2)}px`)
+      card.style.setProperty('--card-tilt-x', `${(-centeredY * 9).toFixed(2)}deg`)
+      card.style.setProperty('--card-tilt-y', `${(centeredX * 11).toFixed(2)}deg`)
+    }
+
     const handleImageError = () => {
       console.log('Image failed to load')
       imageLoadError.value = true
@@ -641,6 +684,8 @@ export default defineComponent({
     return {
       qInstance,
       handleCardClick,
+      resetCardPointer,
+      updateCardPointer,
       effectiveNationFlagUrl,
       effectivePlayerFaceUrl,
       formattedPosition,
@@ -653,6 +698,7 @@ export default defineComponent({
       cardTypeClass,
       rarityClass,
       cardDesignClass,
+      cardRendererClass,
       isGoalkeeper,
       playerOverall,
       playerStats,

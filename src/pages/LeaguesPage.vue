@@ -910,14 +910,17 @@ export default {
     }
 
     const getTotsCardDesignForOverall = (overall) => {
-      if (overall >= 75) return 'card-design--gold-season-trophy'
-      if (overall >= 65) return 'card-design--silver-season-laurel'
-      return 'card-design--bronze-season-ribbon'
+      const numericOverall = Number(overall)
+      if (Number.isNaN(numericOverall)) return 'card-design--tots-crown-aurora'
+      if (numericOverall < 65) return 'card-design--bronze-season-ribbon'
+      if (numericOverall < 75) return 'card-design--silver-season-laurel'
+      return 'card-design--tots-crown-aurora'
     }
 
     const getTotsCardDesign = (player) => {
-      const overall = Number(player?.Overall ?? player?.overall ?? 0)
-      return getTotsCardDesignForOverall(overall)
+      return (
+        player?.totsCardDesign || getTotsCardDesignForOverall(player?.Overall || player?.overall)
+      )
     }
 
     const getOverallClass = (overall) => {
@@ -1320,14 +1323,11 @@ export default {
     align-items: flex-start;
 
     :deep(.fifa-card) {
-        flex: 0 0 auto;
-        transform: scale(0.55);
-        transform-origin: top center;
-    }
+        --card-scale: 0.55;
+        --card-hover-lift: -10px;
+        --card-transform-origin: top center;
 
-    :deep(.fifa-card:hover),
-    :deep(.fifa-card:focus-within) {
-        transform: scale(0.55) translateY(-6px);
+        flex: 0 0 auto;
     }
 
     &--empty {
@@ -1638,12 +1638,8 @@ export default {
         height: 138px;
 
         :deep(.fifa-card) {
-            transform: scale(0.329);
-        }
-
-        :deep(.fifa-card:hover),
-        :deep(.fifa-card:focus-within) {
-            transform: scale(0.329) translateY(-6px);
+            --card-scale: 0.329;
+            --card-hover-lift: -10px;
         }
 
         &--empty {
@@ -1675,12 +1671,8 @@ export default {
         height: 102px;
 
         :deep(.fifa-card) {
-            transform: scale(0.243);
-        }
-
-        :deep(.fifa-card:hover),
-        :deep(.fifa-card:focus-within) {
-            transform: scale(0.243) translateY(-6px);
+            --card-scale: 0.243;
+            --card-hover-lift: -10px;
         }
     }
 }

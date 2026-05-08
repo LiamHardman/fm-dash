@@ -4270,17 +4270,17 @@ $breakpoint-xs-max: 599px !default;
         margin-bottom: 16px; // ensure space below the card
         
         .player-detail-card {
-            // remove scaling to avoid overlap with following sections
-            transform: none;
+            --card-scale: 0.86;
+            --card-hover-lift: -10px;
             transform-origin: top center;
             margin-bottom: 12px;
             
             @media (max-width: 768px) {
-                transform: none;
+                --card-scale: 0.78;
             }
             
             @media (max-width: 480px) {
-                transform: none;
+                --card-scale: 0.68;
             }
         }
     }

@@ -48,6 +48,283 @@
             radial-gradient(ellipse at 50% 64%, rgba(0, 0, 0, 0.48), transparent 56%),
             radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--card-accent) 17%, transparent), transparent 48%);
     }
+
+    .card-finish {
+        opacity: 0;
+        transition: opacity 180ms ease;
+
+        &::before,
+        &::after {
+            content: "";
+            position: absolute;
+            inset: -18%;
+            pointer-events: none;
+        }
+
+        &::before {
+            background:
+                linear-gradient(112deg, transparent 0 32%, rgba(255, 255, 255, 0.42) 44%, transparent 56% 100%),
+                repeating-linear-gradient(104deg, transparent 0 16px, color-mix(in srgb, var(--card-highlight) 16%, transparent) 16px 17px, transparent 17px 34px);
+            background-size: 220% 100%, 160px 160px;
+            mix-blend-mode: screen;
+            transform: translate3d(-18%, 0, 0);
+        }
+
+        &::after {
+            background:
+                radial-gradient(circle at 35% 18%, color-mix(in srgb, var(--card-highlight) 32%, transparent), transparent 18%),
+                conic-gradient(from 215deg at 50% 30%, color-mix(in srgb, var(--card-accent) 22%, transparent), color-mix(in srgb, var(--card-cut) 24%, transparent), transparent 42%, color-mix(in srgb, var(--card-highlight) 16%, transparent), color-mix(in srgb, var(--card-accent) 22%, transparent));
+            mix-blend-mode: color-dodge;
+            opacity: 0.72;
+        }
+    }
+
+    &:hover .card-finish,
+    &:focus-within .card-finish {
+        opacity: 0.72;
+
+        &::before {
+            animation: totsFoilSweep 1500ms cubic-bezier(0.2, 0.72, 0.24, 1) infinite;
+        }
+
+        &::after {
+            animation: totsAuroraPulse 2200ms ease-in-out infinite alternate;
+        }
+    }
+}
+
+.card-design--tots-crown-aurora {
+    --card-bg: #070f1b;
+    --card-surface: #0c1834;
+    --card-surface-soft: #1a2c68;
+    --card-border: #fff0a7;
+    --card-border-muted: #28365f;
+    --card-accent: #6be8ff;
+    --card-cut: #fff3a5;
+    --card-highlight: #fff9df;
+    --card-text: #fff7d8;
+    --card-muted: #ead087;
+    --card-stat: #ffe98d;
+    --card-shadow: rgba(255, 214, 88, 0.42);
+
+    border-color: #fff0a7;
+    background:
+        radial-gradient(circle at 50% 11%, rgba(255, 236, 141, 0.34), transparent 7rem),
+        radial-gradient(circle at 82% 19%, rgba(85, 229, 255, 0.22), transparent 7rem),
+        conic-gradient(from 218deg at 50% 31%, rgba(255, 232, 121, 0.26) 0deg 18deg, rgba(64, 120, 255, 0.2) 18deg 42deg, transparent 42deg 68deg, rgba(255, 232, 121, 0.18) 68deg 92deg, transparent 92deg 360deg),
+        linear-gradient(180deg, #1a2c68 0%, #0c1834 48%, #040812 100%);
+    box-shadow:
+        0 22px 54px rgba(0, 0, 0, 0.54),
+        inset 0 0 0 1px rgba(255, 250, 213, 0.26),
+        inset 0 0 0 7px rgba(8, 22, 46, 0.34),
+        0 0 32px rgba(255, 214, 88, 0.4),
+        0 0 28px rgba(78, 139, 255, 0.18);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 34px 72px rgba(0, 0, 0, 0.62),
+            inset 0 0 0 1px rgba(255, 252, 222, 0.4),
+            inset 0 0 0 7px rgba(7, 22, 47, 0.28),
+            0 0 44px rgba(255, 220, 92, 0.5),
+            0 0 34px rgba(88, 162, 255, 0.26);
+    }
+
+    &::before {
+        inset: 7px;
+        border-color: rgba(255, 239, 162, 0.82);
+        box-shadow:
+            inset 0 0 0 1px rgba(106, 174, 255, 0.26),
+            inset 0 0 22px rgba(255, 218, 83, 0.12),
+            0 0 26px rgba(255, 213, 84, 0.24);
+    }
+
+    &::after {
+        height: 4px;
+        background: linear-gradient(90deg, transparent, #6be8ff, #fff3a5, #ffd24c, #fff3a5, #6be8ff, transparent);
+        box-shadow:
+            0 0 18px rgba(255, 226, 108, 0.56),
+            0 0 16px rgba(101, 217, 255, 0.26);
+    }
+
+    .card-bg {
+        background:
+            repeating-conic-gradient(from 225deg at 50% 29%, rgba(255, 236, 151, 0.18) 0deg 1deg, transparent 1deg 7deg),
+            linear-gradient(137deg, transparent 0 18%, rgba(255, 241, 166, 0.2) 18% 21%, rgba(17, 29, 62, 0.28) 21% 35%, transparent 35%),
+            repeating-radial-gradient(circle at 76% 18%, rgba(255, 240, 172, 0.09) 0 1px, transparent 1px 7px);
+        opacity: 0.9;
+    }
+
+    .card-finish {
+        opacity: 0;
+        transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+
+        &::before,
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        &::before {
+            background:
+                radial-gradient(circle at 38% 18%, rgba(255, 255, 246, 0.58), rgba(112, 233, 255, 0.24) 18%, rgba(255, 213, 73, 0.16) 34%, transparent 58%),
+                conic-gradient(from 230deg at 50% 30%, rgba(91, 230, 255, 0.28), rgba(255, 240, 142, 0.28), rgba(95, 255, 187, 0.18), rgba(103, 141, 255, 0.22), rgba(91, 230, 255, 0.28));
+            background-size: 120% 120%, 130% 130%;
+            mix-blend-mode: color-dodge;
+        }
+
+        &::after {
+            background:
+                repeating-conic-gradient(from 225deg at 50% 28%, rgba(255, 236, 151, 0.22) 0deg 1deg, transparent 1deg 9deg),
+                repeating-linear-gradient(112deg, transparent 0 14px, rgba(255, 255, 255, 0.14) 14px 15px, transparent 15px 30px);
+            background-size: auto, 180px 180px;
+            mix-blend-mode: screen;
+        }
+    }
+
+    &:hover .card-finish,
+    &:focus-within .card-finish {
+        opacity: 0.84;
+        transform: translate3d(0, -2px, 0);
+
+        &::before {
+            animation: totsCrownAuroraDrift 2400ms ease-in-out infinite alternate;
+        }
+
+        &::after {
+            animation: totsCrownEtchShimmer 1300ms linear infinite;
+        }
+    }
+
+    .card-content::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        border-radius: 10px;
+        background:
+            linear-gradient(116deg, transparent 0 30%, rgba(255, 255, 245, 0.42) 43%, rgba(99, 225, 255, 0.14) 50%, transparent 66% 100%);
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+    }
+
+    &:hover .card-content::before,
+    &:focus-within .card-content::before {
+        opacity: 0.34;
+        animation: totsCrownLightSweep 1700ms cubic-bezier(0.2, 0.72, 0.24, 1) infinite;
+    }
+
+    .player-rating,
+    .player-name {
+        text-shadow:
+            0 2px 10px rgba(0, 0, 0, 0.58),
+            0 0 18px rgba(255, 230, 127, 0.3),
+            0 0 16px rgba(83, 156, 255, 0.14);
+    }
+
+    .player-vitals-container {
+        color: #071017;
+        background: linear-gradient(180deg, #fff3a5, #6be8ff);
+        border-color: rgba(255, 249, 215, 0.46);
+    }
+
+    .nation-flag,
+    .club-logo {
+        border-color: rgba(255, 238, 151, 0.6);
+        background: rgba(6, 16, 36, 0.64);
+        box-shadow:
+            0 7px 16px rgba(0, 0, 0, 0.3),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+            0 0 18px rgba(255, 222, 92, 0.22);
+    }
+
+    .player-photo {
+        color: rgba(255, 248, 196, 0.9);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(0, 0, 0, 0.5), transparent 56%),
+            radial-gradient(ellipse at 50% 30%, rgba(107, 232, 255, 0.18), transparent 48%),
+            linear-gradient(180deg, rgba(255, 243, 165, 0.08), transparent);
+    }
+}
+
+@keyframes totsFoilSweep {
+    0% {
+        transform: translate3d(-26%, 0, 0);
+        opacity: 0.2;
+    }
+
+    36% {
+        opacity: 0.78;
+    }
+
+    100% {
+        transform: translate3d(24%, 0, 0);
+        opacity: 0.28;
+    }
+}
+
+@keyframes totsAuroraPulse {
+    0% {
+        filter: hue-rotate(0deg) saturate(1);
+        transform: translate3d(-1.5%, -0.8%, 0) scale(1);
+    }
+
+    100% {
+        filter: hue-rotate(18deg) saturate(1.28);
+        transform: translate3d(1.5%, 0.8%, 0) scale(1.04);
+    }
+}
+
+@keyframes totsCrownAuroraDrift {
+    0% {
+        background-position: 0% 0%, 0% 50%;
+        filter: hue-rotate(0deg) saturate(1.02);
+        transform: translate3d(-1.2%, -0.8%, 0) scale(1.02);
+    }
+
+    100% {
+        background-position: 18% 8%, 100% 50%;
+        filter: hue-rotate(16deg) saturate(1.28);
+        transform: translate3d(1.2%, 0.8%, 0) scale(1.05);
+    }
+}
+
+@keyframes totsCrownEtchShimmer {
+    0% {
+        background-position: 0 0, -90px 0;
+        opacity: 0.48;
+    }
+
+    50% {
+        opacity: 0.82;
+    }
+
+    100% {
+        background-position: 0 0, 90px 0;
+        opacity: 0.5;
+    }
+}
+
+@keyframes totsCrownLightSweep {
+    0% {
+        transform: translate3d(-34%, 0, 0);
+        opacity: 0;
+    }
+
+    32% {
+        opacity: 0.36;
+    }
+
+    100% {
+        transform: translate3d(34%, 0, 0);
+        opacity: 0;
+    }
 }
 
 .card-design--bronze-season-ribbon {

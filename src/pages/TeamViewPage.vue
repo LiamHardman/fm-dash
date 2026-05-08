@@ -2331,10 +2331,10 @@ $border-radius-small: 8px;
         height: 183px;
     }
 
-    :deep(.pitch-player-card),
-    :deep(.pitch-player-card:hover),
-    :deep(.pitch-player-card:focus-within) {
-        transform: scale(0.43);
+    :deep(.pitch-player-card) {
+        --card-scale: 0.43;
+        --card-hover-lift: -10px;
+        --card-transform-origin: top left;
     }
 
     :deep(.empty-card-slot) {
@@ -2360,10 +2360,10 @@ $border-radius-small: 8px;
             height: 153px;
         }
 
-        :deep(.pitch-player-card),
-        :deep(.pitch-player-card:hover),
-        :deep(.pitch-player-card:focus-within) {
-            transform: scale(0.36);
+        :deep(.pitch-player-card) {
+            --card-scale: 0.36;
+            --card-hover-lift: -10px;
+            --card-transform-origin: top left;
         }
 
         :deep(.empty-card-slot) {

@@ -60,6 +60,7 @@
                             :player="players[pos.id]"
                             :currency-symbol="currencySymbol"
                             :dataset-id="datasetId"
+                            :card-design-override="cardDesignOverride"
                             :position-override="getCardPositionForSlot(pos.role)"
                             class="pitch-player-card"
                             @click="$emit('player-click', players[pos.id])"
@@ -224,6 +225,10 @@ export default {
       default: '£',
     },
     datasetId: {
+      type: String,
+      default: null,
+    },
+    cardDesignOverride: {
       type: String,
       default: null,
     },
@@ -652,13 +657,9 @@ export default {
     }
 
     :deep(.pitch-player-card) {
-        transform: scale(0.34);
-        transform-origin: top left;
-    }
-
-    :deep(.pitch-player-card:hover),
-    :deep(.pitch-player-card:focus-within) {
-        transform: scale(0.34);
+        --card-scale: 0.34;
+        --card-hover-lift: -10px;
+        --card-transform-origin: top left;
     }
 }
 
