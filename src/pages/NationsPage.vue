@@ -148,127 +148,122 @@
                     </div>
                 </GradientBackground>
 
-                <!-- Formation & Tactics Section - New Layout -->
+                <!-- Formation & Tactics Section -->
                 <div class="formation-tactics-layout">
-                    <!-- Left Side - Formation Controls and Squad Depth -->
-                    <div class="formation-controls-panel">
-                        <!-- Formation Selection -->
-                        <q-card class="formation-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="diagram" class="card-icon" />
-                                        Tactical Setup
-                                    </h3>
-                                    <p class="card-subtitle">Optimize your formation and lineup</p>
-                                </div>
-                                
-                                <div class="formation-controls">
-                                    <q-select
-                                        v-model="selectedFormationKey"
-                                        :options="formationOptions"
-                                        label="Select Formation"
-                                        outlined
-                                        emit-value
-                                        map-options
-                                        class="formation-select"
-                                        :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
-                                    />
-                                    
-                                    <q-banner
-                                        v-if="calculationMessage"
-                                        class="calculation-banner"
-                                        :class="calculationMessageClass"
-                                    >
-                                        {{ calculationMessage }}
-                                    </q-banner>
-                                </div>
-                            </q-card-section>
-                        </q-card>
+                    <q-card class="formation-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <q-icon name="diagram" class="card-icon" />
+                                    Tactical Setup
+                                </h3>
+                                <p class="card-subtitle">Optimize your formation and lineup</p>
+                            </div>
 
-                        <!-- Squad Depth Card -->
-                        <q-card 
-                            v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
-                            class="squad-depth-card"
-                        >
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="groups_3" class="card-icon" />
-                                        Squad Depth
-                                    </h3>
-                                    <p class="card-subtitle">Player availability by position</p>
-                                </div>
-                                
-                                <div class="squad-depth-grid">
-                                    <div
-                                        v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
-                                        :key="slot.id"
-                                        class="depth-position-modern"
-                                    >
-                                        <div class="position-header">
-                                            <span class="position-name">
-                                                {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
-                                            </span>
-                                            <span class="player-count">
-                                                {{ squadComposition[slot.id]?.length || 0 }} players
-                                            </span>
-                                        </div>
-                                        
-                                        <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
-                                            <div
-                                                v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
-                                                :key="playerEntry.player.name + '-' + slot.id + '-' + index"
-                                                class="player-card-mini"
-                                                :class="{ 'is-starter': index === 0 }"
-                                                @click="handlePlayerSelectedFromNation(playerEntry.player)"
-                                            >
-                                                <div class="player-rank">{{ index + 1 }}</div>
-                                                <div class="player-info">
-                                                    <div class="player-name">{{ playerEntry.player.name }}</div>
-                                                    <div class="player-positions">
-                                                        {{ playerEntry.player.short_positions?.slice(0, 2).join(', ') || 'N/A' }}
-                                                    </div>
-                                                </div>
-                                                <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
-                                                    {{ playerEntry.overallInRole }}
+                            <div class="formation-controls">
+                                <q-select
+                                    v-model="selectedFormationKey"
+                                    :options="formationOptions"
+                                    label="Select Formation"
+                                    outlined
+                                    emit-value
+                                    map-options
+                                    class="formation-select"
+                                    :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
+                                />
+
+                                <q-banner
+                                    v-if="calculationMessage"
+                                    class="calculation-banner"
+                                    :class="calculationMessageClass"
+                                >
+                                    {{ calculationMessage }}
+                                </q-banner>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <q-card class="pitch-card" v-if="selectedFormationKey">
+                        <q-card-section>
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <q-icon name="stadium" class="card-icon" />
+                                    Formation View
+                                </h3>
+                                <p class="card-subtitle">Interactive pitch with your starting XI</p>
+                            </div>
+
+                            <div class="pitch-stage">
+                                <PitchDisplay
+                                    :formation="currentFormationLayout"
+                                    :players="bestNationPlayersForPitch"
+                                    display-mode="cards"
+                                    :currency-symbol="detectedCurrencySymbol"
+                                    :dataset-id="currentDatasetId"
+                                    @player-click="handlePlayerSelectedFromNation"
+                                    @player-moved="handlePlayerMovedOnPitch"
+                                />
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <q-card
+                        v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                        class="squad-depth-card"
+                    >
+                        <q-card-section>
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <q-icon name="groups_3" class="card-icon" />
+                                    Squad Depth
+                                </h3>
+                                <p class="card-subtitle">Player availability by position</p>
+                            </div>
+
+                            <div class="squad-depth-grid">
+                                <div
+                                    v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
+                                    :key="slot.id"
+                                    class="depth-position-modern"
+                                >
+                                    <div class="position-header">
+                                        <span class="position-name">
+                                            {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
+                                        </span>
+                                        <span class="player-count">
+                                            {{ squadComposition[slot.id]?.length || 0 }} players
+                                        </span>
+                                    </div>
+
+                                    <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
+                                        <div
+                                            v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
+                                            :key="playerEntry.player.name + '-' + slot.id + '-' + index"
+                                            class="player-card-mini"
+                                            :class="{ 'is-starter': index === 0 }"
+                                            @click="handlePlayerSelectedFromNation(playerEntry.player)"
+                                        >
+                                            <div class="player-rank">{{ index + 1 }}</div>
+                                            <div class="player-info">
+                                                <div class="player-name">{{ playerEntry.player.name }}</div>
+                                                <div class="player-positions">
+                                                    {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
                                                 </div>
                                             </div>
-                                        </div>
-                                        
-                                        <div v-else class="no-players-state">
-                                            <q-icon name="person_off" size="1.5rem" />
-                                            <span>No suitable players</span>
+                                            <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
+                                                {{ playerEntry.overallInRole }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
 
-                    <!-- Right Side - Pitch Visualization -->
-                    <div class="formation-display-panel">
-                        <q-card class="pitch-card" v-if="selectedFormationKey">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="stadium" class="card-icon" />
-                                        Formation View
-                                    </h3>
-                                    <p class="card-subtitle">Interactive pitch with your starting XI</p>
+                                    <div v-else class="no-players-state">
+                                        <q-icon name="person_off" size="1.5rem" />
+                                        <span>No suitable players</span>
+                                    </div>
                                 </div>
-                                
-                                <div class="pitch-container">
-                                    <PitchDisplay
-                                        :formation="currentFormationLayout"
-                                        :players="bestNationPlayersForPitch"
-                                        @player-click="handlePlayerSelectedFromNation"
-                                        @player-moved="handlePlayerMovedOnPitch"
-                                    />
-                                </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
                 </div>
 
                 <!-- Players Table -->
@@ -2691,12 +2686,12 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 
 // Formation & Tactics Layout
 .formation-tactics-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 2rem;
+    margin-bottom: 2rem;
     
     @media (max-width: 1200px) {
-        grid-template-columns: 1fr;
         gap: 1.5rem;
     }
 }
@@ -2764,8 +2759,13 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 
 // Formation Controls
 .formation-controls {
+    display: grid;
+    grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+
     .formation-select {
-        margin-bottom: 1rem;
+        margin-bottom: 0;
         
         .q-field__control {
             border-radius: $border-radius-small;
@@ -2777,14 +2777,18 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         border: none;
         font-weight: 500;
     }
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
 }
 
 // Squad Depth Grid
 .squad-depth-card {
     .squad-depth-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
         
         @media (max-width: 768px) {
             grid-template-columns: 1fr;
@@ -2794,7 +2798,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         .depth-position-modern {
             background: rgba(255, 255, 255, 0.6);
             border-radius: $border-radius-small;
-            padding: 0.75rem;
+            padding: 1rem;
             border: 1px solid rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
             
@@ -2812,11 +2816,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 0.5rem;
+                margin-bottom: 0.75rem;
                 
                 .position-name {
                     font-weight: 700;
-                    font-size: 0.8rem;
+                    font-size: 0.9rem;
                     color: #2d3436;
                     
                     .body--dark & {
@@ -2825,11 +2829,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 }
                 
                 .player-count {
-                    font-size: 0.7rem;
+                    font-size: 0.75rem;
                     color: #636e72;
                     background: rgba(0, 0, 0, 0.05);
-                    padding: 0.15rem 0.4rem;
-                    border-radius: 10px;
+                    padding: 0.2rem 0.5rem;
+                    border-radius: 12px;
                     
                     .body--dark & {
                         color: rgba(255, 255, 255, 0.7);
@@ -2841,14 +2845,14 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             .depth-players-modern {
                 display: flex;
                 flex-direction: column;
-                gap: 0.4rem;
+                gap: 0.5rem;
                 
                 .player-card-mini {
                     display: grid;
                     grid-template-columns: auto 1fr auto;
-                    gap: 0.4rem;
+                    gap: 0.5rem;
                     align-items: center;
-                    padding: 0.4rem;
+                    padding: 0.5rem;
                     background: rgba(255, 255, 255, 0.8);
                     border-radius: $border-radius-small;
                     cursor: pointer;
@@ -2867,7 +2871,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                     }
                     
                     &:hover {
-                        transform: translateX(2px);
+                        transform: translateX(4px);
                         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                         background: rgba(103, 126, 234, 0.1);
                         
@@ -2880,12 +2884,12 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        width: 16px;
-                        height: 16px;
+                        width: 20px;
+                        height: 20px;
                         background: rgba(103, 126, 234, 0.1);
                         color: #667eea;
                         border-radius: 50%;
-                        font-size: 0.65rem;
+                        font-size: 0.7rem;
                         font-weight: 700;
                     }
                     
@@ -2893,7 +2897,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         min-width: 0;
                         
                         .player-name {
-                            font-size: 0.75rem;
+                            font-size: 0.8rem;
                             font-weight: 600;
                             white-space: nowrap;
                             overflow: hidden;
@@ -2906,9 +2910,9 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         }
                         
                         .player-positions {
-                            font-size: 0.6rem;
+                            font-size: 0.65rem;
                             color: #636e72;
-                            margin-top: 0.1rem;
+                            margin-top: 0.2rem;
                             
                             .body--dark & {
                                 color: rgba(255, 255, 255, 0.6);
@@ -2917,11 +2921,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                     }
                     
                     .player-rating {
-                        font-size: 0.7rem;
+                        font-size: 0.75rem;
                         font-weight: 700;
-                        padding: 0.15rem 0.3rem;
-                        border-radius: 3px;
-                        min-width: 24px;
+                        padding: 0.2rem 0.4rem;
+                        border-radius: 4px;
+                        min-width: 28px;
                         text-align: center;
                         border: 1px solid rgba(0, 0, 0, 0.1);
                         
@@ -2936,18 +2940,18 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 0.2rem;
-                padding: 0.75rem;
+                gap: 0.3rem;
+                padding: 1rem;
                 color: #636e72;
                 font-style: italic;
-                font-size: 0.75rem;
+                font-size: 0.8rem;
                 
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.5);
                 }
                 
                 .q-icon {
-                    font-size: 1rem;
+                    font-size: 1.2rem;
                 }
             }
         }
@@ -2955,10 +2959,10 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
 // Pitch Container
-.pitch-container {
+.pitch-stage {
     background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
     border-radius: $border-radius;
-    padding: 2rem;
+    padding: 0.75rem;
     margin-top: 1rem;
     position: relative;
     overflow: hidden;
@@ -2975,6 +2979,67 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             linear-gradient(0deg, rgba(255, 255, 255, 0.1) 50%, transparent 50%);
         background-size: 20px 20px;
         opacity: 0.3;
+    }
+
+    :deep(.pitch-container--cards) {
+        max-width: min(1280px, 100%);
+        min-height: max(820px, calc(var(--formation-rows) * 176px));
+        margin: 0 auto;
+        padding: 16px 10px;
+    }
+
+    :deep(.pitch-container--cards .formation-row) {
+        min-height: 166px;
+    }
+
+    :deep(.pitch-container--cards .player-slot) {
+        min-height: 166px;
+    }
+
+    :deep(.player-card-slot) {
+        width: 122px;
+        height: 183px;
+    }
+
+    :deep(.pitch-player-card) {
+        --card-scale: 0.43;
+        --card-hover-lift: -10px;
+        --card-transform-origin: top left;
+    }
+
+    :deep(.empty-card-slot) {
+        width: 122px;
+        height: 170px;
+    }
+
+    @media (max-width: 900px) {
+        padding: 0.5rem;
+
+        :deep(.pitch-container--cards) {
+            min-height: max(700px, calc(var(--formation-rows) * 146px));
+            padding: 12px 6px;
+        }
+
+        :deep(.pitch-container--cards .formation-row),
+        :deep(.pitch-container--cards .player-slot) {
+            min-height: 140px;
+        }
+
+        :deep(.player-card-slot) {
+            width: 102px;
+            height: 153px;
+        }
+
+        :deep(.pitch-player-card) {
+            --card-scale: 0.36;
+            --card-hover-lift: -10px;
+            --card-transform-origin: top left;
+        }
+
+        :deep(.empty-card-slot) {
+            width: 102px;
+            height: 142px;
+        }
     }
 }
 
