@@ -17,134 +17,6 @@
 
             <div class="design-sections">
                 <section
-                    class="design-section design-section--effects"
-                    :aria-labelledby="`${effectSection.id}-title`"
-                >
-                    <div class="design-section__header">
-                        <div>
-                            <p class="preview-kicker">
-                                {{ effectSection.kicker }}
-                            </p>
-                            <h2 :id="`${effectSection.id}-title`">
-                                {{ effectSection.title }}
-                            </h2>
-                        </div>
-                        <p>{{ effectSection.description }}</p>
-                    </div>
-
-                    <div
-                        class="card-gallery card-gallery--effects"
-                        :aria-label="`${effectSection.title} card effect previews`"
-                    >
-                        <article
-                            v-for="(effect, index) in effectSection.designs"
-                            :key="effect.id"
-                            class="design-panel effect-panel"
-                        >
-                            <div
-                                class="concept-card concept-card--effect-preview"
-                                :class="[
-                                    `concept-card--${effect.variant}`,
-                                    `concept-card--${effect.baseDesignId}`,
-                                    `concept-card--effect-${effect.effect}`,
-                                ]"
-                                :style="effect.tokens"
-                                @mousemove="updateEffectCardPointer"
-                                @mouseleave="resetEffectCardPointer"
-                                @blur.capture="resetEffectCardPointer"
-                            >
-                                <div class="concept-card__texture"></div>
-                                <div class="concept-card__content">
-                                    <header class="concept-card__header">
-                                        <div class="concept-card__rating-block">
-                                            <div class="concept-card__rating">
-                                                {{
-                                                    effectSection.player
-                                                        .overall
-                                                }}
-                                            </div>
-                                            <div class="concept-card__position">
-                                                {{
-                                                    effectSection.player
-                                                        .position
-                                                }}
-                                            </div>
-                                        </div>
-                                        <div class="concept-card__identity">
-                                            <div class="concept-card__name">
-                                                {{ effectSection.player.name }}
-                                            </div>
-                                            <div class="concept-card__vitals">
-                                                {{
-                                                    effectSection.player.vitals
-                                                }}
-                                            </div>
-                                        </div>
-                                    </header>
-
-                                    <section
-                                        class="concept-card__middle"
-                                        aria-label="Player identity"
-                                    >
-                                        <div class="concept-card__marks">
-                                            <div
-                                                class="concept-card__flag"
-                                                aria-label="Example nation flag"
-                                            >
-                                                <span></span>
-                                                <span></span>
-                                                <span></span>
-                                            </div>
-                                            <div
-                                                class="concept-card__club"
-                                                aria-label="Example club crest"
-                                            >
-                                                <q-icon
-                                                    name="shield"
-                                                    size="30px"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="concept-card__portrait"
-                                            aria-label="Example player portrait"
-                                        >
-                                            <q-icon
-                                                name="person"
-                                                size="124px"
-                                            />
-                                        </div>
-                                    </section>
-
-                                    <footer class="concept-card__footer">
-                                        <div class="concept-card__stats">
-                                            <div
-                                                v-for="stat in effectSection
-                                                    .player.stats"
-                                                :key="stat.label"
-                                                class="concept-card__stat"
-                                            >
-                                                <span>{{ stat.value }}</span>
-                                                {{ stat.label }}
-                                            </div>
-                                        </div>
-                                    </footer>
-                                </div>
-                            </div>
-
-                            <div class="design-notes">
-                                <p class="design-number">
-                                    {{ index + 1 }}
-                                </p>
-                                <h3>{{ effect.name }}</h3>
-                                <p>{{ effect.description }}</p>
-                            </div>
-                        </article>
-                    </div>
-                </section>
-
-                <section
                     v-for="section in designSections"
                     :key="section.id"
                     class="design-section"
@@ -173,12 +45,24 @@
                                 class="concept-card"
                                 :class="[
                                     `concept-card--${design.variant}`,
-                                    `concept-card--${design.id}`,
+                                    `concept-card--${design.baseDesignId || design.id}`,
+                                    design.effect
+                                        ? `concept-card--fx-${design.effect}`
+                                        : null,
                                 ]"
                                 :style="design.tokens"
+                                :data-effect-text="design.effectText || null"
+                                tabindex="0"
+                                @pointermove="updateCardPointer"
+                                @pointerleave="resetCardPointer"
+                                @pointercancel="resetCardPointer"
+                                @blur.capture="resetCardPointer"
                             >
                                 <div class="concept-card__texture"></div>
-                                <div class="concept-card__content">
+                                <div
+                                    class="concept-card__content"
+                                    :data-effect-text="design.effectText || null"
+                                >
                                     <header class="concept-card__header">
                                         <div class="concept-card__rating-block">
                                             <div class="concept-card__rating">
@@ -1080,71 +964,6 @@ const goldRareBackgroundDesigns = [
   },
 ]
 
-const goldRareEffectBaseDesign = goldRareBackgroundDesigns[6]
-
-const cardEffectDesigns = [
-  {
-    id: 'cursor-prism-holo',
-    variant: goldRareEffectBaseDesign.variant,
-    baseDesignId: goldRareEffectBaseDesign.id,
-    effect: 'prism-holo',
-    name: 'Cursor Prism Holo',
-    description:
-      'A cursor-led rainbow diffraction wash over the same confetti foil base, with the strongest colour bloom following the pointer.',
-    tokens: goldRareEffectBaseDesign.tokens,
-  },
-  {
-    id: 'angled-foil-flash',
-    variant: goldRareEffectBaseDesign.variant,
-    baseDesignId: goldRareEffectBaseDesign.id,
-    effect: 'foil-flash',
-    name: 'Angled Foil Flash',
-    description:
-      'Hard metallic bands catch the pointer like pack foil, keeping the flash directional and quick instead of permanently glowing.',
-    tokens: goldRareEffectBaseDesign.tokens,
-  },
-  {
-    id: 'liquid-gold-sheen',
-    variant: goldRareEffectBaseDesign.variant,
-    baseDesignId: goldRareEffectBaseDesign.id,
-    effect: 'liquid-gold',
-    name: 'Liquid Gold Sheen',
-    description:
-      'A warm glossy bloom rolls under the cursor with soft molten highlights for a richer shiny-gold rare treatment.',
-    tokens: goldRareEffectBaseDesign.tokens,
-  },
-  {
-    id: 'rainbow-etch-holo',
-    variant: goldRareEffectBaseDesign.variant,
-    baseDesignId: goldRareEffectBaseDesign.id,
-    effect: 'rainbow-etch',
-    name: 'Rainbow Etch Holo',
-    description:
-      'Fine etched lines and tiny spectral flecks become visible on hover, suggesting holographic print embedded in the foil.',
-    tokens: goldRareEffectBaseDesign.tokens,
-  },
-  {
-    id: 'mirror-gold-glint',
-    variant: goldRareEffectBaseDesign.variant,
-    baseDesignId: goldRareEffectBaseDesign.id,
-    effect: 'mirror-gold',
-    name: 'Mirror Gold Glint',
-    description:
-      'A polished gold mirror pass adds a crisp moving hotspot while preserving the darker lower card for stat readability.',
-    tokens: goldRareEffectBaseDesign.tokens,
-  },
-  {
-    id: 'dark-holo-foil',
-    variant: goldRareEffectBaseDesign.variant,
-    baseDesignId: goldRareEffectBaseDesign.id,
-    effect: 'dark-holo',
-    name: 'Dark Holo Foil',
-    description:
-      'A deeper black-gold foil layer with restrained blue and violet refraction, made to feel premium without becoming an event card.',
-    tokens: goldRareEffectBaseDesign.tokens,
-  },
-]
-
 const totwBronzeDesigns = [
   {
     id: 'bronze-week-strike',
@@ -1739,6 +1558,128 @@ const manOfTheMatchDesigns = [
   },
 ]
 
+const cardEffectDesigns = [
+  {
+    ...goldRareBackgroundDesigns[6],
+    id: 'effect-holo-spectrum',
+    baseDesignId: goldRareBackgroundDesigns[6].id,
+    effect: 'holo-spectrum',
+    name: 'Spectrum Holo',
+    description:
+      'Confetti foil base with a light spectral wash, fine diffraction grain, and colour that shifts with the pointer.',
+  },
+  {
+    ...goldRareDesigns[1],
+    id: 'effect-holo-wave',
+    baseDesignId: goldRareDesigns[1].id,
+    effect: 'holo-wave',
+    name: 'Wave Holo',
+    description:
+      'A standard rare gold card with softer rolling holographic bands for a controlled premium treatment.',
+  },
+  {
+    ...silverRareDesigns[1],
+    id: 'effect-holo-etched',
+    baseDesignId: silverRareDesigns[1].id,
+    effect: 'holo-etched',
+    name: 'Etched Holo',
+    description:
+      'Silver rare geometry with fine rainbow etching that appears embedded in the printed surface.',
+  },
+  {
+    ...goldRareBackgroundDesigns[7],
+    id: 'effect-foil',
+    baseDesignId: goldRareBackgroundDesigns[7].id,
+    effect: 'foil',
+    name: 'Pack Foil',
+    description:
+      'A dense metallic foil pass over an existing gold background, with small paper-like facets instead of a single glare stripe.',
+  },
+  {
+    ...goldRareDesigns[2],
+    id: 'effect-lenticular-logo',
+    baseDesignId: goldRareDesigns[2].id,
+    effect: 'lenticular-logo',
+    name: 'Lenticular Crest',
+    description:
+      'A normalized crest treatment that strips source colour and replaces it with a holographic lenticular shield.',
+  },
+  {
+    ...goldNonRareDesigns[1],
+    id: 'effect-holo-border',
+    baseDesignId: goldNonRareDesigns[1].id,
+    effect: 'holo-border',
+    name: 'Holographic Border',
+    description:
+      'Normal card body with the premium signal isolated to a shifting rainbow rim and inner trim.',
+  },
+  {
+    ...goldRareBackgroundDesigns[8],
+    id: 'effect-foil-gold-border',
+    baseDesignId: goldRareBackgroundDesigns[8].id,
+    effect: 'foil-gold-border',
+    name: 'Foil Gold Border',
+    description:
+      'Foil surface paired with a brighter polished gold edge for a stronger chase-card read.',
+  },
+  {
+    ...iconDesigns[1],
+    id: 'effect-pearlescent',
+    baseDesignId: iconDesigns[1].id,
+    effect: 'pearlescent',
+    name: 'Pearlescent',
+    description:
+      'Icon ivory base with milky pearl colour travel, soft pink-blue shifts, and a quieter reflective finish.',
+  },
+  {
+    ...heroDesigns[0],
+    id: 'effect-holo-text-legend',
+    baseDesignId: heroDesigns[0].id,
+    effect: 'holo-text',
+    effectText: 'LEGEND BREAKTHROUGH LEGEND',
+    name: 'Holographic Text',
+    description:
+      'Diagonal microtype from bottom-left to top-right adds words like LEGEND and BREAKTHROUGH as a collectible security print.',
+  },
+  {
+    ...totsGoldDesigns[2],
+    id: 'effect-trophy-rain',
+    baseDesignId: totsGoldDesigns[2].id,
+    effect: 'trophy-rain',
+    name: 'Trophy Rain',
+    description:
+      'A TOTS-style celebratory finish with tiny reflective trophy flecks that catch the light without hiding the card content.',
+  },
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'effect-heat-reactive',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'heat-reactive',
+    name: 'Heat Reactive',
+    description:
+      'A match-night card that blooms with hot orange interference around the pointer, useful for moment or rivalry cards.',
+  },
+  {
+    ...iconDesigns[2],
+    id: 'effect-embossed-security',
+    baseDesignId: iconDesigns[2].id,
+    effect: 'embossed-security',
+    name: 'Embossed Security',
+    description:
+      'Subtle banknote-style guilloche lines and raised ink marks for legacy cards that should feel authenticated.',
+  },
+]
+
+const effectSection = {
+  id: 'card-effects-lab',
+  kicker: 'Renderer effects',
+  title: 'Card Effects Lab',
+  description:
+    'Effect studies layered onto existing card designs. The base layout, type, borders, and player hierarchy stay fixed while the renderer swaps the reflective finish.',
+  player: goldRarePlayer,
+  designs: cardEffectDesigns,
+}
+
 const designSections = [
   {
     id: 'bronze-non-rare',
@@ -1886,65 +1827,61 @@ const designSections = [
   },
 ]
 
-const effectSection = {
-  id: 'gold-rare-hover-effects',
-  kicker: 'Interaction exploration',
-  title: 'Gold Rare Hover Effects',
-  description:
-    'Hover studies using Gold Rare Background Lab design 7 as the fixed base card. Each preview tracks pointer position for physical card movement under a static light source, then layers a different holo, foil, or shiny-gold treatment on top.',
-  player: goldRarePlayer,
-  designs: cardEffectDesigns,
-}
+const renderedDesignSections = [effectSection, ...designSections]
 
-const resetEffectCardPointer = (event) => {
+const resetCardPointer = (event) => {
   const card = event.currentTarget
 
+  card.style.setProperty('--pointer-x', '50%')
+  card.style.setProperty('--pointer-y', '45%')
   card.style.setProperty('--shift-x', '0px')
   card.style.setProperty('--shift-y', '0px')
   card.style.setProperty('--surface-x', '0px')
   card.style.setProperty('--surface-y', '0px')
   card.style.setProperty('--surface-soft-x', '0px')
   card.style.setProperty('--surface-soft-y', '0px')
-  card.style.setProperty('--surface-reverse-x', '0px')
-  card.style.setProperty('--surface-reverse-y', '0px')
   card.style.setProperty('--surface-hard-x', '0px')
   card.style.setProperty('--surface-hard-y', '0px')
   card.style.setProperty('--tilt-x', '0deg')
   card.style.setProperty('--tilt-y', '0deg')
+  card.style.setProperty('--glare-angle', '128deg')
 }
 
-const updateEffectCardPointer = (event) => {
+const updateCardPointer = (event) => {
   const card = event.currentTarget
   const bounds = card.getBoundingClientRect()
   const pointerX = (event.clientX - bounds.left) / bounds.width
   const pointerY = (event.clientY - bounds.top) / bounds.height
   const clampedX = Math.min(Math.max(pointerX, 0), 1)
   const clampedY = Math.min(Math.max(pointerY, 0), 1)
-  const surfaceX = (0.5 - clampedX) * 34
-  const surfaceY = (0.5 - clampedY) * 28
+  const centeredX = clampedX - 0.5
+  const centeredY = clampedY - 0.5
+  const surfaceX = (0.5 - clampedX) * 38
+  const surfaceY = (0.5 - clampedY) * 32
+  const glareAngle = 90 + Math.atan2(centeredY, centeredX) * (180 / Math.PI)
 
-  card.style.setProperty('--shift-x', `${((clampedX - 0.5) * 16).toFixed(2)}px`)
-  card.style.setProperty('--shift-y', `${((clampedY - 0.5) * 12).toFixed(2)}px`)
+  card.style.setProperty('--pointer-x', `${(clampedX * 100).toFixed(2)}%`)
+  card.style.setProperty('--pointer-y', `${(clampedY * 100).toFixed(2)}%`)
+  card.style.setProperty('--shift-x', `${(centeredX * 20).toFixed(2)}px`)
+  card.style.setProperty('--shift-y', `${(centeredY * 15).toFixed(2)}px`)
   card.style.setProperty('--surface-x', `${surfaceX.toFixed(2)}px`)
   card.style.setProperty('--surface-y', `${surfaceY.toFixed(2)}px`)
-  card.style.setProperty('--surface-soft-x', `${(-surfaceX * 0.28).toFixed(2)}px`)
-  card.style.setProperty('--surface-soft-y', `${(-surfaceY * 0.28).toFixed(2)}px`)
-  card.style.setProperty('--surface-reverse-x', `${(-surfaceX * 0.4).toFixed(2)}px`)
-  card.style.setProperty('--surface-reverse-y', `${(-surfaceY * 0.4).toFixed(2)}px`)
-  card.style.setProperty('--surface-hard-x', `${(-surfaceX * 0.55).toFixed(2)}px`)
-  card.style.setProperty('--surface-hard-y', `${(-surfaceY * 0.55).toFixed(2)}px`)
-  card.style.setProperty('--tilt-x', `${((0.5 - clampedY) * 14).toFixed(2)}deg`)
-  card.style.setProperty('--tilt-y', `${((clampedX - 0.5) * 16).toFixed(2)}deg`)
+  card.style.setProperty('--surface-soft-x', `${(-surfaceX * 0.3).toFixed(2)}px`)
+  card.style.setProperty('--surface-soft-y', `${(-surfaceY * 0.3).toFixed(2)}px`)
+  card.style.setProperty('--surface-hard-x', `${(-surfaceX * 0.62).toFixed(2)}px`)
+  card.style.setProperty('--surface-hard-y', `${(-surfaceY * 0.62).toFixed(2)}px`)
+  card.style.setProperty('--tilt-x', `${(-centeredY * 18).toFixed(2)}deg`)
+  card.style.setProperty('--tilt-y', `${(centeredX * 22).toFixed(2)}deg`)
+  card.style.setProperty('--glare-angle', `${glareAngle.toFixed(2)}deg`)
 }
 
 export default defineComponent({
   name: 'CardDesignsPage',
   setup() {
     return {
-      designSections,
-      effectSection,
-      resetEffectCardPointer,
-      updateEffectCardPointer,
+      designSections: renderedDesignSections,
+      resetCardPointer,
+      updateCardPointer,
     }
   },
 })
@@ -2048,9 +1985,6 @@ export default defineComponent({
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
     align-items: start;
-}
-
-.card-gallery--effects {
     perspective: 1100px;
 }
 
@@ -2093,13 +2027,21 @@ export default defineComponent({
     font-weight: 900;
 }
 
-.effect-panel .design-number {
-    background:
-        radial-gradient(circle at 35% 22%, rgba(255, 255, 255, 0.82), transparent 31%),
-        linear-gradient(135deg, #f8dd72, #8fe4ff 44%, #f39cff 67%, #ffc64f);
-}
-
 .concept-card {
+    --pointer-x: 50%;
+    --pointer-y: 45%;
+    --shift-x: 0px;
+    --shift-y: 0px;
+    --surface-x: 0px;
+    --surface-y: 0px;
+    --surface-soft-x: 0px;
+    --surface-soft-y: 0px;
+    --surface-hard-x: 0px;
+    --surface-hard-y: 0px;
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    --glare-angle: 128deg;
+
     width: 280px;
     height: 420px;
     position: relative;
@@ -2125,16 +2067,24 @@ export default defineComponent({
         inset 0 0 0 1px rgba(255, 235, 201, 0.2),
         inset 0 0 0 7px rgba(66, 32, 18, 0.24),
         0 0 18px var(--card-shadow);
+    cursor: pointer;
     isolation: isolate;
+    transform: perspective(940px) translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
+    transform-style: preserve-3d;
     transition:
         transform 180ms ease,
         box-shadow 180ms ease;
+    will-change: transform;
 
     &:hover,
     &:focus-within {
-        transform: translateY(-6px);
+        transform:
+            perspective(940px)
+            translate3d(var(--shift-x), calc(-8px + var(--shift-y)), 0)
+            rotateX(var(--tilt-x))
+            rotateY(var(--tilt-y));
         box-shadow:
-            0 26px 56px rgba(0, 0, 0, 0.48),
+            0 32px 66px rgba(0, 0, 0, 0.52),
             inset 0 0 0 1px rgba(255, 235, 201, 0.28),
             inset 0 0 0 7px rgba(66, 32, 18, 0.2),
             0 0 30px var(--card-shadow);
@@ -2237,6 +2187,269 @@ export default defineComponent({
     inset: 0;
     z-index: 0;
     pointer-events: none;
+
+    &::before,
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+    }
+
+    &::before {
+        z-index: 1;
+        background:
+            radial-gradient(
+                circle at var(--pointer-x) var(--pointer-y),
+                rgba(255, 255, 245, 0.28),
+                rgba(255, 230, 176, 0.11) 20%,
+                rgba(255, 218, 138, 0.04) 34%,
+                transparent 54%
+            );
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    &::after {
+        z-index: 2;
+        background:
+            repeating-linear-gradient(
+                112deg,
+                transparent 0 13px,
+                rgba(255, 255, 255, 0.07) 13px 14px,
+                transparent 14px 28px
+            );
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+}
+
+.concept-card:hover .concept-card__texture::before,
+.concept-card:focus-within .concept-card__texture::before {
+    opacity: 0.56;
+}
+
+.concept-card:hover .concept-card__texture::after,
+.concept-card:focus-within .concept-card__texture::after {
+    opacity: 0.5;
+}
+
+.concept-card--fx-holo-spectrum {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.48), rgba(96, 232, 255, 0.2) 16%, rgba(255, 91, 214, 0.16) 29%, transparent 55%),
+            conic-gradient(from 160deg at var(--pointer-x) var(--pointer-y), rgba(255, 89, 168, 0.24), rgba(255, 232, 92, 0.2), rgba(87, 255, 193, 0.18), rgba(79, 206, 255, 0.24), rgba(178, 103, 255, 0.2), rgba(255, 89, 168, 0.24));
+        mix-blend-mode: color-dodge;
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 15px),
+            repeating-linear-gradient(24deg, rgba(103, 236, 255, 0.08) 0 1px, transparent 1px 22px);
+        mix-blend-mode: screen;
+    }
+}
+
+.concept-card--fx-holo-wave {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 245, 0.38), transparent 34%),
+            repeating-radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(110, 236, 255, 0.16) 0 7px, rgba(255, 116, 218, 0.12) 7px 13px, transparent 13px 26px);
+        mix-blend-mode: screen;
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(72deg, transparent 0 16px, rgba(255, 255, 255, 0.12) 16px 18px, transparent 18px 35px);
+        mix-blend-mode: soft-light;
+    }
+}
+
+.concept-card--fx-holo-etched {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.36), rgba(142, 236, 255, 0.18) 18%, transparent 48%),
+            repeating-linear-gradient(35deg, rgba(255, 92, 210, 0.1) 0 1px, transparent 1px 9px),
+            repeating-linear-gradient(125deg, rgba(92, 232, 255, 0.1) 0 1px, transparent 1px 13px);
+        mix-blend-mode: screen;
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(circle at 26% 28%, rgba(255, 244, 120, 0.2) 0 1px, transparent 2px),
+            radial-gradient(circle at 74% 36%, rgba(124, 234, 255, 0.2) 0 1px, transparent 2px),
+            radial-gradient(circle at 52% 68%, rgba(255, 129, 215, 0.18) 0 1px, transparent 2px);
+        background-size: 46px 58px;
+        mix-blend-mode: screen;
+    }
+}
+
+.concept-card--fx-foil,
+.concept-card--fx-foil-gold-border {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(255, 255, 238, 0.32), transparent 38%),
+            repeating-linear-gradient(62deg, rgba(255, 255, 244, 0.16) 0 2px, transparent 2px 12px, rgba(72, 48, 10, 0.12) 12px 16px, transparent 16px 31px);
+        mix-blend-mode: screen;
+    }
+
+    .concept-card__texture::after {
+        background:
+            conic-gradient(from 38deg at 22% 26%, transparent, rgba(255, 255, 255, 0.12), transparent 28%),
+            conic-gradient(from 220deg at 78% 48%, transparent, rgba(255, 227, 122, 0.12), transparent 31%),
+            repeating-linear-gradient(142deg, transparent 0 22px, rgba(255, 255, 255, 0.08) 22px 23px, transparent 23px 44px);
+        mix-blend-mode: soft-light;
+    }
+}
+
+.concept-card--fx-lenticular-logo {
+    .concept-card__club {
+        color: transparent;
+        background:
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.32) 0 2px, transparent 2px 5px),
+            conic-gradient(from 150deg, #ff5fb8, #ffe66d, #6dffc8, #6bcfff, #b985ff, #ff5fb8);
+        background-clip: padding-box;
+        border-color: rgba(255, 255, 255, 0.58);
+        box-shadow:
+            0 7px 16px rgba(0, 0, 0, 0.28),
+            0 0 18px rgba(124, 225, 255, 0.38);
+
+        .q-icon {
+            color: rgba(20, 14, 8, 0.8);
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.62));
+        }
+    }
+
+    .concept-card__texture::before {
+        background:
+            repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.12) 0 2px, transparent 2px 6px),
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(118, 230, 255, 0.22), transparent 43%);
+        mix-blend-mode: screen;
+    }
+}
+
+.concept-card--fx-holo-border {
+    border-color: rgba(174, 245, 255, 0.72);
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.42),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+        inset 0 0 0 7px rgba(66, 32, 18, 0.2),
+        0 0 22px rgba(110, 226, 255, 0.36);
+
+    &::before {
+        border-color: rgba(154, 240, 255, 0.52);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 126, 217, 0.3),
+            0 0 20px rgba(116, 226, 255, 0.26);
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, #85f3ff, #ff7edb, #ffe56b, transparent);
+        box-shadow: 0 0 18px rgba(133, 243, 255, 0.46);
+    }
+}
+
+.concept-card--fx-foil-gold-border {
+    border-color: #ffe58a;
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.48),
+        inset 0 0 0 1px rgba(255, 249, 210, 0.32),
+        inset 0 0 0 7px rgba(88, 58, 7, 0.2),
+        0 0 32px rgba(255, 210, 82, 0.42);
+
+    &::before {
+        border-color: rgba(255, 238, 158, 0.68);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 232, 0.26),
+            0 0 24px rgba(255, 201, 56, 0.28);
+    }
+}
+
+.concept-card--fx-pearlescent {
+    background:
+        radial-gradient(circle at 22% 20%, rgba(255, 190, 226, 0.22), transparent 9rem),
+        radial-gradient(circle at 78% 30%, rgba(137, 231, 255, 0.2), transparent 8rem),
+        linear-gradient(150deg, rgba(255, 255, 255, 0.46), transparent 29%),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #eee0c7 100%);
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.4), rgba(255, 196, 226, 0.16) 22%, rgba(128, 227, 255, 0.14) 42%, transparent 64%);
+        mix-blend-mode: screen;
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-radial-gradient(ellipse at 50% 36%, rgba(255, 255, 255, 0.1) 0 2px, transparent 2px 15px);
+        mix-blend-mode: soft-light;
+    }
+}
+
+.concept-card--fx-holo-text {
+    .concept-card__content::after {
+        content: attr(data-effect-text);
+        position: absolute;
+        left: -32px;
+        right: -32px;
+        bottom: 118px;
+        z-index: 5;
+        color: transparent;
+        background: linear-gradient(90deg, #77efff, #ff7fd9, #fff06f, #77efff);
+        background-clip: text;
+        font-size: 0.82rem;
+        line-height: 1;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        opacity: 0.66;
+        pointer-events: none;
+        text-align: center;
+        text-transform: uppercase;
+        transform: rotate(-31deg) translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+        white-space: nowrap;
+        filter: drop-shadow(0 0 7px rgba(128, 233, 255, 0.34));
+    }
+}
+
+.concept-card--fx-trophy-rain {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 250, 188, 0.32), transparent 42%),
+            radial-gradient(circle at 18% 22%, rgba(255, 239, 120, 0.28) 0 2px, transparent 3px),
+            radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.22) 0 1px, transparent 3px),
+            radial-gradient(circle at 72% 28%, rgba(98, 226, 255, 0.2) 0 2px, transparent 3px),
+            radial-gradient(circle at 84% 58%, rgba(255, 239, 120, 0.24) 0 2px, transparent 3px);
+        background-size: auto, 58px 82px, 66px 74px, 74px 88px, 62px 76px;
+        mix-blend-mode: screen;
+    }
+}
+
+.concept-card--fx-heat-reactive {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 226, 143, 0.38), rgba(255, 97, 42, 0.24) 22%, transparent 56%),
+            repeating-radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 130, 42, 0.12) 0 4px, transparent 4px 18px);
+        mix-blend-mode: screen;
+    }
+}
+
+.concept-card--fx-embossed-security {
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 245, 0.28), transparent 38%),
+            repeating-radial-gradient(ellipse at 50% 34%, transparent 0 9px, rgba(146, 98, 48, 0.12) 9px 10px, transparent 10px 20px),
+            repeating-linear-gradient(38deg, rgba(114, 74, 34, 0.09) 0 1px, transparent 1px 10px);
+        mix-blend-mode: multiply;
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from 45deg at 50% 38%, rgba(255, 255, 255, 0.09) 0deg 1deg, transparent 1deg 7deg);
+        mix-blend-mode: soft-light;
+    }
 }
 
 .concept-card--weathered-alloy {
@@ -4668,6 +4881,33 @@ export default defineComponent({
     height: 100%;
     display: flex;
     flex-direction: column;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        border-radius: 10px;
+        background:
+            radial-gradient(
+                ellipse at var(--pointer-x) var(--pointer-y),
+                rgba(255, 255, 246, 0.18),
+                rgba(255, 226, 165, 0.07) 22%,
+                transparent 52%
+            );
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+        transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+    }
+}
+
+.concept-card:hover .concept-card__content::before,
+.concept-card:focus-within .concept-card__content::before {
+    opacity: 0.22;
 }
 
 .concept-card__header {
