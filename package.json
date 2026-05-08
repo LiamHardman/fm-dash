@@ -33,7 +33,7 @@
     "serve": "go run main.go",
     "lint": "biome check --write .",
     "lint:check": "biome check .",
-    "lint:go": "cd src/api && golangci-lint run",
+    "lint:go": "node scripts/run-go-lint.cjs",
     "lint:go:fix": "cd src/api && golangci-lint run --fix",
     "lint:all": "npm run lint:check && npm run lint:go",
     "format": "biome format --write .",

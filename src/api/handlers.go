@@ -783,7 +783,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	percentileCacheKey := fmt.Sprintf("percentiles:%s:%s:%s", datasetID, divisionFilterStr, targetDivision)
 
 	// Parse division filter early
-	var divisionFilter = DivisionFilterAll
+	var divisionFilter DivisionFilter
 	switch divisionFilterStr {
 	case "same":
 		divisionFilter = DivisionFilterSame
@@ -1692,7 +1692,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse division filter
-	var divisionFilter = DivisionFilterAll
+	var divisionFilter DivisionFilter
 	var targetDivision = ""
 
 	switch req.CompareDivision {
@@ -2236,7 +2236,7 @@ func getPlayerOverallForRoleGo(player Player, role string, positionSideMap, fall
 	}
 
 	// Check exact position matches first (same as frontend)
-	if player.ShortPositions != nil && len(player.ShortPositions) > 0 {
+	if len(player.ShortPositions) > 0 {
 		exactPositionMatches := []string{}
 		for _, pos := range player.ShortPositions {
 			for _, requiredPos := range requiredPositions {
@@ -2629,6 +2629,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // performSearch searches through players, teams, leagues, and nations
+//
+//nolint:unused // Retained for the full-data search cache path; the current handler uses the lightweight variant.
 func performSearch(players []Player, query string) []SearchResult {
 	// Pre-allocate with reasonable capacity for search results
 	estimatedResults := 100 // Most searches return < 100 results
@@ -3520,7 +3522,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// OPTIMIZATION: Only calculate percentiles for this specific player if missing
-	if targetPlayer.PerformancePercentiles == nil || len(targetPlayer.PerformancePercentiles) == 0 {
+	if len(targetPlayer.PerformancePercentiles) == 0 {
 		logInfo(ctx, "Player missing percentiles, calculating for this player only",
 			"dataset_id", datasetID,
 			"player_uid", playerUID,
@@ -3634,6 +3636,8 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 
 // getSimilarPlayersForComparison returns a subset of players for percentile calculation
 // This avoids calculating percentiles for the entire dataset when only one player is needed
+//
+//nolint:unused // Retained as an optimization option for targeted percentile comparisons.
 func getSimilarPlayersForComparison(allPlayers []Player, targetPlayer *Player) []Player {
 	// Start with the target player
 	similarPlayers := []Player{*targetPlayer}
@@ -5687,6 +5691,8 @@ func matchesPositionForUpgrade(player Player, position string) bool {
 }
 
 // getPlayerOverallForRole gets the overall rating for a player in a specific role
+//
+//nolint:unused // Retained for non-pointer role scoring callers.
 func getPlayerOverallForRole(player Player, role, position string) int {
 	// If role is specified, try to get role-specific overall
 	if role != "" {
@@ -6189,7 +6195,9 @@ func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(strings.ToLower(player.Name), strings.ToLower(playerName)) {
 			// Return the raw JSON for this player
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(player)
+			if err := json.NewEncoder(w).Encode(player); err != nil {
+				logError(r.Context(), "Error encoding debug player data", "error", err)
+			}
 			return
 		}
 	}

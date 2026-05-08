@@ -1027,4 +1027,6 @@ func binarySearchFloat(arr []float64, target float64) int {
 }
 
 // Global instance for reuse
+//
+//nolint:unused // Retained for callers that need a shared streaming percentile calculator.
 var globalPercentileCalculator = NewStreamingPercentileCalculator()

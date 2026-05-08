@@ -257,6 +257,8 @@ func OptimizedFindPlayerUpgrades(players []Player, teamPlayers []Player, req Upg
 }
 
 // passesEarlyFilters applies the cheapest filters first to quickly eliminate players
+//
+//nolint:unused // Retained as the non-indexed upgrade filter implementation.
 func passesEarlyFilters(player *Player, req UpgradeFinderRequest, teamPlayerMap map[string]bool) bool {
 	// Skip players from the same team (fastest check)
 	if req.Team != "" && player.Club == req.Team {
@@ -285,6 +287,8 @@ func passesEarlyFilters(player *Player, req UpgradeFinderRequest, teamPlayerMap 
 }
 
 // passesAdvancedFilters applies more expensive filters after early filtering
+//
+//nolint:unused // Retained as the non-indexed upgrade filter implementation.
 func passesAdvancedFilters(player *Player, req UpgradeFinderRequest) bool {
 	// Precise role-based overall check (use pointer to avoid copying)
 	playerOverall := getPlayerOverallForRolePtr(player, req.Role, req.Position)
@@ -420,6 +424,8 @@ var roleOverallCache = struct {
 }{cache: make(map[string]int)}
 
 // getCachedPlayerOverallForRole gets player overall with caching
+//
+//nolint:unused // Retained for non-pointer role scoring callers.
 func getCachedPlayerOverallForRole(player Player, role, position string) int {
 	// Create cache key
 	key := strconv.FormatInt(player.UID, 10) + "|" + role + "|" + position
@@ -448,6 +454,8 @@ func getCachedPlayerOverallForRole(player Player, role, position string) int {
 }
 
 // sortPlayersByRole sorts players by role-specific overall with efficient caching
+//
+//nolint:unused // Retained for callers that sort full player values instead of heap candidates.
 func sortPlayersByRole(players []Player, role, position string) {
 	// Sort by role-specific overall (descending) - same logic as original but with caching
 	sort.Slice(players, func(i, j int) bool {
@@ -522,6 +530,8 @@ func matchesPositionForUpgradePtr(player *Player, position string) bool {
 }
 
 // getPlayerOverallForRolePtr works with pointer and uses the global index when possible
+//
+//nolint:unused // Retained by the non-indexed advanced filter path.
 func getPlayerOverallForRolePtr(player *Player, role, position string) int {
 	// Try to use the global index first (much faster)
 	if roleOverall := globalRoleIndex.GetRoleOverall(player.UID, role, position); roleOverall > 0 {
@@ -533,6 +543,8 @@ func getPlayerOverallForRolePtr(player *Player, role, position string) int {
 }
 
 // getCachedPlayerOverallForRolePtr uses the global index for efficiency
+//
+//nolint:unused // Retained by the full-slice role sorting path.
 func getCachedPlayerOverallForRolePtr(player *Player, role, position string) int {
 	// Use the global index which is already optimized
 	if roleOverall := globalRoleIndex.GetRoleOverall(player.UID, role, position); roleOverall > 0 {

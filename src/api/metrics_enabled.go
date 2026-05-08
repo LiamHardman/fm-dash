@@ -16,13 +16,7 @@ var (
 	meter metric.Meter
 
 	// Upload metrics
-	uploadDurationHistogram     metric.Float64Histogram
-	uploadRowsPerSecondGauge    metric.Float64ObservableGauge
-	uploadFileSizeHistogram     metric.Float64Histogram
-	uploadPlayersProcessedGauge metric.Int64ObservableGauge
-	uploadMemoryUsageGauge      metric.Float64ObservableGauge
-	uploadsTotalCounter         metric.Int64Counter
-	uploadWorkersGauge          metric.Int64ObservableGauge
+	uploadFileSizeHistogram metric.Float64Histogram
 
 	// Application-specific metrics
 	// activeUploads   metric.Int64UpDownCounter
@@ -60,36 +54,6 @@ var (
 
 var durationBuckets = []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
 
-// Size buckets for file sizes in bytes
-var sizeBuckets = []float64{1024, 10240, 102400, 1048576, 10485760, 52428800} // 1KB to 50MB
-
-// createUploadDurationHistogram creates a histogram for upload duration
-func createUploadDurationHistogram() (metric.Float64Histogram, error) {
-	histogram, err := meter.Float64Histogram(
-		"upload_duration",
-		metric.WithUnit("s"),
-		metric.WithExplicitBucketBoundaries(1, 5, 10, 30, 60, 120, 300),
-	)
-	if err != nil {
-		LogWarn("Failed to create upload duration histogram: %v", err)
-		return nil, err
-	}
-	return histogram, nil
-}
-
-// createUploadRowsPerSecondGauge creates a gauge for upload rows per second
-func createUploadRowsPerSecondGauge() (metric.Float64ObservableGauge, error) {
-	gauge, err := meter.Float64ObservableGauge(
-		"upload_rows_per_second",
-		metric.WithUnit("rows/s"),
-	)
-	if err != nil {
-		LogWarn("Failed to create upload rows per second gauge: %v", err)
-		return nil, err
-	}
-	return gauge, nil
-}
-
 // createUploadFileSizeHistogram creates a histogram for upload file sizes
 func createUploadFileSizeHistogram() (metric.Float64Histogram, error) {
 	histogram, err := meter.Float64Histogram(
@@ -104,57 +68,6 @@ func createUploadFileSizeHistogram() (metric.Float64Histogram, error) {
 	return histogram, nil
 }
 
-// createUploadPlayersProcessedGauge creates a gauge for players processed
-func createUploadPlayersProcessedGauge() (metric.Int64ObservableGauge, error) {
-	gauge, err := meter.Int64ObservableGauge(
-		"upload_players_processed",
-		metric.WithUnit("players"),
-	)
-	if err != nil {
-		LogWarn("Failed to create upload players processed gauge: %v", err)
-		return nil, err
-	}
-	return gauge, nil
-}
-
-// createUploadMemoryUsageGauge creates a gauge for memory usage during uploads
-func createUploadMemoryUsageGauge() (metric.Float64ObservableGauge, error) {
-	gauge, err := meter.Float64ObservableGauge(
-		"upload_memory_usage",
-		metric.WithUnit("By"),
-	)
-	if err != nil {
-		LogWarn("Failed to create upload memory usage gauge: %v", err)
-		return nil, err
-	}
-	return gauge, nil
-}
-
-// createUploadsTotalCounter creates a counter for total uploads
-func createUploadsTotalCounter() (metric.Int64Counter, error) {
-	counter, err := meter.Int64Counter(
-		"uploads_total",
-	)
-	if err != nil {
-		LogWarn("Failed to create uploads total counter: %v", err)
-		return nil, err
-	}
-	return counter, nil
-}
-
-// createUploadWorkersGauge creates a gauge for active upload workers
-func createUploadWorkersGauge() (metric.Int64ObservableGauge, error) {
-	gauge, err := meter.Int64ObservableGauge(
-		"upload_workers",
-		metric.WithUnit("workers"),
-	)
-	if err != nil {
-		LogWarn("Failed to create upload workers gauge: %v", err)
-		return nil, err
-	}
-	return gauge, nil
-}
-
 // initMetrics initializes all metrics
 func initMetrics() {
 	// Initialize meter
@@ -163,82 +76,12 @@ func initMetrics() {
 	// Create metrics
 	var err error
 
-	uploadDurationHistogram, err = createUploadDurationHistogram()
-	if err != nil {
-		LogWarn("Failed to create upload duration histogram: %v", err)
-	}
-
-	uploadRowsPerSecondGauge, err = createUploadRowsPerSecondGauge()
-	if err != nil {
-		LogWarn("Failed to create upload rows per second gauge: %v", err)
-	}
-
 	uploadFileSizeHistogram, err = createUploadFileSizeHistogram()
 	if err != nil {
 		LogWarn("Failed to create upload file size histogram: %v", err)
 	}
 
-	uploadPlayersProcessedGauge, err = createUploadPlayersProcessedGauge()
-	if err != nil {
-		LogWarn("Failed to create upload players processed gauge: %v", err)
-	}
-
-	uploadMemoryUsageGauge, err = createUploadMemoryUsageGauge()
-	if err != nil {
-		LogWarn("Failed to create upload memory usage gauge: %v", err)
-	}
-
-	uploadsTotalCounter, err = createUploadsTotalCounter()
-	if err != nil {
-		LogWarn("Failed to create uploads total counter: %v", err)
-	}
-
-	uploadWorkersGauge, err = createUploadWorkersGauge()
-	if err != nil {
-		LogWarn("Failed to create upload workers gauge: %v", err)
-	}
-
 	LogInfo("OpenTelemetry metrics initialized successfully")
-}
-
-// recordUploadMetrics stores metrics for a completed upload if metrics are enabled.
-func recordUploadMetrics(ctx context.Context, fileSizeBytes int64, totalDuration, parseDuration time.Duration,
-	playersProcessed int, memoryAllocMB float64, numWorkers int) {
-	if !otelEnabled {
-		return
-	}
-
-	// rowsPerSecond calculation would be handled by gauge callback
-
-	// Record to OpenTelemetry metrics
-	if uploadDurationHistogram != nil {
-		uploadDurationHistogram.Record(ctx, totalDuration.Seconds(), metric.WithAttributes(
-			attribute.String("type", "total"),
-		))
-		uploadDurationHistogram.Record(ctx, parseDuration.Seconds(), metric.WithAttributes(
-			attribute.String("type", "parse"),
-		))
-	}
-
-	if uploadRowsPerSecondGauge != nil {
-		// The gauge callback will handle recording the value
-	}
-
-	if uploadFileSizeHistogram != nil {
-		uploadFileSizeHistogram.Record(ctx, float64(fileSizeBytes))
-	}
-
-	if uploadPlayersProcessedGauge != nil {
-		// The gauge callback will handle recording the value
-	}
-
-	if uploadMemoryUsageGauge != nil {
-		// The gauge callback will handle recording the value
-	}
-
-	if uploadsTotalCounter != nil {
-		uploadsTotalCounter.Add(ctx, 1)
-	}
 }
 
 // initEnhancedMetrics initializes additional metrics instruments

@@ -7,36 +7,23 @@ run:
   allow-parallel-runners: true
 
 linters:
-  # Default set of linters.
-  # The value can be:
-  # - `standard`: https://golangci-lint.run/usage/linters/#enabled-by-default
-  # - `all`: enables all linters by default.
-  # - `none`: disables all linters by default.
-  # - `fast`: enables only linters considered as "fast" (`golangci-lint help linters --json | jq '[ .[] | select(.fast==true) ] | map(.name)'`).
-  # Default: standard
   default: standard
-  # Enable specific linter.
   enable:
-    - ireturn
-    - gosec
-    - nilnil
-    - nilerr
-  disable:
-    - errcheck
-    - gosec
-    - govet
-    - ineffassign
-    - ireturn
-    - staticcheck
-    - unused
+    - revive
   exclusions:
     rules:
       - path: _test\.go
         linters:
-          - gosec
-          - gocritic
           - errcheck
+      - path: proto/.*\.pb\.go
+        linters:
+          - revive
   settings:
+    govet:
+      disable:
+        # Player currently embeds sync.RWMutex and is copied throughout legacy data
+        # processing paths. Keep the rest of govet enabled while this is paid down.
+        - copylocks
     revive:
       rules:
         - name: exported

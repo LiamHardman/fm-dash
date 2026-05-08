@@ -142,18 +142,16 @@ func CachePlayerData(ctx context.Context, cacheKey string, players []Player, cur
 		}
 		protoPlayerResponse.Players = append(protoPlayerResponse.Players, protoPlayer)
 	}
-	if protoPlayerResponse != nil {
-		if data, err := proto.Marshal(protoPlayerResponse); err == nil {
-			SetFormatAwareCacheItem(cacheKey, FormatTypeProtobuf, &CachedSerializedResponse{
-				Format:         FormatTypeProtobuf,
-				Bytes:          data,
-				CurrencySymbol: currencySymbol,
-				CacheTime:      time.Now(),
-				FilterHash:     filterHash,
-			}, expiration)
-		} else {
-			logError(ctx, "Failed to serialize protobuf for cache", "error", err)
-		}
+	if data, err := proto.Marshal(protoPlayerResponse); err == nil {
+		SetFormatAwareCacheItem(cacheKey, FormatTypeProtobuf, &CachedSerializedResponse{
+			Format:         FormatTypeProtobuf,
+			Bytes:          data,
+			CurrencySymbol: currencySymbol,
+			CacheTime:      time.Now(),
+			FilterHash:     filterHash,
+		}, expiration)
+	} else {
+		logError(ctx, "Failed to serialize protobuf for cache", "error", err)
 	}
 
 	AddSpanEvent(ctx, "cache.store",

@@ -110,8 +110,7 @@ func OptimizePlayerData(ctx context.Context, players []Player) ([]Player, error)
 	// Always use FastDeepCopyPlayers for best performance and thread safety
 	// PERFORMANCE: FastDeepCopyPlayers is faster than both OptimizedDeepCopyPlayers and deepCopyPlayers,
 	// while being completely thread-safe (no COW race conditions)
-	var result []Player
-	result = FastDeepCopyPlayers(players)
+	result := FastDeepCopyPlayers(players)
 
 	// Record memory optimization metrics
 	if memoryOptConfig.MonitorMemoryUsage {

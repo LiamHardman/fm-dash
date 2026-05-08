@@ -87,7 +87,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 	// Ensure all players have their NumericAttributes populated before storage
 	// This is critical because the data might be stored before the workers finish enhancement
 	for i := range playersCopy {
-		if playersCopy[i].NumericAttributes == nil || len(playersCopy[i].NumericAttributes) == 0 {
+		if len(playersCopy[i].NumericAttributes) == 0 {
 			EnhancePlayerWithCalculations(&playersCopy[i])
 		}
 	}

@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"runtime"
-	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -25,12 +24,15 @@ const (
 	maxStreamingPlayers    = 100000 // Don't stream for small datasets
 )
 
+type streamingContextKey string
+
+const streamingEnabledKey streamingContextKey = "streaming_enabled"
+
 // StreamingSerializer provides memory-efficient serialization for large datasets
 type StreamingSerializer struct {
 	chunkSize int
 	buffer    *bufio.Writer
 	gzWriter  *gzip.Writer
-	mu        sync.Mutex
 }
 
 // StreamingPlayerResponse represents a chunk of players in a streaming response
@@ -400,7 +402,7 @@ func StreamingHandler(originalHandler http.HandlerFunc) http.HandlerFunc {
 
 		if acceptsStreaming {
 			// Add streaming context
-			ctx = context.WithValue(ctx, "streaming_enabled", true)
+			ctx = context.WithValue(ctx, streamingEnabledKey, true)
 			r = r.WithContext(ctx)
 		}
 

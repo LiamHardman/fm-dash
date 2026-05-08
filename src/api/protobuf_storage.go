@@ -404,6 +404,8 @@ func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID s
 }
 
 // storeWithJSONFallback falls back to JSON storage when protobuf fails
+//
+//nolint:unused // Retained for deployments that choose JSON fallback instead of hard protobuf failures.
 func (s *ProtobufStorage) storeWithJSONFallback(ctx context.Context, datasetID string, data DatasetData) error {
 	logInfo(ctx, "Using JSON fallback for storing dataset", "dataset_id", datasetID)
 	return s.backend.Store(datasetID, data)
@@ -415,6 +417,8 @@ func (s *ProtobufStorage) storeWithJSONFallback(ctx context.Context, datasetID s
 // currency symbol or non-empty RawBytes), deserialization already failed upstream and
 // returning an empty DatasetData here would silently surface as "0 players found".
 // Returning an error instead surfaces the problem clearly to callers.
+//
+//nolint:unused // Retained for deployments that choose JSON fallback instead of hard protobuf failures.
 func (s *ProtobufStorage) retrieveWithJSONFallback(ctx context.Context, datasetID string) (DatasetData, error) {
 	logInfo(ctx, "Using JSON fallback for retrieving dataset", "dataset_id", datasetID)
 	data, err := s.backend.Retrieve(datasetID)

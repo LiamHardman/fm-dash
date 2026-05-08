@@ -31,7 +31,8 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try to get from format-specific cache
 	if cached, found := GetFormatAwareCacheItem(baseCacheKey, format); found {
-		if format == FormatTypeJSON {
+		switch format {
+		case FormatTypeJSON:
 			// JSON format cache hit
 			if roles, ok := cached.([]string); ok {
 				LogDebug("Retrieved roles data from memory cache (JSON format)")
@@ -44,7 +45,7 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-		} else if format == FormatTypeProtobuf {
+		case FormatTypeProtobuf:
 			// Protobuf format cache hit
 			if protoResponse, ok := cached.(*pb.RolesResponse); ok {
 				LogDebug("Retrieved roles data from memory cache (Protobuf format)")
@@ -150,7 +151,8 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Try to get from format-specific cache
 		if cached, found := GetFormatAwareCacheItem(baseCacheKey, format); found {
-			if format == FormatTypeJSON {
+			switch format {
+			case FormatTypeJSON:
 				// JSON format cache hit
 				if config, ok := cached.(map[string]interface{}); ok {
 					LogDebug("Retrieved config data from memory cache (JSON format)")
@@ -163,7 +165,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					return
 				}
-			} else if format == FormatTypeProtobuf {
+			case FormatTypeProtobuf:
 				// Protobuf format cache hit
 				if protoResponse, ok := cached.(*pb.GenericResponse); ok {
 					LogDebug("Retrieved config data from memory cache (Protobuf format)")
