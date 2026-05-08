@@ -26,3 +26,58 @@
         repeating-linear-gradient(120deg, transparent 0 26px, rgba(255, 224, 194, 0.052) 26px 27px);
     opacity: 0.78;
 }
+
+.card-design--amber-facets {
+    background:
+        radial-gradient(circle at 24% 16%, rgba(255, 190, 229, 0.08), transparent 7rem),
+        radial-gradient(circle at 78% 22%, rgba(122, 235, 255, 0.08), transparent 8rem),
+        radial-gradient(circle at 52% 7%, rgba(255, 224, 154, 0.14), transparent 8rem),
+        linear-gradient(145deg, rgba(255, 235, 210, 0.12), transparent 26%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 38%, var(--card-bg) 100%);
+
+    .card-finish::before,
+    .card-finish::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+    }
+
+    .card-finish::before {
+        background:
+            radial-gradient(ellipse at var(--card-pointer-x) var(--card-pointer-y), rgba(255, 255, 245, 0.32), rgba(255, 184, 132, 0.16) 20%, rgba(112, 226, 255, 0.1) 42%, transparent 64%),
+            repeating-radial-gradient(ellipse at 50% 36%, transparent 0 12px, rgba(255, 231, 205, 0.08) 12px 14px, transparent 14px 28px),
+            linear-gradient(128deg, rgba(255, 178, 126, 0.11), transparent 30%, rgba(103, 220, 255, 0.08) 58%, transparent 80%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--card-finish-x), var(--card-finish-y), 0);
+    }
+
+    .card-finish::after {
+        background:
+            repeating-conic-gradient(from var(--card-glare-angle) at 50% 36%, rgba(255, 244, 218, 0.08) 0deg 1deg, transparent 1deg 9deg),
+            repeating-linear-gradient(135deg, transparent 0 22px, rgba(255, 224, 184, 0.075) 22px 23px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--card-finish-reverse-x), var(--card-finish-reverse-y), 0);
+    }
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 26px 56px rgba(0, 0, 0, 0.48),
+            inset 0 0 0 1px rgba(255, 235, 201, 0.25),
+            inset 0 0 0 7px rgba(66, 32, 18, 0.18),
+            0 0 24px rgba(218, 119, 49, 0.32);
+
+        .card-finish::before {
+            opacity: 0.54;
+        }
+
+        .card-finish::after {
+            opacity: 0.5;
+        }
+    }
+}

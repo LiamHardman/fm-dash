@@ -581,6 +581,13 @@ export default defineComponent({
 
     const resetCardPointer = (event) => {
       const card = event.currentTarget
+      card.style.setProperty('--card-pointer-x', '50%')
+      card.style.setProperty('--card-pointer-y', '45%')
+      card.style.setProperty('--card-finish-x', '0px')
+      card.style.setProperty('--card-finish-y', '0px')
+      card.style.setProperty('--card-finish-reverse-x', '0px')
+      card.style.setProperty('--card-finish-reverse-y', '0px')
+      card.style.setProperty('--card-glare-angle', '128deg')
       card.style.setProperty('--card-shift-x', '0px')
       card.style.setProperty('--card-shift-y', '0px')
       card.style.setProperty('--card-tilt-x', '0deg')
@@ -596,7 +603,17 @@ export default defineComponent({
       const clampedY = Math.min(Math.max(pointerY, 0), 1)
       const centeredX = clampedX - 0.5
       const centeredY = clampedY - 0.5
+      const finishX = (0.5 - clampedX) * 28
+      const finishY = (0.5 - clampedY) * 24
+      const glareAngle = 90 + Math.atan2(centeredY, centeredX) * (180 / Math.PI)
 
+      card.style.setProperty('--card-pointer-x', `${(clampedX * 100).toFixed(2)}%`)
+      card.style.setProperty('--card-pointer-y', `${(clampedY * 100).toFixed(2)}%`)
+      card.style.setProperty('--card-finish-x', `${finishX.toFixed(2)}px`)
+      card.style.setProperty('--card-finish-y', `${finishY.toFixed(2)}px`)
+      card.style.setProperty('--card-finish-reverse-x', `${(-finishX * 0.55).toFixed(2)}px`)
+      card.style.setProperty('--card-finish-reverse-y', `${(-finishY * 0.55).toFixed(2)}px`)
+      card.style.setProperty('--card-glare-angle', `${glareAngle.toFixed(2)}deg`)
       card.style.setProperty('--card-shift-x', `${(centeredX * 8).toFixed(2)}px`)
       card.style.setProperty('--card-shift-y', `${(centeredY * 6).toFixed(2)}px`)
       card.style.setProperty('--card-tilt-x', `${(-centeredY * 9).toFixed(2)}deg`)

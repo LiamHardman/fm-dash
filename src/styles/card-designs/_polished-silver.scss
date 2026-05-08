@@ -28,3 +28,53 @@
         linear-gradient(154deg, transparent 0 24%, rgba(255, 255, 255, 0.2) 24% 25%, transparent 25% 55%, rgba(0, 0, 0, 0.3) 55% 68%, transparent 68%);
     opacity: 0.8;
 }
+
+.card-design--polished-silver {
+    background:
+        radial-gradient(circle at 24% 16%, rgba(255, 190, 229, 0.16), transparent 7rem),
+        radial-gradient(circle at 78% 22%, rgba(122, 235, 255, 0.2), transparent 8rem),
+        radial-gradient(circle at 52% 7%, rgba(255, 255, 255, 0.22), transparent 8rem),
+        conic-gradient(from 228deg at 58% 24%, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, 0.16) 18deg, rgba(87, 103, 115, 0.18) 38deg, rgba(255, 255, 255, 0) 58deg, rgba(255, 255, 255, 0) 126deg, rgba(232, 244, 250, 0.18) 144deg, rgba(255, 255, 255, 0) 168deg, rgba(255, 255, 255, 0) 360deg),
+        linear-gradient(112deg, rgba(255, 255, 255, 0.18), transparent 29%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 36%, var(--card-bg) 68%);
+
+    .card-finish::before,
+    .card-finish::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+    }
+
+    .card-finish::before {
+        background:
+            radial-gradient(ellipse at var(--card-pointer-x) var(--card-pointer-y), rgba(255, 255, 255, 0.58), rgba(255, 190, 229, 0.22) 20%, rgba(122, 235, 255, 0.22) 42%, transparent 64%),
+            repeating-radial-gradient(ellipse at 50% 36%, transparent 0 10px, rgba(255, 255, 255, 0.13) 10px 12px, transparent 12px 24px),
+            linear-gradient(128deg, rgba(255, 180, 226, 0.14), transparent 28%, rgba(103, 230, 255, 0.15) 54%, transparent 78%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--card-finish-x), var(--card-finish-y), 0);
+    }
+
+    .card-finish::after {
+        background:
+            repeating-conic-gradient(from var(--card-glare-angle) at 50% 36%, rgba(255, 255, 255, 0.13) 0deg 1deg, transparent 1deg 8deg),
+            repeating-linear-gradient(135deg, transparent 0 18px, rgba(255, 255, 255, 0.12) 18px 19px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--card-finish-reverse-x), var(--card-finish-reverse-y), 0);
+    }
+
+    &:hover,
+    &:focus-within {
+        .card-finish::before {
+            opacity: 0.82;
+        }
+
+        .card-finish::after {
+            opacity: 0.78;
+        }
+    }
+}

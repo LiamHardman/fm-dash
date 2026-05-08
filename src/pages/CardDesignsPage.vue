@@ -4325,6 +4325,25 @@ export default defineComponent({
     }
 }
 
+.concept-card--confetti-foil.concept-card--fx-rare-pearl-holo-border {
+    --effect-spotlight-opacity: 0.68;
+    --effect-pattern-opacity: 0.62;
+    --effect-glare-opacity: 0.48;
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.54), rgba(118, 240, 255, 0.22) 15%, rgba(255, 126, 222, 0.16) 29%, transparent 56%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(113, 242, 255, 0.28), rgba(255, 124, 224, 0.22), rgba(255, 242, 115, 0.25), rgba(123, 255, 201, 0.2), rgba(113, 242, 255, 0.28));
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 10px),
+            repeating-linear-gradient(24deg, rgba(120, 238, 255, 0.1) 0 1px, transparent 1px 16px),
+            radial-gradient(circle at 72% 22%, rgba(255, 244, 139, 0.22), transparent 7rem);
+    }
+}
+
 .concept-card--fx-rare-lenticular-panel {
     --effect-spotlight-opacity: 0.78;
     --effect-pattern-opacity: 0.9;
@@ -4407,6 +4426,31 @@ export default defineComponent({
             linear-gradient(108deg, transparent 0 35%, rgba(255, 255, 255, 0.36) 48%, transparent 61% 100%),
             radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 205, 234, 0.24), transparent 36%);
         transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--amber-facets.concept-card--fx-rare-opal-refractor {
+    --effect-spotlight-opacity: 0.54;
+    --effect-pattern-opacity: 0.5;
+    --effect-glare-opacity: 0.22;
+
+    background:
+        radial-gradient(circle at 24% 16%, rgba(255, 190, 229, 0.08), transparent 7rem),
+        radial-gradient(circle at 78% 22%, rgba(122, 235, 255, 0.08), transparent 8rem),
+        radial-gradient(circle at 52% 7%, rgba(255, 224, 154, 0.14), transparent 8rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 40%, var(--card-bg) 76%);
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(ellipse at var(--light-x) var(--light-y), rgba(255, 255, 245, 0.32), rgba(255, 184, 132, 0.16) 20%, rgba(112, 226, 255, 0.1) 42%, transparent 64%),
+            repeating-radial-gradient(ellipse at 50% 36%, transparent 0 12px, rgba(255, 231, 205, 0.08) 12px 14px, transparent 14px 28px),
+            linear-gradient(128deg, rgba(255, 178, 126, 0.11), transparent 30%, rgba(103, 220, 255, 0.08) 58%, transparent 80%);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from var(--glare-angle) at 50% 36%, rgba(255, 244, 218, 0.08) 0deg 1deg, transparent 1deg 9deg),
+            repeating-linear-gradient(135deg, transparent 0 22px, rgba(255, 224, 184, 0.075) 22px 23px);
     }
 }
 
