@@ -15,9 +15,21 @@
                 </p>
             </div>
 
+            <q-tabs
+                v-model="activeDesignTab"
+                class="design-tabs"
+                active-color="amber-3"
+                indicator-color="amber-4"
+                align="left"
+                dense
+            >
+                <q-tab name="all" label="All card designs" />
+                <q-tab name="tots-hover-effects" label="TOTS hover effects" />
+            </q-tabs>
+
             <div class="design-sections">
                 <section
-                    v-for="section in designSections"
+                    v-for="section in activeDesignSections"
                     :key="section.id"
                     class="design-section"
                     :aria-labelledby="`${section.id}-title`"
@@ -46,6 +58,9 @@
                                 :class="[
                                     `concept-card--${design.variant}`,
                                     `concept-card--${design.baseDesignId || design.id}`,
+                                    design.effect
+                                        ? 'concept-card--effect-preview'
+                                        : null,
                                     design.effect
                                         ? `concept-card--fx-${design.effect}`
                                         : null,
@@ -149,7 +164,7 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 
 const bronzeNonRarePlayer = {
   overall: 62,
@@ -1670,6 +1685,119 @@ const cardEffectDesigns = [
   },
 ]
 
+const totsHoverEffectDesigns = [
+  {
+    ...totsGoldDesigns[0],
+    id: 'tots-effect-crown-aurora',
+    baseDesignId: totsGoldDesigns[0].id,
+    effect: 'tots-crown-aurora',
+    name: 'Crown Aurora',
+    description:
+      'Royal blue TOTS base with a crown-shaped aurora, gold rim travel, and cyan-gold interference that blooms around the pointer.',
+  },
+  {
+    ...totsGoldDesigns[2],
+    id: 'tots-effect-trophy-halo',
+    baseDesignId: totsGoldDesigns[2].id,
+    effect: 'tots-trophy-halo',
+    name: 'Trophy Halo',
+    description:
+      'A ceremonial trophy finish with concentric halo rings, polished laurel arcs, and bright enamel shine reserved for season winners.',
+  },
+  {
+    ...totsGoldDesigns[1],
+    id: 'tots-effect-stadium-coronation',
+    baseDesignId: totsGoldDesigns[1].id,
+    effect: 'tots-stadium-coronation',
+    name: 'Stadium Coronation',
+    description:
+      'Floodlight beams, gold confetti, and champagne sparks move independently so the card feels like a presentation-night reveal.',
+  },
+  {
+    ...totsGoldDesigns[0],
+    id: 'tots-effect-royal-mirror',
+    baseDesignId: totsGoldDesigns[0].id,
+    effect: 'tots-royal-mirror',
+    name: 'Royal Mirror Foil',
+    description:
+      'Dark sapphire mirror foil with sharp gold cuts, premium edge lighting, and a dramatic diagonal flash across the face of the card.',
+  },
+  {
+    ...totsGoldDesigns[2],
+    id: 'tots-effect-laurel-emboss',
+    baseDesignId: totsGoldDesigns[2].id,
+    effect: 'tots-laurel-emboss',
+    name: 'Laurel Emboss',
+    description:
+      'Raised laurel engraving and banknote-style guilloche lines give the TOTS card a verified, heirloom-quality finish.',
+  },
+  {
+    ...totsGoldDesigns[1],
+    id: 'tots-effect-starfield-finale',
+    baseDesignId: totsGoldDesigns[1].id,
+    effect: 'tots-starfield-finale',
+    name: 'Starfield Finale',
+    description:
+      'A final-night treatment with blue-gold starfield glitter, sweeping stage light, and warm trophy flecks that stay behind the player data.',
+  },
+  {
+    ...totsGoldDesigns[0],
+    id: 'tots-effect-lenticular-depth',
+    baseDesignId: totsGoldDesigns[0].id,
+    effect: 'tots-lenticular-depth',
+    name: 'Lenticular Depth',
+    description:
+      'A chase-card lenticular laminate with fine vertical ribs, layered gold-blue image shift, and a deeper portrait window on hover.',
+  },
+  {
+    ...totsGoldDesigns[2],
+    id: 'tots-effect-dual-image-foil',
+    baseDesignId: totsGoldDesigns[2].id,
+    effect: 'tots-dual-image-foil',
+    effectText: 'TOTS ELITE',
+    name: 'Dual Image Foil',
+    description:
+      'Two printed foil passes drift against each other like a premium dual-image card, with hidden TOTS microtype appearing in the finish.',
+  },
+  {
+    ...totsGoldDesigns[1],
+    id: 'tots-effect-numbered-chase',
+    baseDesignId: totsGoldDesigns[1].id,
+    effect: 'tots-numbered-chase',
+    effectText: '001/100',
+    name: 'Numbered Chase',
+    description:
+      'A limited-print treatment with serialized foil stamping, security lines, and a restrained gold flash that reads more exclusive than loud.',
+  },
+  {
+    ...totsGoldDesigns[0],
+    id: 'tots-effect-opal-security',
+    baseDesignId: totsGoldDesigns[0].id,
+    effect: 'tots-opal-security',
+    name: 'Opal Security Laminate',
+    description:
+      'Opalescent authentication film, tiny guilloche curls, and blue-gold pearl shifts give the card a protected collectible finish.',
+  },
+  {
+    ...totsGoldDesigns[2],
+    id: 'tots-effect-relic-black-gold',
+    baseDesignId: totsGoldDesigns[2].id,
+    effect: 'tots-relic-black-gold',
+    name: 'Black-Gold Relic',
+    description:
+      'A darker relic-style variant with black enamel, polished gold ribs, and museum-grade edge shine for the rarest TOTS pulls.',
+  },
+  {
+    ...totsGoldDesigns[1],
+    id: 'tots-effect-sapphire-refractor',
+    baseDesignId: totsGoldDesigns[1].id,
+    effect: 'tots-sapphire-refractor',
+    name: 'Sapphire Refractor',
+    description:
+      'A sapphire refractor finish with crystalline print facets, cyan enamel glints, and crisp gold breaks that feel like a premium parallel.',
+  },
+]
+
 const effectSection = {
   id: 'card-effects-lab',
   kicker: 'Renderer effects',
@@ -1678,6 +1806,16 @@ const effectSection = {
     'Effect studies layered onto existing card designs. The base layout, type, borders, and player hierarchy stay fixed while the renderer swaps the reflective finish.',
   player: goldRarePlayer,
   designs: cardEffectDesigns,
+}
+
+const totsHoverEffectSection = {
+  id: 'tots-hover-effects',
+  kicker: 'Team of the Season',
+  title: 'TOTS Prestige Hover Effects',
+  description:
+    'A focused hover lab for TOTS cards: darker sapphire depth, ceremonial gold, trophy symbolism, and pointer-reactive shine tuned to feel rarer than standard foil.',
+  player: totsGoldPlayer,
+  designs: totsHoverEffectDesigns,
 }
 
 const designSections = [
@@ -1834,12 +1972,16 @@ const resetCardPointer = (event) => {
 
   card.style.setProperty('--pointer-x', '50%')
   card.style.setProperty('--pointer-y', '45%')
+  card.style.setProperty('--light-x', '50%')
+  card.style.setProperty('--light-y', '45%')
   card.style.setProperty('--shift-x', '0px')
   card.style.setProperty('--shift-y', '0px')
   card.style.setProperty('--surface-x', '0px')
   card.style.setProperty('--surface-y', '0px')
   card.style.setProperty('--surface-soft-x', '0px')
   card.style.setProperty('--surface-soft-y', '0px')
+  card.style.setProperty('--surface-reverse-x', '0px')
+  card.style.setProperty('--surface-reverse-y', '0px')
   card.style.setProperty('--surface-hard-x', '0px')
   card.style.setProperty('--surface-hard-y', '0px')
   card.style.setProperty('--tilt-x', '0deg')
@@ -1862,12 +2004,16 @@ const updateCardPointer = (event) => {
 
   card.style.setProperty('--pointer-x', `${(clampedX * 100).toFixed(2)}%`)
   card.style.setProperty('--pointer-y', `${(clampedY * 100).toFixed(2)}%`)
+  card.style.setProperty('--light-x', `${(clampedX * 100).toFixed(2)}%`)
+  card.style.setProperty('--light-y', `${(clampedY * 100).toFixed(2)}%`)
   card.style.setProperty('--shift-x', `${(centeredX * 20).toFixed(2)}px`)
   card.style.setProperty('--shift-y', `${(centeredY * 15).toFixed(2)}px`)
   card.style.setProperty('--surface-x', `${surfaceX.toFixed(2)}px`)
   card.style.setProperty('--surface-y', `${surfaceY.toFixed(2)}px`)
   card.style.setProperty('--surface-soft-x', `${(-surfaceX * 0.3).toFixed(2)}px`)
   card.style.setProperty('--surface-soft-y', `${(-surfaceY * 0.3).toFixed(2)}px`)
+  card.style.setProperty('--surface-reverse-x', `${(-surfaceX * 0.48).toFixed(2)}px`)
+  card.style.setProperty('--surface-reverse-y', `${(-surfaceY * 0.48).toFixed(2)}px`)
   card.style.setProperty('--surface-hard-x', `${(-surfaceX * 0.62).toFixed(2)}px`)
   card.style.setProperty('--surface-hard-y', `${(-surfaceY * 0.62).toFixed(2)}px`)
   card.style.setProperty('--tilt-x', `${(-centeredY * 18).toFixed(2)}deg`)
@@ -1878,8 +2024,16 @@ const updateCardPointer = (event) => {
 export default defineComponent({
   name: 'CardDesignsPage',
   setup() {
+    const activeDesignTab = ref('all')
+    const activeDesignSections = computed(() =>
+      activeDesignTab.value === 'tots-hover-effects'
+        ? [totsHoverEffectSection]
+        : renderedDesignSections
+    )
+
     return {
-      designSections: renderedDesignSections,
+      activeDesignSections,
+      activeDesignTab,
       resetCardPointer,
       updateCardPointer,
     }
@@ -1945,6 +2099,20 @@ export default defineComponent({
 .preview-summary {
     font-size: 0.95rem;
     line-height: 1.6;
+}
+
+.design-tabs {
+    width: fit-content;
+    max-width: 100%;
+    margin: -0.35rem 0 2.4rem;
+    padding: 0.18rem;
+    color: rgba(255, 250, 232, 0.72);
+    background: rgba(8, 13, 26, 0.66);
+    border: 1px solid rgba(255, 226, 150, 0.22);
+    border-radius: 8px;
+    box-shadow:
+        0 16px 36px rgba(0, 0, 0, 0.28),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .design-sections {
@@ -2030,17 +2198,24 @@ export default defineComponent({
 .concept-card {
     --pointer-x: 50%;
     --pointer-y: 45%;
+    --light-x: 50%;
+    --light-y: 45%;
     --shift-x: 0px;
     --shift-y: 0px;
     --surface-x: 0px;
     --surface-y: 0px;
     --surface-soft-x: 0px;
     --surface-soft-y: 0px;
+    --surface-reverse-x: 0px;
+    --surface-reverse-y: 0px;
     --surface-hard-x: 0px;
     --surface-hard-y: 0px;
     --tilt-x: 0deg;
     --tilt-y: 0deg;
     --glare-angle: 128deg;
+    --effect-spotlight-opacity: 0.64;
+    --effect-pattern-opacity: 0.48;
+    --effect-glare-opacity: 0.36;
 
     width: 280px;
     height: 420px;
@@ -2239,84 +2414,143 @@ export default defineComponent({
 }
 
 .concept-card--fx-holo-spectrum {
+    --effect-spotlight-opacity: 0.86;
+    --effect-pattern-opacity: 0.74;
+    --effect-glare-opacity: 0.52;
+
     .concept-card__texture::before {
         background:
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.48), rgba(96, 232, 255, 0.2) 16%, rgba(255, 91, 214, 0.16) 29%, transparent 55%),
-            conic-gradient(from 160deg at var(--pointer-x) var(--pointer-y), rgba(255, 89, 168, 0.24), rgba(255, 232, 92, 0.2), rgba(87, 255, 193, 0.18), rgba(79, 206, 255, 0.24), rgba(178, 103, 255, 0.2), rgba(255, 89, 168, 0.24));
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.76), rgba(112, 239, 255, 0.34) 13%, rgba(255, 92, 213, 0.24) 26%, transparent 50%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 83, 158, 0.38), rgba(255, 229, 84, 0.3), rgba(93, 255, 181, 0.28), rgba(73, 205, 255, 0.36), rgba(178, 103, 255, 0.32), rgba(255, 83, 158, 0.38)),
+            linear-gradient(132deg, transparent 0 32%, rgba(255, 255, 255, 0.22) 47%, transparent 61% 100%);
         mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
     }
 
     .concept-card__texture::after {
         background:
-            repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 15px),
-            repeating-linear-gradient(24deg, rgba(103, 236, 255, 0.08) 0 1px, transparent 1px 22px);
+            repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 11px),
+            repeating-linear-gradient(24deg, rgba(103, 236, 255, 0.12) 0 1px, transparent 1px 17px),
+            radial-gradient(circle at 72% 24%, rgba(255, 246, 127, 0.24), transparent 8rem);
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(var(--glare-angle), transparent 0 28%, rgba(255, 255, 255, 0.6) 43%, rgba(100, 234, 255, 0.24) 50%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-holo-wave {
+    --effect-spotlight-opacity: 0.78;
+    --effect-pattern-opacity: 0.7;
+    --effect-glare-opacity: 0.28;
+
     .concept-card__texture::before {
         background:
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 245, 0.38), transparent 34%),
-            repeating-radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(110, 236, 255, 0.16) 0 7px, rgba(255, 116, 218, 0.12) 7px 13px, transparent 13px 26px);
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 245, 0.62), rgba(119, 236, 255, 0.2) 19%, transparent 46%),
+            repeating-radial-gradient(ellipse at var(--light-x) var(--light-y), rgba(107, 236, 255, 0.18) 0 6px, rgba(255, 116, 218, 0.16) 6px 12px, rgba(255, 238, 105, 0.1) 12px 17px, transparent 17px 30px);
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
     }
 
     .concept-card__texture::after {
         background:
-            repeating-linear-gradient(72deg, transparent 0 16px, rgba(255, 255, 255, 0.12) 16px 18px, transparent 18px 35px);
+            repeating-linear-gradient(72deg, transparent 0 13px, rgba(255, 255, 255, 0.18) 13px 15px, transparent 15px 31px),
+            linear-gradient(135deg, transparent 0 28%, rgba(255, 255, 255, 0.14) 42%, transparent 56% 100%);
         mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(103deg, transparent 0 34%, rgba(255, 255, 255, 0.36) 46%, transparent 58% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-holo-etched {
+    --effect-spotlight-opacity: 0.68;
+    --effect-pattern-opacity: 0.82;
+    --effect-glare-opacity: 0.24;
+
     .concept-card__texture::before {
         background:
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.36), rgba(142, 236, 255, 0.18) 18%, transparent 48%),
-            repeating-linear-gradient(35deg, rgba(255, 92, 210, 0.1) 0 1px, transparent 1px 9px),
-            repeating-linear-gradient(125deg, rgba(92, 232, 255, 0.1) 0 1px, transparent 1px 13px);
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.48), rgba(142, 236, 255, 0.22) 18%, transparent 46%),
+            repeating-linear-gradient(35deg, rgba(255, 92, 210, 0.15) 0 1px, transparent 1px 7px),
+            repeating-linear-gradient(125deg, rgba(92, 232, 255, 0.14) 0 1px, transparent 1px 11px),
+            repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 19px);
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
     }
 
     .concept-card__texture::after {
         background:
-            radial-gradient(circle at 26% 28%, rgba(255, 244, 120, 0.2) 0 1px, transparent 2px),
-            radial-gradient(circle at 74% 36%, rgba(124, 234, 255, 0.2) 0 1px, transparent 2px),
-            radial-gradient(circle at 52% 68%, rgba(255, 129, 215, 0.18) 0 1px, transparent 2px);
-        background-size: 46px 58px;
+            radial-gradient(circle at 26% 28%, rgba(255, 244, 120, 0.34) 0 1px, transparent 2px),
+            radial-gradient(circle at 74% 36%, rgba(124, 234, 255, 0.34) 0 1px, transparent 2px),
+            radial-gradient(circle at 52% 68%, rgba(255, 129, 215, 0.3) 0 1px, transparent 2px);
+        background-size: 42px 54px;
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(118deg, transparent 0 38%, rgba(255, 255, 255, 0.32) 48%, transparent 59% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-foil,
 .concept-card--fx-foil-gold-border {
+    --effect-spotlight-opacity: 0.8;
+    --effect-pattern-opacity: 0.66;
+    --effect-glare-opacity: 0.46;
+
     .concept-card__texture::before {
         background:
-            radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(255, 255, 238, 0.32), transparent 38%),
-            repeating-linear-gradient(62deg, rgba(255, 255, 244, 0.16) 0 2px, transparent 2px 12px, rgba(72, 48, 10, 0.12) 12px 16px, transparent 16px 31px);
+            radial-gradient(ellipse at 42% 18%, rgba(255, 255, 238, 0.48), rgba(255, 221, 118, 0.2) 20%, transparent 48%),
+            repeating-linear-gradient(62deg, rgba(255, 255, 244, 0.22) 0 2px, transparent 2px 10px, rgba(72, 48, 10, 0.18) 10px 14px, transparent 14px 28px),
+            repeating-linear-gradient(128deg, transparent 0 18px, rgba(255, 255, 255, 0.09) 18px 19px, transparent 19px 36px);
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
     }
 
     .concept-card__texture::after {
         background:
-            conic-gradient(from 38deg at 22% 26%, transparent, rgba(255, 255, 255, 0.12), transparent 28%),
-            conic-gradient(from 220deg at 78% 48%, transparent, rgba(255, 227, 122, 0.12), transparent 31%),
-            repeating-linear-gradient(142deg, transparent 0 22px, rgba(255, 255, 255, 0.08) 22px 23px, transparent 23px 44px);
+            conic-gradient(from 38deg at 22% 26%, transparent, rgba(255, 255, 255, 0.2), transparent 30%),
+            conic-gradient(from 220deg at 78% 48%, transparent, rgba(255, 227, 122, 0.22), transparent 33%),
+            conic-gradient(from 14deg at 58% 76%, transparent, rgba(255, 255, 255, 0.13), transparent 24%),
+            repeating-linear-gradient(142deg, transparent 0 20px, rgba(255, 255, 255, 0.12) 20px 21px, transparent 21px 41px);
         mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(105deg, transparent 0 30%, rgba(255, 255, 245, 0.7) 43%, rgba(255, 213, 93, 0.34) 49%, transparent 61% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-lenticular-logo {
+    --effect-spotlight-opacity: 0.58;
+    --effect-pattern-opacity: 0.76;
+    --effect-glare-opacity: 0.3;
+
     .concept-card__club {
         color: transparent;
         background:
-            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.32) 0 2px, transparent 2px 5px),
-            conic-gradient(from 150deg, #ff5fb8, #ffe66d, #6dffc8, #6bcfff, #b985ff, #ff5fb8);
+            repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.38) 0 2px, transparent 2px 5px),
+            conic-gradient(from var(--glare-angle), #ff5fb8, #ffe66d, #6dffc8, #6bcfff, #b985ff, #ff5fb8);
         background-clip: padding-box;
         border-color: rgba(255, 255, 255, 0.58);
         box-shadow:
             0 7px 16px rgba(0, 0, 0, 0.28),
             0 0 18px rgba(124, 225, 255, 0.38);
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
 
         .q-icon {
             color: rgba(20, 14, 8, 0.8);
@@ -2326,13 +2560,25 @@ export default defineComponent({
 
     .concept-card__texture::before {
         background:
-            repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.12) 0 2px, transparent 2px 6px),
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(118, 230, 255, 0.22), transparent 43%);
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.44), rgba(118, 230, 255, 0.22) 18%, transparent 43%),
+            repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.16) 0 2px, transparent 2px 6px),
+            repeating-linear-gradient(-4deg, rgba(255, 108, 218, 0.09) 0 1px, transparent 1px 12px);
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.36), transparent 38%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-holo-border {
+    --effect-spotlight-opacity: 0.54;
+    --effect-pattern-opacity: 0.44;
+    --effect-glare-opacity: 0.22;
+
     border-color: rgba(174, 245, 255, 0.72);
     box-shadow:
         0 18px 42px rgba(0, 0, 0, 0.42),
@@ -2348,12 +2594,33 @@ export default defineComponent({
     }
 
     &::after {
-        background: linear-gradient(90deg, transparent, #85f3ff, #ff7edb, #ffe56b, transparent);
+        background: linear-gradient(90deg, transparent, #85f3ff, #ff7edb, #ffe56b, #85f3ff, transparent);
         box-shadow: 0 0 18px rgba(133, 243, 255, 0.46);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.34), rgba(104, 233, 255, 0.14) 24%, transparent 52%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        inset: -1px;
+        border: 2px solid transparent;
+        background:
+            linear-gradient(var(--glare-angle), #6af3ff, #ff77da, #fff06c, #6af3ff) border-box;
+        mask:
+            linear-gradient(#fff 0 0) padding-box,
+            linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-foil-gold-border {
+    --effect-glare-opacity: 0.5;
+
     border-color: #ffe58a;
     box-shadow:
         0 20px 50px rgba(0, 0, 0, 0.48),
@@ -2370,6 +2637,10 @@ export default defineComponent({
 }
 
 .concept-card--fx-pearlescent {
+    --effect-spotlight-opacity: 0.74;
+    --effect-pattern-opacity: 0.5;
+    --effect-glare-opacity: 0.26;
+
     background:
         radial-gradient(circle at 22% 20%, rgba(255, 190, 226, 0.22), transparent 9rem),
         radial-gradient(circle at 78% 30%, rgba(137, 231, 255, 0.2), transparent 8rem),
@@ -2378,18 +2649,40 @@ export default defineComponent({
 
     .concept-card__texture::before {
         background:
-            radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.4), rgba(255, 196, 226, 0.16) 22%, rgba(128, 227, 255, 0.14) 42%, transparent 64%);
+            radial-gradient(ellipse at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.58), rgba(255, 196, 226, 0.22) 22%, rgba(128, 227, 255, 0.2) 42%, transparent 64%),
+            radial-gradient(circle at 24% 72%, rgba(255, 234, 178, 0.18), transparent 8rem);
         mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
     }
 
     .concept-card__texture::after {
         background:
-            repeating-radial-gradient(ellipse at 50% 36%, rgba(255, 255, 255, 0.1) 0 2px, transparent 2px 15px);
+            repeating-radial-gradient(ellipse at 50% 36%, rgba(255, 255, 255, 0.13) 0 2px, transparent 2px 14px),
+            linear-gradient(125deg, transparent 0 31%, rgba(255, 255, 255, 0.18) 43%, transparent 57% 100%);
         mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(116deg, transparent 0 35%, rgba(255, 255, 255, 0.34) 48%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
 .concept-card--fx-holo-text {
+    --effect-spotlight-opacity: 0.54;
+    --effect-pattern-opacity: 0.7;
+    --effect-glare-opacity: 0.3;
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 255, 0.38), rgba(99, 232, 255, 0.16) 19%, transparent 47%),
+            repeating-linear-gradient(32deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 14px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
     .concept-card__content::after {
         content: attr(data-effect-text);
         position: absolute;
@@ -2404,7 +2697,7 @@ export default defineComponent({
         line-height: 1;
         font-weight: 900;
         letter-spacing: 0.18em;
-        opacity: 0.66;
+        opacity: 0.74;
         pointer-events: none;
         text-align: center;
         text-transform: uppercase;
@@ -2412,43 +2705,101 @@ export default defineComponent({
         white-space: nowrap;
         filter: drop-shadow(0 0 7px rgba(128, 233, 255, 0.34));
     }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(123deg, transparent 0 34%, rgba(255, 255, 255, 0.42) 47%, transparent 59% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
 }
 
 .concept-card--fx-trophy-rain {
-    .concept-card__texture::before {
-        background:
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 250, 188, 0.32), transparent 42%),
-            radial-gradient(circle at 18% 22%, rgba(255, 239, 120, 0.28) 0 2px, transparent 3px),
-            radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.22) 0 1px, transparent 3px),
-            radial-gradient(circle at 72% 28%, rgba(98, 226, 255, 0.2) 0 2px, transparent 3px),
-            radial-gradient(circle at 84% 58%, rgba(255, 239, 120, 0.24) 0 2px, transparent 3px);
-        background-size: auto, 58px 82px, 66px 74px, 74px 88px, 62px 76px;
-        mix-blend-mode: screen;
-    }
-}
+    --effect-spotlight-opacity: 0.72;
+    --effect-pattern-opacity: 0.76;
+    --effect-glare-opacity: 0.3;
 
-.concept-card--fx-heat-reactive {
     .concept-card__texture::before {
         background:
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 226, 143, 0.38), rgba(255, 97, 42, 0.24) 22%, transparent 56%),
-            repeating-radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 130, 42, 0.12) 0 4px, transparent 4px 18px);
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 250, 188, 0.52), rgba(105, 228, 255, 0.16) 24%, transparent 48%),
+            radial-gradient(circle at 18% 22%, rgba(255, 239, 120, 0.38) 0 2px, transparent 3px),
+            radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.32) 0 1px, transparent 3px),
+            radial-gradient(circle at 72% 28%, rgba(98, 226, 255, 0.3) 0 2px, transparent 3px),
+            radial-gradient(circle at 84% 58%, rgba(255, 239, 120, 0.34) 0 2px, transparent 3px),
+            radial-gradient(circle at 31% 79%, rgba(255, 255, 255, 0.24) 0 1px, transparent 3px);
+        background-size: auto, 54px 78px, 62px 70px, 70px 84px, 58px 72px, 68px 80px;
         mix-blend-mode: screen;
-    }
-}
-
-.concept-card--fx-embossed-security {
-    .concept-card__texture::before {
-        background:
-            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 245, 0.28), transparent 38%),
-            repeating-radial-gradient(ellipse at 50% 34%, transparent 0 9px, rgba(146, 98, 48, 0.12) 9px 10px, transparent 10px 20px),
-            repeating-linear-gradient(38deg, rgba(114, 74, 34, 0.09) 0 1px, transparent 1px 10px);
-        mix-blend-mode: multiply;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
     }
 
     .concept-card__texture::after {
         background:
-            repeating-conic-gradient(from 45deg at 50% 38%, rgba(255, 255, 255, 0.09) 0deg 1deg, transparent 1deg 7deg);
+            repeating-linear-gradient(116deg, transparent 0 19px, rgba(255, 255, 255, 0.13) 19px 20px, transparent 20px 39px);
         mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(108deg, transparent 0 36%, rgba(255, 255, 255, 0.42) 47%, rgba(255, 238, 118, 0.2) 53%, transparent 64% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-heat-reactive {
+    --effect-spotlight-opacity: 0.82;
+    --effect-pattern-opacity: 0.58;
+    --effect-glare-opacity: 0.3;
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 232, 160, 0.62), rgba(255, 97, 42, 0.34) 22%, rgba(205, 25, 44, 0.14) 39%, transparent 58%),
+            repeating-radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 130, 42, 0.16) 0 4px, transparent 4px 17px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            linear-gradient(140deg, transparent 0 22%, rgba(255, 122, 38, 0.2) 38%, transparent 54% 100%),
+            repeating-linear-gradient(20deg, transparent 0 18px, rgba(255, 197, 79, 0.09) 18px 20px, transparent 20px 36px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 226, 143, 0.5), transparent 35%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-embossed-security {
+    --effect-spotlight-opacity: 0.52;
+    --effect-pattern-opacity: 0.76;
+    --effect-glare-opacity: 0.18;
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 245, 0.34), transparent 38%),
+            repeating-radial-gradient(ellipse at 50% 34%, transparent 0 8px, rgba(146, 98, 48, 0.16) 8px 9px, transparent 9px 19px),
+            repeating-linear-gradient(38deg, rgba(114, 74, 34, 0.12) 0 1px, transparent 1px 9px),
+            repeating-linear-gradient(128deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 15px);
+        mix-blend-mode: multiply;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from var(--glare-angle) at 50% 38%, rgba(255, 255, 255, 0.13) 0deg 1deg, transparent 1deg 7deg),
+            radial-gradient(circle at 50% 39%, transparent 0 28%, rgba(255, 255, 255, 0.12) 29% 30%, transparent 31% 100%);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(112deg, transparent 0 40%, rgba(255, 255, 255, 0.22) 50%, transparent 60% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 
@@ -3831,56 +4182,15 @@ export default defineComponent({
 }
 
 .concept-card--effect-preview {
-    --light-x: 36%;
-    --light-y: 18%;
-    --shift-x: 0px;
-    --shift-y: 0px;
-    --surface-x: 0px;
-    --surface-y: 0px;
-    --surface-soft-x: 0px;
-    --surface-soft-y: 0px;
-    --surface-reverse-x: 0px;
-    --surface-reverse-y: 0px;
-    --surface-hard-x: 0px;
-    --surface-hard-y: 0px;
-    --tilt-x: 0deg;
-    --tilt-y: 0deg;
-
-    transform: perspective(900px) translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
-    transform-style: preserve-3d;
-    will-change: transform;
-
-    &:hover,
-    &:focus-within {
-        transform:
-            perspective(900px)
-            translate3d(var(--shift-x), calc(-8px + var(--shift-y)), 0)
-            rotateX(var(--tilt-x))
-            rotateY(var(--tilt-y));
-        box-shadow:
-            0 32px 66px rgba(0, 0, 0, 0.55),
-            inset 0 0 0 1px rgba(255, 246, 204, 0.34),
-            inset 0 0 0 7px rgba(76, 45, 10, 0.18),
-            0 0 36px var(--card-shadow);
-    }
+    backface-visibility: hidden;
 
     .concept-card__texture::before,
     .concept-card__texture::after,
     .concept-card__content::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        opacity: 0;
         transition:
             opacity 180ms ease,
-            background-position 180ms ease,
-            transform 180ms ease;
-    }
-
-    .concept-card__texture::before,
-    .concept-card__texture::after {
-        z-index: 1;
+            transform 180ms ease,
+            filter 180ms ease;
     }
 
     .concept-card__content::before {
@@ -3889,239 +4199,30 @@ export default defineComponent({
         mix-blend-mode: screen;
     }
 
-    &:hover .concept-card__texture::before,
-    &:hover .concept-card__texture::after,
-    &:hover .concept-card__content::before,
-    &:focus-within .concept-card__texture::before,
-    &:focus-within .concept-card__texture::after,
-    &:focus-within .concept-card__content::before {
-        opacity: 1;
-    }
-}
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 34px 70px rgba(0, 0, 0, 0.56),
+            inset 0 0 0 1px rgba(255, 246, 204, 0.34),
+            inset 0 0 0 7px rgba(76, 45, 10, 0.16),
+            0 0 36px var(--card-shadow);
 
-.concept-card--effect-prism-holo {
-    .concept-card__texture::before {
-        background:
-            radial-gradient(
-                circle at var(--light-x) var(--light-y),
-                rgba(255, 255, 255, 0.72),
-                rgba(128, 241, 255, 0.38) 14%,
-                rgba(255, 93, 231, 0.26) 24%,
-                transparent 43%
-            ),
-            conic-gradient(
-                from 135deg at var(--light-x) var(--light-y),
-                rgba(255, 80, 152, 0.3),
-                rgba(255, 222, 84, 0.25),
-                rgba(93, 255, 179, 0.24),
-                rgba(75, 202, 255, 0.3),
-                rgba(174, 106, 255, 0.27),
-                rgba(255, 80, 152, 0.3)
-            );
-        mix-blend-mode: color-dodge;
-        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+        .concept-card__texture::before {
+            opacity: var(--effect-spotlight-opacity);
+        }
+
+        .concept-card__texture::after {
+            opacity: var(--effect-pattern-opacity);
+        }
+
+        .concept-card__content::before {
+            opacity: var(--effect-glare-opacity);
+        }
     }
 
-    .concept-card__texture::after {
-        background:
-            repeating-linear-gradient(
-                116deg,
-                transparent 0 10px,
-                rgba(255, 255, 255, 0.16) 10px 11px,
-                transparent 11px 22px
-        );
-        opacity: 0;
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
-    }
-
-    &:hover .concept-card__texture::after,
-    &:focus-within .concept-card__texture::after {
-        opacity: 0.72;
-    }
-}
-
-.concept-card--effect-foil-flash {
-    .concept-card__texture::before {
-        background:
-            radial-gradient(
-                ellipse at var(--light-x) var(--light-y),
-                rgba(255, 255, 241, 0.72),
-                rgba(255, 225, 126, 0.3) 17%,
-                transparent 37%
-            ),
-            repeating-linear-gradient(
-                64deg,
-                rgba(255, 255, 244, 0.2) 0 2px,
-                transparent 2px 11px,
-                rgba(81, 55, 10, 0.18) 11px 15px,
-                transparent 15px 30px
-            );
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-x), var(--surface-y), 0);
-    }
-
-    .concept-card__content::before {
-        background:
-            linear-gradient(
-                105deg,
-                transparent 0 31%,
-                rgba(255, 255, 245, 0.72) 42%,
-                rgba(255, 213, 93, 0.34) 48%,
-                transparent 59% 100%
-            );
-        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
-    }
-
-    &:hover .concept-card__content::before,
-    &:focus-within .concept-card__content::before {
-        opacity: 0.46;
-    }
-}
-
-.concept-card--effect-liquid-gold {
-    .concept-card__texture::before {
-        background:
-            radial-gradient(
-                ellipse at var(--light-x) var(--light-y),
-                rgba(255, 250, 196, 0.82),
-                rgba(255, 195, 56, 0.38) 19%,
-                rgba(132, 76, 7, 0.18) 39%,
-                transparent 58%
-            ),
-            radial-gradient(circle at 28% 23%, rgba(255, 232, 127, 0.24), transparent 9rem),
-            linear-gradient(180deg, rgba(255, 217, 103, 0.12), transparent 62%);
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-x), var(--surface-y), 0);
-    }
-
-    .concept-card__texture::after {
-        background:
-            repeating-radial-gradient(
-                ellipse at var(--light-x) var(--light-y),
-                rgba(255, 245, 171, 0.18) 0 5px,
-                transparent 5px 18px
-            );
-        mix-blend-mode: soft-light;
-        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
-    }
-}
-
-.concept-card--effect-rainbow-etch {
-    .concept-card__texture::before {
-        background:
-            radial-gradient(
-                circle at var(--light-x) var(--light-y),
-                rgba(255, 255, 255, 0.58),
-                rgba(107, 236, 255, 0.25) 13%,
-                rgba(255, 111, 218, 0.2) 27%,
-                transparent 45%
-            ),
-            repeating-linear-gradient(
-                28deg,
-                rgba(255, 110, 203, 0.11) 0 1px,
-                transparent 1px 9px,
-                rgba(98, 230, 255, 0.1) 9px 10px,
-                transparent 10px 19px
-            ),
-            repeating-linear-gradient(
-                118deg,
-                transparent 0 17px,
-                rgba(255, 248, 196, 0.13) 17px 18px
-            );
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-x), var(--surface-y), 0);
-    }
-
-    .concept-card__content::before {
-        background:
-            radial-gradient(circle at 21% 34%, rgba(124, 234, 255, 0.35) 0 1px, transparent 2px),
-            radial-gradient(circle at 66% 26%, rgba(255, 129, 215, 0.3) 0 1px, transparent 2px),
-            radial-gradient(circle at 79% 58%, rgba(255, 244, 137, 0.34) 0 1px, transparent 2px),
-            radial-gradient(circle at 37% 74%, rgba(144, 255, 190, 0.26) 0 1px, transparent 2px);
-        background-size: 54px 72px;
-        opacity: 0;
-        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
-    }
-
-    &:hover .concept-card__content::before,
-    &:focus-within .concept-card__content::before {
-        opacity: 0.54;
-    }
-}
-
-.concept-card--effect-mirror-gold {
-    .concept-card__texture::before {
-        background:
-            linear-gradient(
-                128deg,
-                transparent 0 21%,
-                rgba(255, 251, 217, 0.7) 32%,
-                rgba(255, 198, 48, 0.34) 39%,
-                transparent 51% 100%
-            ),
-            radial-gradient(
-                circle at var(--light-x) var(--light-y),
-                rgba(255, 244, 171, 0.48),
-                transparent 34%
-            );
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-x), var(--surface-y), 0);
-    }
-
-    .concept-card__content::before {
-        background:
-            radial-gradient(
-                circle at var(--light-x) var(--light-y),
-                rgba(255, 255, 238, 0.78),
-                rgba(255, 213, 86, 0.32) 15%,
-                transparent 34%
-            );
-        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
-    }
-
-    &:hover .concept-card__content::before,
-    &:focus-within .concept-card__content::before {
-        opacity: 0.5;
-    }
-}
-
-.concept-card--effect-dark-holo {
-    background:
-        radial-gradient(circle at 47% 18%, rgba(255, 244, 177, 0.12), transparent 9rem),
-        linear-gradient(180deg, #caa13f 0%, #8e6110 36%, #171006 74%);
-
-    .concept-card__texture::before {
-        background:
-            radial-gradient(
-                ellipse at var(--light-x) var(--light-y),
-                rgba(255, 255, 255, 0.58),
-                rgba(88, 217, 255, 0.25) 16%,
-                rgba(178, 103, 255, 0.2) 31%,
-                transparent 52%
-            ),
-            repeating-linear-gradient(
-                132deg,
-                rgba(6, 5, 6, 0.42) 0 12px,
-                rgba(255, 224, 97, 0.11) 12px 14px,
-                transparent 14px 28px
-            );
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-x), var(--surface-y), 0);
-    }
-
-    .concept-card__texture::after {
-        background:
-            linear-gradient(180deg, rgba(4, 4, 6, 0.18), rgba(4, 4, 6, 0.54)),
-            conic-gradient(
-                from 215deg at var(--light-x) var(--light-y),
-                transparent,
-                rgba(77, 231, 255, 0.22),
-                rgba(255, 113, 218, 0.18),
-                transparent 38%
-            );
-        mix-blend-mode: screen;
-        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    &.concept-card:hover .concept-card__content::before,
+    &.concept-card:focus-within .concept-card__content::before {
+        opacity: var(--effect-glare-opacity);
     }
 }
 
@@ -4634,6 +4735,622 @@ export default defineComponent({
     }
 }
 
+.concept-card--fx-tots-crown-aurora,
+.concept-card--fx-tots-trophy-halo,
+.concept-card--fx-tots-stadium-coronation,
+.concept-card--fx-tots-royal-mirror,
+.concept-card--fx-tots-laurel-emboss,
+.concept-card--fx-tots-starfield-finale,
+.concept-card--fx-tots-lenticular-depth,
+.concept-card--fx-tots-dual-image-foil,
+.concept-card--fx-tots-numbered-chase,
+.concept-card--fx-tots-opal-security,
+.concept-card--fx-tots-relic-black-gold,
+.concept-card--fx-tots-sapphire-refractor {
+    --effect-spotlight-opacity: 0.86;
+    --effect-pattern-opacity: 0.72;
+    --effect-glare-opacity: 0.42;
+
+    border-color: #fff0a7;
+    box-shadow:
+        0 22px 54px rgba(0, 0, 0, 0.54),
+        inset 0 0 0 1px rgba(255, 250, 213, 0.26),
+        inset 0 0 0 7px rgba(8, 22, 46, 0.34),
+        0 0 32px rgba(255, 214, 88, 0.4),
+        0 0 28px rgba(78, 139, 255, 0.18);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 36px 76px rgba(0, 0, 0, 0.62),
+            inset 0 0 0 1px rgba(255, 252, 222, 0.4),
+            inset 0 0 0 7px rgba(7, 22, 47, 0.28),
+            0 0 46px rgba(255, 220, 92, 0.5),
+            0 0 34px rgba(88, 162, 255, 0.28);
+    }
+
+    &::before {
+        inset: 7px;
+        border-color: rgba(255, 239, 162, 0.82);
+        box-shadow:
+            inset 0 0 0 1px rgba(106, 174, 255, 0.26),
+            inset 0 0 22px rgba(255, 218, 83, 0.12),
+            0 0 26px rgba(255, 213, 84, 0.24);
+    }
+
+    &::after {
+        height: 4px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            #6be8ff,
+            #fff3a5,
+            #ffd24c,
+            #fff3a5,
+            #6be8ff,
+            transparent
+        );
+        box-shadow:
+            0 0 18px rgba(255, 226, 108, 0.56),
+            0 0 16px rgba(101, 217, 255, 0.26);
+    }
+
+    .concept-card__rating,
+    .concept-card__name {
+        text-shadow:
+            0 2px 10px rgba(0, 0, 0, 0.58),
+            0 0 18px rgba(255, 230, 127, 0.3),
+            0 0 16px rgba(83, 156, 255, 0.14);
+    }
+
+    .concept-card__club {
+        border-color: rgba(255, 238, 151, 0.6);
+        box-shadow:
+            0 7px 16px rgba(0, 0, 0, 0.3),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+            0 0 18px rgba(255, 222, 92, 0.22);
+    }
+}
+
+.concept-card--fx-tots-lenticular-depth,
+.concept-card--fx-tots-dual-image-foil {
+    --effect-pattern-opacity: 0.9;
+    --effect-glare-opacity: 0.32;
+
+    .concept-card__portrait {
+        color: rgba(255, 248, 196, 0.92);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 231, 128, 0.2),
+            inset 18px 0 22px rgba(83, 202, 255, 0.08),
+            inset -18px 0 22px rgba(255, 223, 93, 0.1);
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__club {
+        background:
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 2px, transparent 2px 5px),
+            linear-gradient(135deg, rgba(72, 213, 255, 0.28), rgba(255, 229, 114, 0.36));
+    }
+}
+
+.concept-card--fx-tots-crown-aurora {
+    --effect-pattern-opacity: 0.82;
+    --effect-glare-opacity: 0.48;
+
+    background:
+        radial-gradient(circle at 50% 11%, rgba(255, 236, 141, 0.34), transparent 7rem),
+        radial-gradient(circle at 82% 19%, rgba(85, 229, 255, 0.22), transparent 7rem),
+        conic-gradient(from 218deg at 50% 31%, rgba(255, 232, 121, 0.26) 0deg 18deg, rgba(64, 120, 255, 0.2) 18deg 42deg, transparent 42deg 68deg, rgba(255, 232, 121, 0.18) 68deg 92deg, transparent 92deg 360deg),
+        linear-gradient(180deg, #1a2c68 0%, #0c1834 48%, #040812 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 225deg at 50% 29%, rgba(255, 236, 151, 0.18) 0deg 1deg, transparent 1deg 7deg),
+            linear-gradient(137deg, transparent 0 18%, rgba(255, 241, 166, 0.2) 18% 21%, rgba(17, 29, 62, 0.28) 21% 35%, transparent 35%),
+            repeating-radial-gradient(circle at 76% 18%, rgba(255, 240, 172, 0.09) 0 1px, transparent 1px 7px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 38% 18%, rgba(255, 255, 246, 0.58), rgba(112, 233, 255, 0.24) 18%, rgba(255, 213, 73, 0.16) 34%, transparent 58%),
+            conic-gradient(from 230deg at 50% 30%, rgba(91, 230, 255, 0.28), rgba(255, 240, 142, 0.28), rgba(95, 255, 187, 0.18), rgba(103, 141, 255, 0.22), rgba(91, 230, 255, 0.28));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from 225deg at 50% 28%, rgba(255, 236, 151, 0.22) 0deg 1deg, transparent 1deg 9deg),
+            repeating-linear-gradient(112deg, transparent 0 14px, rgba(255, 255, 255, 0.14) 14px 15px, transparent 15px 30px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(116deg, transparent 0 30%, rgba(255, 255, 245, 0.56) 43%, rgba(99, 225, 255, 0.18) 50%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-trophy-halo {
+    --effect-spotlight-opacity: 0.82;
+    --effect-pattern-opacity: 0.86;
+    --effect-glare-opacity: 0.36;
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 25%, transparent 0 12px, rgba(255, 233, 137, 0.2) 12px 15px, transparent 15px 30px),
+            conic-gradient(from 218deg at 50% 28%, transparent 0deg, rgba(255, 242, 169, 0.26) 17deg, transparent 36deg, transparent 62deg, rgba(111, 149, 255, 0.18) 78deg, transparent 96deg, transparent 360deg),
+            repeating-linear-gradient(98deg, transparent 0 18px, rgba(255, 231, 142, 0.09) 18px 20px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(ellipse at 52% 28%, rgba(255, 255, 232, 0.5), rgba(255, 223, 95, 0.22) 20%, transparent 54%),
+            repeating-radial-gradient(ellipse at 50% 31%, transparent 0 22px, rgba(255, 238, 148, 0.2) 22px 24px, transparent 24px 43px),
+            radial-gradient(ellipse at 50% 33%, rgba(255, 224, 91, 0.18), transparent 9rem);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(ellipse at 23% 41%, transparent 0 33%, rgba(255, 232, 122, 0.2) 34% 36%, transparent 37%),
+            radial-gradient(ellipse at 77% 41%, transparent 0 33%, rgba(255, 232, 122, 0.2) 34% 36%, transparent 37%),
+            repeating-conic-gradient(from 45deg at 50% 33%, rgba(255, 255, 255, 0.1) 0deg 1deg, transparent 1deg 8deg);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(ellipse at 50% 34%, transparent 0 28%, rgba(255, 239, 155, 0.34) 29% 31%, transparent 32% 100%),
+            radial-gradient(circle at 61% 22%, rgba(255, 251, 220, 0.24), transparent 40%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-stadium-coronation {
+    --effect-spotlight-opacity: 0.8;
+    --effect-pattern-opacity: 0.9;
+    --effect-glare-opacity: 0.32;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(126deg, transparent 0 18%, rgba(255, 224, 124, 0.2) 18% 24%, transparent 24% 48%, rgba(93, 141, 255, 0.16) 48% 62%, transparent 62%),
+            repeating-radial-gradient(circle at 21% 14%, rgba(255, 237, 156, 0.14) 0 1px, transparent 1px 8px),
+            radial-gradient(circle at 78% 18%, rgba(93, 141, 255, 0.2), transparent 5rem);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 34% 15%, rgba(255, 252, 218, 0.4), rgba(255, 218, 92, 0.18) 19%, transparent 50%),
+            linear-gradient(76deg, transparent 0 19%, rgba(255, 244, 193, 0.18) 32%, transparent 45% 100%),
+            linear-gradient(104deg, transparent 0 47%, rgba(93, 199, 255, 0.16) 59%, transparent 72% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(circle at 18% 18%, rgba(255, 230, 104, 0.5) 0 1px, transparent 3px),
+            radial-gradient(circle at 52% 21%, rgba(255, 255, 255, 0.34) 0 1px, transparent 3px),
+            radial-gradient(circle at 82% 33%, rgba(99, 222, 255, 0.36) 0 2px, transparent 4px),
+            radial-gradient(circle at 31% 71%, rgba(255, 230, 104, 0.42) 0 1px, transparent 3px);
+        background-size: 48px 66px, 58px 74px, 64px 84px, 72px 92px;
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(107deg, transparent 0 33%, rgba(255, 255, 238, 0.46) 46%, rgba(255, 217, 91, 0.2) 53%, transparent 65% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-royal-mirror {
+    --effect-spotlight-opacity: 0.78;
+    --effect-pattern-opacity: 0.58;
+    --effect-glare-opacity: 0.62;
+
+    background:
+        radial-gradient(circle at 44% 11%, rgba(255, 229, 118, 0.24), transparent 7rem),
+        linear-gradient(124deg, rgba(255, 233, 148, 0.14), transparent 30%),
+        linear-gradient(180deg, #233a79 0%, #0b1633 44%, #03060f 100%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(132deg, transparent 0 21%, rgba(255, 238, 162, 0.24) 21% 24%, rgba(12, 25, 58, 0.34) 24% 39%, transparent 39% 59%, rgba(93, 141, 255, 0.18) 59% 72%, transparent 72%),
+            repeating-linear-gradient(105deg, transparent 0 16px, rgba(255, 238, 162, 0.1) 16px 18px),
+            linear-gradient(180deg, transparent 0 56%, rgba(3, 6, 15, 0.48) 56% 100%);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 34% 14%, rgba(255, 255, 235, 0.36), rgba(255, 220, 91, 0.16) 18%, transparent 46%),
+            linear-gradient(112deg, transparent 0 24%, rgba(255, 248, 207, 0.68) 37%, rgba(255, 205, 52, 0.3) 43%, transparent 58% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(68deg, rgba(255, 247, 201, 0.16) 0 2px, transparent 2px 16px, rgba(7, 14, 34, 0.22) 16px 21px, transparent 21px 34px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(104deg, transparent 0 28%, rgba(255, 255, 245, 0.86) 42%, rgba(255, 212, 68, 0.38) 48%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-laurel-emboss {
+    --effect-spotlight-opacity: 0.62;
+    --effect-pattern-opacity: 0.92;
+    --effect-glare-opacity: 0.24;
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 28%, transparent 0 13px, rgba(255, 228, 134, 0.2) 13px 16px, transparent 16px 31px),
+            repeating-conic-gradient(from 42deg at 50% 36%, rgba(255, 242, 169, 0.12) 0deg 1deg, transparent 1deg 8deg),
+            linear-gradient(128deg, transparent 0 25%, rgba(255, 242, 169, 0.22) 25% 28%, rgba(24, 38, 82, 0.3) 28% 43%, transparent 43% 56%, rgba(111, 149, 255, 0.16) 56% 69%, transparent 69%);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 58% 18%, rgba(255, 255, 233, 0.28), transparent 44%),
+            repeating-radial-gradient(ellipse at 50% 36%, transparent 0 10px, rgba(255, 225, 112, 0.16) 10px 11px, transparent 11px 22px),
+            repeating-linear-gradient(38deg, rgba(255, 242, 176, 0.12) 0 1px, transparent 1px 10px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(ellipse at 26% 47%, transparent 0 32%, rgba(255, 233, 133, 0.18) 33% 35%, transparent 36%),
+            radial-gradient(ellipse at 74% 47%, transparent 0 32%, rgba(255, 233, 133, 0.18) 33% 35%, transparent 36%),
+            repeating-conic-gradient(from 42deg at 50% 38%, rgba(255, 255, 255, 0.12) 0deg 1deg, transparent 1deg 7deg);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(ellipse at 50% 38%, transparent 0 32%, rgba(255, 239, 155, 0.22) 33% 34%, transparent 35% 100%),
+            linear-gradient(112deg, transparent 0 40%, rgba(255, 255, 255, 0.28) 50%, transparent 60% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-starfield-finale {
+    --effect-spotlight-opacity: 0.84;
+    --effect-pattern-opacity: 0.82;
+    --effect-glare-opacity: 0.4;
+
+    background:
+        radial-gradient(circle at 50% 9%, rgba(255, 236, 141, 0.26), transparent 8rem),
+        radial-gradient(circle at 80% 18%, rgba(89, 178, 255, 0.22), transparent 7rem),
+        radial-gradient(circle at 22% 20%, rgba(255, 221, 91, 0.18), transparent 6rem),
+        linear-gradient(180deg, #1a285a 0%, #09152d 48%, #040811 100%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(circle at 18% 15%, rgba(255, 230, 104, 0.42) 0 1px, transparent 3px),
+            radial-gradient(circle at 52% 19%, rgba(255, 255, 255, 0.28) 0 1px, transparent 3px),
+            radial-gradient(circle at 82% 35%, rgba(99, 222, 255, 0.32) 0 1px, transparent 3px),
+            linear-gradient(126deg, transparent 0 18%, rgba(255, 224, 124, 0.16) 18% 24%, transparent 24% 48%, rgba(93, 141, 255, 0.14) 48% 62%, transparent 62%);
+        background-size: 52px 68px, 64px 82px, 72px 94px, auto;
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 48% 16%, rgba(255, 252, 222, 0.44), rgba(98, 211, 255, 0.18) 22%, rgba(255, 221, 91, 0.14) 36%, transparent 60%),
+            conic-gradient(from 228deg at 50% 28%, transparent, rgba(255, 234, 119, 0.24), rgba(91, 202, 255, 0.16), transparent 42%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(circle at 24% 33%, rgba(255, 238, 128, 0.5) 0 1px, transparent 3px),
+            radial-gradient(circle at 72% 25%, rgba(255, 255, 255, 0.36) 0 1px, transparent 3px),
+            radial-gradient(circle at 68% 68%, rgba(95, 218, 255, 0.34) 0 1px, transparent 3px),
+            repeating-linear-gradient(116deg, transparent 0 18px, rgba(255, 255, 255, 0.13) 18px 19px, transparent 19px 38px);
+        background-size: 44px 58px, 60px 72px, 72px 88px, auto;
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(103deg, transparent 0 34%, rgba(255, 255, 244, 0.5) 47%, rgba(255, 221, 91, 0.2) 54%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-lenticular-depth {
+    --effect-spotlight-opacity: 0.56;
+    --effect-glare-opacity: 0.26;
+
+    background:
+        radial-gradient(circle at 50% 9%, rgba(255, 237, 146, 0.28), transparent 7rem),
+        radial-gradient(circle at 82% 18%, rgba(68, 214, 255, 0.22), transparent 7rem),
+        linear-gradient(110deg, rgba(255, 238, 150, 0.12), transparent 28%),
+        linear-gradient(180deg, #203b83 0%, #0a1736 48%, #030711 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 4px, rgba(5, 13, 31, 0.2) 4px 6px),
+            linear-gradient(96deg, rgba(89, 220, 255, 0.18), transparent 31%, rgba(255, 226, 93, 0.16) 58%, transparent 76%),
+            repeating-linear-gradient(114deg, transparent 0 18px, rgba(255, 237, 142, 0.08) 18px 20px);
+        opacity: 0.95;
+    }
+
+    .concept-card__texture::before {
+        background:
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 2px, transparent 2px 7px),
+            linear-gradient(104deg, transparent 0 18%, rgba(89, 220, 255, 0.22) 31%, transparent 44%, rgba(255, 229, 112, 0.2) 57%, transparent 74% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(90deg, transparent 0 5px, rgba(255, 255, 255, 0.14) 5px 6px, transparent 6px 12px),
+            linear-gradient(78deg, transparent 0 24%, rgba(102, 217, 255, 0.16) 36%, transparent 48%, rgba(255, 219, 84, 0.14) 64%, transparent 78% 100%);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(100deg, transparent 0 34%, rgba(255, 255, 235, 0.24) 43%, transparent 54% 100%),
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 6px);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-dual-image-foil {
+    --effect-spotlight-opacity: 0.68;
+    --effect-pattern-opacity: 0.84;
+    --effect-glare-opacity: 0.34;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(128deg, transparent 0 16%, rgba(255, 231, 124, 0.2) 16% 22%, transparent 22% 42%, rgba(76, 206, 255, 0.18) 42% 56%, transparent 56%),
+            repeating-linear-gradient(84deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 8px),
+            repeating-linear-gradient(116deg, transparent 0 20px, rgba(255, 224, 102, 0.08) 20px 22px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            linear-gradient(112deg, transparent 0 25%, rgba(255, 245, 184, 0.34) 36%, transparent 47%, rgba(82, 217, 255, 0.22) 61%, transparent 74% 100%),
+            repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 5px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            linear-gradient(112deg, transparent 0 23%, rgba(82, 217, 255, 0.2) 35%, transparent 47%, rgba(255, 231, 124, 0.22) 60%, transparent 74% 100%),
+            repeating-linear-gradient(92deg, transparent 0 4px, rgba(255, 255, 255, 0.16) 4px 5px, transparent 5px 10px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::after {
+        content: attr(data-effect-text);
+        position: absolute;
+        left: -24px;
+        right: -24px;
+        bottom: 104px;
+        z-index: 5;
+        color: transparent;
+        background: linear-gradient(90deg, #6be4ff, #fff2a6, #ffd354, #6be4ff);
+        background-clip: text;
+        font-size: 0.72rem;
+        line-height: 1;
+        font-weight: 900;
+        letter-spacing: 0.24em;
+        opacity: 0.58;
+        pointer-events: none;
+        text-align: center;
+        text-transform: uppercase;
+        transform: rotate(-28deg) translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+        white-space: nowrap;
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(104deg, transparent 0 30%, rgba(255, 255, 245, 0.36) 43%, transparent 56% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-numbered-chase {
+    --effect-spotlight-opacity: 0.54;
+    --effect-pattern-opacity: 0.78;
+    --effect-glare-opacity: 0.22;
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(37deg, rgba(255, 244, 178, 0.1) 0 1px, transparent 1px 10px),
+            repeating-linear-gradient(128deg, transparent 0 13px, rgba(94, 209, 255, 0.08) 13px 14px),
+            radial-gradient(circle at 74% 18%, rgba(255, 226, 100, 0.16), transparent 7rem);
+    }
+
+    .concept-card__texture::before {
+        background:
+            repeating-radial-gradient(ellipse at 50% 35%, transparent 0 12px, rgba(255, 225, 109, 0.15) 12px 13px, transparent 13px 24px),
+            linear-gradient(115deg, transparent 0 31%, rgba(255, 255, 230, 0.18) 43%, transparent 56% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(90deg, transparent 0 21px, rgba(255, 255, 255, 0.12) 21px 22px, transparent 22px 44px),
+            repeating-linear-gradient(0deg, transparent 0 17px, rgba(255, 233, 137, 0.09) 17px 18px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::after {
+        content: attr(data-effect-text);
+        position: absolute;
+        right: 18px;
+        bottom: 124px;
+        z-index: 5;
+        padding: 0.22rem 0.36rem;
+        color: #fff0ac;
+        background: rgba(5, 12, 28, 0.56);
+        border: 1px solid rgba(255, 231, 129, 0.5);
+        border-radius: 4px;
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+            0 0 14px rgba(255, 213, 78, 0.2);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        pointer-events: none;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(112deg, transparent 0 40%, rgba(255, 255, 245, 0.24) 50%, transparent 61% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-opal-security {
+    --effect-spotlight-opacity: 0.62;
+    --effect-pattern-opacity: 0.86;
+    --effect-glare-opacity: 0.24;
+
+    background:
+        radial-gradient(circle at 28% 13%, rgba(255, 204, 232, 0.18), transparent 6rem),
+        radial-gradient(circle at 78% 18%, rgba(108, 233, 255, 0.2), transparent 7rem),
+        radial-gradient(circle at 48% 8%, rgba(255, 238, 157, 0.2), transparent 8rem),
+        linear-gradient(180deg, #233a78 0%, #0c1733 48%, #040811 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 36%, transparent 0 9px, rgba(255, 240, 178, 0.14) 9px 10px, transparent 10px 20px),
+            repeating-conic-gradient(from 35deg at 50% 34%, rgba(255, 255, 255, 0.08) 0deg 1deg, transparent 1deg 7deg),
+            linear-gradient(128deg, rgba(255, 173, 224, 0.12), transparent 28%, rgba(99, 226, 255, 0.14) 54%, transparent 78%);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 34% 19%, rgba(255, 205, 232, 0.22), transparent 42%),
+            radial-gradient(circle at 72% 21%, rgba(114, 231, 255, 0.22), transparent 45%),
+            repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 12px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from 35deg at 50% 34%, rgba(255, 255, 255, 0.12) 0deg 1deg, transparent 1deg 8deg),
+            repeating-linear-gradient(135deg, transparent 0 18px, rgba(255, 235, 150, 0.1) 18px 19px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(105deg, transparent 0 34%, rgba(255, 255, 255, 0.26) 47%, transparent 59% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-relic-black-gold {
+    --effect-spotlight-opacity: 0.5;
+    --effect-pattern-opacity: 0.74;
+    --effect-glare-opacity: 0.42;
+
+    background:
+        radial-gradient(circle at 50% 12%, rgba(255, 224, 112, 0.18), transparent 7rem),
+        linear-gradient(132deg, rgba(255, 225, 112, 0.18), transparent 24%, rgba(44, 84, 170, 0.14) 61%, transparent 78%),
+        linear-gradient(180deg, #19244a 0%, #070b13 50%, #020306 100%);
+    border-color: #ffde78;
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(102deg, rgba(255, 229, 121, 0.16) 0 2px, transparent 2px 18px, rgba(0, 0, 0, 0.22) 18px 24px, transparent 24px 38px),
+            linear-gradient(128deg, transparent 0 18%, rgba(255, 235, 151, 0.18) 18% 22%, rgba(0, 0, 0, 0.28) 22% 36%, transparent 36% 100%),
+            radial-gradient(circle at 70% 19%, rgba(80, 167, 255, 0.14), transparent 7rem);
+    }
+
+    .concept-card__texture::before {
+        background:
+            linear-gradient(112deg, transparent 0 25%, rgba(255, 232, 126, 0.38) 37%, rgba(0, 0, 0, 0.08) 46%, transparent 58% 100%),
+            repeating-linear-gradient(68deg, rgba(255, 229, 121, 0.16) 0 2px, transparent 2px 18px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(118deg, transparent 0 20px, rgba(255, 255, 255, 0.1) 20px 21px, transparent 21px 42px),
+            linear-gradient(180deg, transparent 0 62%, rgba(0, 0, 0, 0.34) 62% 100%);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(103deg, transparent 0 28%, rgba(255, 248, 206, 0.46) 41%, rgba(255, 213, 66, 0.2) 48%, transparent 61% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-tots-sapphire-refractor {
+    --effect-spotlight-opacity: 0.72;
+    --effect-pattern-opacity: 0.82;
+    --effect-glare-opacity: 0.34;
+
+    background:
+        radial-gradient(circle at 72% 14%, rgba(98, 225, 255, 0.24), transparent 7rem),
+        radial-gradient(circle at 38% 10%, rgba(255, 232, 126, 0.18), transparent 7rem),
+        linear-gradient(180deg, #21418c 0%, #0a1734 46%, #030711 100%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(132deg, transparent 0 14%, rgba(92, 222, 255, 0.18) 14% 31%, transparent 31% 47%, rgba(255, 228, 114, 0.16) 47% 59%, transparent 59%),
+            linear-gradient(42deg, transparent 0 32%, rgba(255, 255, 255, 0.1) 32% 34%, transparent 34% 62%, rgba(98, 225, 255, 0.14) 62% 76%, transparent 76%),
+            repeating-linear-gradient(108deg, transparent 0 19px, rgba(255, 255, 255, 0.08) 19px 20px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            linear-gradient(118deg, transparent 0 20%, rgba(83, 222, 255, 0.26) 32%, transparent 44%, rgba(255, 234, 129, 0.22) 58%, transparent 72% 100%),
+            repeating-linear-gradient(34deg, rgba(255, 255, 255, 0.11) 0 1px, transparent 1px 12px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            linear-gradient(54deg, transparent 0 18%, rgba(255, 255, 255, 0.16) 31%, transparent 43%, rgba(79, 207, 255, 0.18) 62%, transparent 76% 100%),
+            repeating-linear-gradient(126deg, transparent 0 16px, rgba(255, 234, 129, 0.1) 16px 17px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(108deg, transparent 0 33%, rgba(255, 255, 244, 0.34) 46%, transparent 58% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
 .concept-card--icon {
     border-color: var(--card-border);
     color: var(--card-text);
@@ -5132,6 +5849,10 @@ export default defineComponent({
 @media (max-width: 640px) {
     .cards-preview-shell {
         padding: 2rem 0 3rem;
+    }
+
+    .design-tabs {
+        width: 100%;
     }
 
     .preview-header h1 {
