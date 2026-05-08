@@ -297,7 +297,7 @@
 
             <!-- Additional Banners -->
             <q-banner
-                v-else-if="!pageLoading && !loadingTeam && allPlayersData.length > 0 && !selectedTeamName"
+                v-else-if="!pageLoading && !loadingTeam && currentDatasetId && !selectedTeamName"
                 class="info-banner"
             >
                 <template v-slot:avatar>
@@ -307,7 +307,7 @@
             </q-banner>
             
             <q-banner
-                v-else-if="!pageLoading && !loadingTeam && allPlayersData.length === 0 && !pageLoadingError"
+                v-else-if="!pageLoading && !loadingTeam && !currentDatasetId && !pageLoadingError"
                 class="warning-banner"
             >
                 <template v-slot:avatar>
@@ -513,14 +513,17 @@ export default {
       })
     }
 
-    const fetchPlayersAndCurrency = async (datasetId) => {
+    const fetchDatasetMetadata = async (datasetId) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
-        await playerStore.fetchPlayersByDatasetId(datasetId)
-        // The store now handles all data processing and storage
+        // Only set the ID in the store, don't fetch all players
+        playerStore.setCurrentDatasetId(datasetId)
+
+        // If we don't have a currency symbol yet, we'll get it from team data
+        // or we could potentially fetch just the config/metadata here if needed.
       } catch (err) {
-        pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+        pageLoadingError.value = `Failed to initialize dataset: ${err.message || 'Unknown error'}.`
       } finally {
         pageLoading.value = false
       }
@@ -543,14 +546,14 @@ export default {
           // If loading from session, ensure query param is updated for consistency/bookmarking
           router.replace({ query: { datasetId: finalDatasetId } })
         }
-        await fetchPlayersAndCurrency(finalDatasetId)
+        await fetchDatasetMetadata(finalDatasetId)
       } else {
         pageLoadingError.value =
           'No player dataset ID found. Please upload a file on the main page.'
         pageLoading.value = false
       }
 
-      if (!pageLoadingError.value && allPlayersData.value.length > 0) {
+      if (!pageLoadingError.value) {
         // If a team was specified in the query params, select it
         if (teamFromQuery && teamFromQuery.trim() !== '') {
           selectedTeamName.value = teamFromQuery
@@ -578,24 +581,15 @@ export default {
         if (teamData.data?.players) {
           teamPlayers.value = teamData.data.players
 
+          // Update currency symbol if returned by the API
+          if (teamData.data.currency_symbol) {
+            playerStore.setCurrencySymbol(teamData.data.currency_symbol)
+          }
+
           console.log('Team players loaded via API:', {
             teamName: selectedTeamName.value,
             playerCount: teamData.data.players.length,
-            samplePlayer: teamData.data.players[0]
-              ? {
-                  name: teamData.data.players[0].name,
-                  short_positions: teamData.data.players[0].shortPositions,
-                  roleSpecificOveralls: teamData.data.players[0].roleSpecificOveralls?.length || 0,
-                  Overall: teamData.data.players[0].Overall,
-                  PAC: teamData.data.players[0].PAC,
-                  SHO: teamData.data.players[0].SHO,
-                  PAS: teamData.data.players[0].PAS,
-                  DRI: teamData.data.players[0].DRI,
-                  DEF: teamData.data.players[0].DEF,
-                  PHY: teamData.data.players[0].PHY,
-                  TotalStats: teamData.data.players[0].TotalStats,
-                }
-              : null,
+            currencySymbol: teamData.data.currency_symbol,
           })
 
           // Auto-select the best formation for this team
@@ -1450,7 +1444,7 @@ export default {
       const { player, fromSlotId, toSlotId, toSlotRole } = moveData
 
       const currentStarters = JSON.parse(JSON.stringify(bestTeamPlayersForPitch.value))
-      const playerToMoveFullData = allPlayersData.value.find((p) => p.name === player.name)
+      const playerToMoveFullData = teamPlayers.value.find((p) => p.name === player.name)
 
       if (!playerToMoveFullData) return
 
@@ -1463,7 +1457,7 @@ export default {
       const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
       const playerCurrentlyInTargetSlotFullData = currentStarters[toSlotId]
-        ? allPlayersData.value.find((p) => p.name === currentStarters[toSlotId].name)
+        ? teamPlayers.value.find((p) => p.name === currentStarters[toSlotId].name)
         : null
 
       // Update target slot with role-specific rating and position match info
@@ -1536,29 +1530,14 @@ export default {
     }
 
     watch(
-      () => allPlayersData.value,
-      (newVal) => {
-        if (pageLoading.value) return // Don't run if initial load is happening
-        if (newVal && newVal.length > 0) {
-          // If a team was specified in the query params, select it
-          if (selectedTeamName.value) loadTeamPlayers() // Reload team if already selected
-        } else if (!pageLoadingError.value) {
-          clearTeamSelection() // Reset team selection as data has changed
-        }
-      },
-      { deep: true } // deep might be intensive if allPlayersData is huge
-    )
-
-    watch(
       () => route.query.datasetId,
       async (newId, oldId) => {
         if (newId && newId !== oldId) {
           sessionStorage.setItem('currentDatasetId', newId)
-          await fetchPlayersAndCurrency(newId) // Use combined fetch
+          await fetchDatasetMetadata(newId)
           clearTeamSelection() // Reset team selection as data has changed
-          if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-            // If a team was specified in the query params, select it
-            if (selectedTeamName.value) loadTeamPlayers() // Reload team if already selected
+          if (!pageLoadingError.value && selectedTeamName.value) {
+            loadTeamPlayers() // Reload team if already selected
           }
         }
       }
