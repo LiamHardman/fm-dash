@@ -3362,7 +3362,7 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 		"score", resolution.Score)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Header().Set("Cache-Control", "no-store")
 	setCORSHeaders(w, r)
 
 	if err := json.NewEncoder(w).Encode(resolution); err != nil {
