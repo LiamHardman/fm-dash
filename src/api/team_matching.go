@@ -99,7 +99,7 @@ func initTeamsData() error {
 
 	// Additional security validation: ensure path is within allowed directories
 	cleanPath := filepath.Clean(teamsFilePath)
-	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, "\\") {
+	if strings.Contains(cleanPath, "..") {
 		LogWarn("Team data initialization: Path contains unsafe characters: %s", sanitizeForLogging(cleanPath))
 		return apperrors.ErrInvalidFilePath
 	}

@@ -94,6 +94,7 @@ try {
                 $env:USE_PROTOBUF               = "true"
                 $env:MAX_UPLOAD_SIZE            = "100"
                 $env:FORMAT_AWARE_CACHE_ENABLED = "true"
+                $env:IMAGE_API_URL              = "https://sortitoutsi.b-cdn.net/uploads"
                 go run . *>&1
             } -ArgumentList $goApiDir, $backendPidFile
 

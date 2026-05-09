@@ -41,6 +41,7 @@ trap cleanup SIGINT SIGTERM
 export USE_PROTOBUF=true
 export MAX_UPLOAD_SIZE=100
 export FORMAT_AWARE_CACHE_ENABLED=true
+export IMAGE_API_URL=https://sortitoutsi.b-cdn.net/uploads
 echo "Protobuf serialization: ENABLED"
 echo "Format-aware caching: ENABLED"
 echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line above"

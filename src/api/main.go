@@ -244,6 +244,9 @@ func main() {
 	// API endpoint for team name to ID matching
 	mux.Handle("/api/team-match", wrapHandler(http.HandlerFunc(teamMatchHandler), "team-match"))
 
+	// API endpoint for resolving a club name to logo display metadata
+	mux.Handle("/api/club-logo/resolve", wrapHandler(http.HandlerFunc(clubLogoResolveHandler), "club-logo-resolve"))
+
 	// API endpoint for cache operations (nation ratings, etc.)
 	mux.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
 

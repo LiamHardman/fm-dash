@@ -3182,8 +3182,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Processing team logo request", "teamId", sanitizeForLogging(teamID))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
-	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
-		externalURL := fmt.Sprintf("%s/team/%s.png?width=256", imageAPIURL, teamID)
+	if externalURL := externalTeamLogoURL(teamID); externalURL != "" {
 		logInfo(ctx, "Redirecting to external image API", "url", externalURL)
 
 		// Set appropriate headers for redirect
@@ -3214,34 +3213,9 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Try local storage as fallback
-	logosDir := getLogosDirectory()
-
-	// Safely construct the file path to prevent path injection
-	// Build the nested path: logosDir/Clubs/Normal/Normal/logoFileName
-	clubsDir, err := validateAndJoinPath(logosDir, "Clubs")
-	if err != nil {
-		RecordError(ctx, apperrors.WrapErrInvalidClubsDirPath(err), "Path validation failed")
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
-		return
-	}
-
-	normalDir1, err := validateAndJoinPath(clubsDir, "Normal")
-	if err != nil {
-		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
-		return
-	}
-
-	normalDir2, err := validateAndJoinPath(normalDir1, "Normal")
-	if err != nil {
-		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
-		return
-	}
-
-	logoFilePath, err := validateAndJoinPath(normalDir2, logoFileName)
-	if err != nil {
+	// Try local storage as fallback.
+	logoFilePath, err := localTeamLogoPathForHandler(teamID)
+	if err != nil && !os.IsNotExist(err) {
 		RecordError(ctx, apperrors.WrapErrInvalidFilePathForTeamID(sanitizeForLogging(teamID), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
@@ -3250,7 +3224,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "Attempting to retrieve logo from local storage", "path", sanitizeForLogging(logoFilePath))
 
 	// Check if file exists
-	if _, err := os.Stat(logoFilePath); os.IsNotExist(err) {
+	if err != nil || logoFilePath == "" {
 		logWarn(ctx, "Team logo not found", "path", sanitizeForLogging(logoFilePath))
 		http.Error(w, "Team logo not found", http.StatusNotFound)
 		return
@@ -3357,6 +3331,42 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(matches); err != nil {
 		logError(ctx, "Error encoding team match response", "error", err, "teamName", teamName)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// clubLogoResolveHandler resolves a club name to a safe-to-display logo URL.
+func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "handlers.clubLogoResolve")
+	defer span.End()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	teamName := r.URL.Query().Get("name")
+	if teamName == "" {
+		logWarn(ctx, "Missing 'name' parameter in club logo resolve request")
+		http.Error(w, "Missing 'name' parameter", http.StatusBadRequest)
+		return
+	}
+
+	resolution := resolveClubLogo(teamName)
+	logDebug(ctx, "Club logo resolved",
+		"teamName", teamName,
+		"status", resolution.Status,
+		"teamID", resolution.TeamID,
+		"teamNameResolved", resolution.TeamName,
+		"score", resolution.Score)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	setCORSHeaders(w, r)
+
+	if err := json.NewEncoder(w).Encode(resolution); err != nil {
+		logError(ctx, "Error encoding club logo resolve response", "error", err, "teamName", teamName)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }

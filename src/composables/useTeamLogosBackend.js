@@ -13,6 +13,7 @@ export function useTeamLogosBackend(options = {}) {
 
   // Cache for team matches and logos
   const matchCache = reactive(new Map())
+  const resolutionCache = reactive(new Map())
   const logoCache = reactive(new Map())
   const isLoading = ref(false)
   const lastError = ref(null)
@@ -40,11 +41,7 @@ export function useTeamLogosBackend(options = {}) {
       isLoading.value = true
       lastError.value = null
 
-      const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`, {
-        headers: {
-          Accept: 'application/x-protobuf',
-        },
-      })
+      const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`)
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -62,6 +59,51 @@ export function useTeamLogosBackend(options = {}) {
     } catch (error) {
       lastError.value = error.message
       return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Resolve a team name to structured logo display metadata.
+   * @param {string} teamName - Team name to resolve
+   * @returns {Promise<Object|null>} - Resolution payload or null
+   */
+  const getClubLogoResolution = async (teamName) => {
+    if (!teamName || teamName.trim() === '') {
+      return null
+    }
+
+    const normalizedName = teamName.trim()
+    const cacheKey = `resolution_${normalizedName.toLowerCase()}`
+
+    const cached = resolutionCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < cacheTimeout) {
+      return cached.data
+    }
+
+    try {
+      isLoading.value = true
+      lastError.value = null
+
+      const response = await fetch(
+        `/api/club-logo/resolve?name=${encodeURIComponent(normalizedName)}`
+      )
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const resolution = await response.json()
+      resolutionCache.set(cacheKey, {
+        data: resolution,
+        timestamp: Date.now(),
+      })
+
+      return resolution
+    } catch (error) {
+      lastError.value = error.message
+      return null
     } finally {
       isLoading.value = false
     }
@@ -94,8 +136,11 @@ export function useTeamLogosBackend(options = {}) {
    * @returns {Promise<string|null>} - Team ID or null
    */
   const getTeamId = async (teamName) => {
-    const match = await getBestTeamMatch(teamName)
-    return match ? match.id : null
+    const resolution = await getClubLogoResolution(teamName)
+    if (resolution && ['exact', 'confident'].includes(resolution.status)) {
+      return resolution.teamId || null
+    }
+    return null
   }
 
   /**
@@ -113,8 +158,11 @@ export function useTeamLogosBackend(options = {}) {
       return cached.url
     }
 
-    const teamId = await getTeamId(teamName)
-    if (!teamId) {
+    const resolution = await getClubLogoResolution(teamName)
+    const isDisplayable =
+      resolution && ['exact', 'confident'].includes(resolution.status) && resolution.logoUrl
+
+    if (!isDisplayable) {
       // Cache negative result
       logoCache.set(cacheKey, {
         url: null,
@@ -123,7 +171,7 @@ export function useTeamLogosBackend(options = {}) {
       return null
     }
 
-    const logoUrl = `/api/logos?teamId=${encodeURIComponent(teamId)}`
+    const logoUrl = resolution.logoUrl
 
     // Cache the logo URL
     logoCache.set(cacheKey, {
@@ -191,8 +239,10 @@ export function useTeamLogosBackend(options = {}) {
    * @returns {Promise<boolean>} - True if logo is available
    */
   const hasTeamLogo = async (teamName) => {
-    const logoUrl = await getTeamLogoUrl(teamName)
-    return logoUrl !== null
+    const resolution = await getClubLogoResolution(teamName)
+    return Boolean(
+      resolution && ['exact', 'confident'].includes(resolution.status) && resolution.logoUrl
+    )
   }
 
   /**
@@ -200,6 +250,7 @@ export function useTeamLogosBackend(options = {}) {
    */
   const clearCache = () => {
     matchCache.clear()
+    resolutionCache.clear()
     logoCache.clear()
   }
 
@@ -210,8 +261,9 @@ export function useTeamLogosBackend(options = {}) {
   const getCacheStats = () => {
     return {
       matchCacheSize: matchCache.size,
+      resolutionCacheSize: resolutionCache.size,
       logoCacheSize: logoCache.size,
-      totalCacheSize: matchCache.size + logoCache.size,
+      totalCacheSize: matchCache.size + resolutionCache.size + logoCache.size,
     }
   }
 
@@ -232,6 +284,7 @@ export function useTeamLogosBackend(options = {}) {
 
     // Methods
     getTeamMatches,
+    getClubLogoResolution,
     getBestTeamMatch,
     getTeamId,
     getTeamLogoUrl,
