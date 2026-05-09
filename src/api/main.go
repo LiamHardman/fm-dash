@@ -247,6 +247,9 @@ func main() {
 	// API endpoint for resolving a club name to logo display metadata
 	mux.Handle("/api/club-logo/resolve", wrapHandler(http.HandlerFunc(clubLogoResolveHandler), "club-logo-resolve"))
 
+	// API endpoint for managing user-confirmed/rejected club logo overrides
+	mux.Handle("/api/club-logo/overrides", wrapHandler(http.HandlerFunc(clubLogoOverridesHandler), "club-logo-overrides"))
+
 	// API endpoint for cache operations (nation ratings, etc.)
 	mux.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
 

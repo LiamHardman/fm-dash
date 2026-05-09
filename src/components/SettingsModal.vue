@@ -287,6 +287,26 @@
                                         </q-card-section>
                                     </q-card>
 
+                                    <!-- Logo Corrections Toggle -->
+                                    <q-card flat bordered class="option-card">
+                                        <q-card-section class="option-content">
+                                            <div class="option-header">
+                                                <div class="option-info">
+                                                    <q-icon name="rate_review" size="1.5rem" class="option-icon" />
+                                                    <div class="option-text">
+                                                        <div class="option-title">Logo Correction Buttons</div>
+                                                        <div class="option-description">Show tick/cross buttons next to club logos to confirm or reject automatic matches. Saved corrections are used for all future lookups.</div>
+                                                    </div>
+                                                </div>
+                                                <q-toggle
+                                                    v-model="showLogoCorrections"
+                                                    color="primary"
+                                                    size="lg"
+                                                />
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+
                                     <!-- Attribute Masks Toggle -->
                                     <q-card flat bordered class="option-card">
                                         <q-card-section class="option-content">
@@ -457,6 +477,11 @@ export default defineComponent({
       set: (value) => uiStore.setLogosDisplay(value),
     })
 
+    const showLogoCorrections = computed({
+      get: () => uiStore.showLogoCorrections,
+      set: (value) => uiStore.setLogoCorrections(value),
+    })
+
     const showAttributeMasks = computed({
       get: () => uiStore.showAttributeMasks,
       set: (_value) => uiStore.toggleAttributeMasks(),
@@ -562,6 +587,7 @@ export default defineComponent({
       setRatingMethod,
       showFaces,
       showLogos,
+      showLogoCorrections,
       showAttributeMasks,
       showCA,
       isLoading,

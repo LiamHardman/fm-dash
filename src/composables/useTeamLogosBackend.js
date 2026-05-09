@@ -246,6 +246,51 @@ export function useTeamLogosBackend(options = {}) {
   }
 
   /**
+   * Submit a logo override for a club name.
+   * @param {string} teamName - The raw club name as seen in the FM export
+   * @param {string|null} teamId - The confirmed team ID, or null/empty to reject any logo for this name
+   */
+  const submitLogoOverride = async (teamName, teamId) => {
+    if (!teamName) return
+
+    try {
+      await fetch('/api/club-logo/overrides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: teamName, teamId: teamId ?? '' }),
+      })
+
+      // Invalidate cached resolution and logo URL for this name so the next
+      // call re-fetches with the new override applied
+      const lower = teamName.toLowerCase()
+      resolutionCache.delete(`resolution_${lower}`)
+      logoCache.delete(`logo_${lower}`)
+    } catch (error) {
+      lastError.value = error.message
+    }
+  }
+
+  /**
+   * Remove a previously-saved override so normal matching resumes.
+   * @param {string} teamName - The raw club name to clear
+   */
+  const deleteLogoOverride = async (teamName) => {
+    if (!teamName) return
+
+    try {
+      await fetch(`/api/club-logo/overrides?name=${encodeURIComponent(teamName)}`, {
+        method: 'DELETE',
+      })
+
+      const lower = teamName.toLowerCase()
+      resolutionCache.delete(`resolution_${lower}`)
+      logoCache.delete(`logo_${lower}`)
+    } catch (error) {
+      lastError.value = error.message
+    }
+  }
+
+  /**
    * Clear all caches
    */
   const clearCache = () => {
@@ -293,6 +338,8 @@ export function useTeamLogosBackend(options = {}) {
     hasTeamLogo,
     clearCache,
     preloadTeamMatches,
+    submitLogoOverride,
+    deleteLogoOverride,
 
     // Utilities
     getCacheStats,

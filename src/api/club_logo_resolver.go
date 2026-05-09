@@ -96,6 +96,23 @@ func resolveClubLogo(query string) ClubLogoResolution {
 		}
 	}
 
+	// User overrides take priority over everything
+	if teamID, isRejection, found := getLogoOverride(query); found {
+		if isRejection {
+			return ClubLogoResolution{
+				Status: clubLogoStatusUnmatched,
+				Query:  query,
+				Reason: "user-rejected",
+			}
+		}
+		if candidate, ok := clubLogoCandidateForID(teamID, 1.0); ok {
+			if !candidate.LogoAvailable {
+				return resolutionFromCandidate(query, clubLogoStatusMissingLogo, "user override but logo unavailable", candidate, nil)
+			}
+			return resolutionFromCandidate(query, clubLogoStatusExact, "user override", candidate, nil)
+		}
+	}
+
 	if aliasID, ok := clubLogoAliases[normalizeLogoAlias(query)]; ok {
 		if candidate, ok := clubLogoCandidateForID(aliasID, 1.0); ok {
 			if !candidate.LogoAvailable {

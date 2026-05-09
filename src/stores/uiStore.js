@@ -16,6 +16,7 @@ export const useUiStore = defineStore('ui', () => {
   const showFaces = ref(true) // Default to showing faces
   const showLogos = ref(true) // Default to showing logos
   const showAttributeMasks = ref(true) // Default to showing attribute masks
+  const showLogoCorrections = ref(true) // Default to showing logo correction buttons
   const showCA = ref(false) // Default to hiding Current Ability (CA) column
 
   // Tutorial state
@@ -106,6 +107,29 @@ export const useUiStore = defineStore('ui', () => {
     showLogos.value = showLogosEnabled
     try {
       localStorage.setItem('showLogos', showLogosEnabled ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
+  function toggleLogoCorrections() {
+    showLogoCorrections.value = !showLogoCorrections.value
+    try {
+      localStorage.setItem('showLogoCorrections', showLogoCorrections.value ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
+  function setLogoCorrections(enabled) {
+    showLogoCorrections.value = enabled
+    try {
+      localStorage.setItem('showLogoCorrections', enabled ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
+  function initLogoCorrections() {
+    try {
+      const storedPreference = localStorage.getItem('showLogoCorrections')
+      if (storedPreference !== null) {
+        showLogoCorrections.value = storedPreference === 'true'
+      }
     } catch (_e) {}
   }
 
@@ -228,6 +252,7 @@ export const useUiStore = defineStore('ui', () => {
     initStatSummaryOverall()
     initFacesDisplay()
     initLogosDisplay()
+    initLogoCorrections()
     initAttributeMasksDisplay()
     initCADisplay()
   }
@@ -261,6 +286,10 @@ export const useUiStore = defineStore('ui', () => {
     toggleLogos,
     setLogosDisplay,
     initLogosDisplay,
+    showLogoCorrections,
+    toggleLogoCorrections,
+    setLogoCorrections,
+    initLogoCorrections,
     showAttributeMasks,
     toggleAttributeMasks,
     initAttributeMasksDisplay,

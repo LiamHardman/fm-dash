@@ -3371,6 +3371,63 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// clubLogoOverridesHandler manages user-confirmed and user-rejected club logo overrides.
+// GET  /api/club-logo/overrides          → returns the full overrides map
+// POST /api/club-logo/overrides          → body {"name":"LOSC","teamId":"858"} confirms; {"name":"LOSC","teamId":""} rejects
+// DELETE /api/club-logo/overrides?name=X → removes an override
+func clubLogoOverridesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	setCORSHeaders(w, r)
+
+	switch r.Method {
+	case http.MethodGet:
+		overrides := ListLogoOverrides()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		if err := json.NewEncoder(w).Encode(overrides); err != nil {
+			logError(ctx, "Error encoding overrides", "error", err)
+		}
+
+	case http.MethodPost:
+		var body struct {
+			Name   string `json:"name"`
+			TeamID string `json:"teamId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
+			http.Error(w, "invalid body: name is required", http.StatusBadRequest)
+			return
+		}
+		if err := SetLogoOverride(body.Name, body.TeamID); err != nil {
+			logError(ctx, "Error saving logo override", "error", err)
+			http.Error(w, "failed to save override", http.StatusInternalServerError)
+			return
+		}
+		logDebug(ctx, "Logo override saved", "name", body.Name, "teamId", body.TeamID)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+
+	case http.MethodDelete:
+		name := r.URL.Query().Get("name")
+		if name == "" {
+			http.Error(w, "name query parameter is required", http.StatusBadRequest)
+			return
+		}
+		if err := DeleteLogoOverride(name); err != nil {
+			logError(ctx, "Error deleting logo override", "error", err)
+			http.Error(w, "failed to delete override", http.StatusInternalServerError)
+			return
+		}
+		logDebug(ctx, "Logo override deleted", "name", name)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 // deepCopyPlayers creates a deep copy of the players slice including all nested maps
 func deepCopyPlayers(players []Player) []Player {
 	if players == nil {

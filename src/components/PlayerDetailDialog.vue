@@ -96,7 +96,8 @@
                         <!-- Simple Tab Content - Player Cards -->
                         <div v-if="activeTab === 'simple'" class="simple-view">
                             <div class="player-card-container">
-                                <PlayerCards 
+                                <PlayerCards
+                                    :key="`card-${logoKey}`"
                                     :player="cardDisplayPlayer"
                                     :currency-symbol="currencySymbol"
                                     :dataset-id="datasetId"
@@ -104,6 +105,127 @@
                                     :position-override="cardDisplayPlayer?.totsDisplayPosition"
                                     class="player-detail-card"
                                 />
+
+                                <!-- Logo correction UI shown below the card -->
+                                <div
+                                    v-if="showLogoCorrections && shouldShowTeamLogo && player.club && player.club !== '-'"
+                                    class="logo-correction-area"
+                                >
+                                    <!-- Confirmed state -->
+                                    <template v-if="logoOverrideState === 'confirmed'">
+                                        <div class="logo-correction-row">
+                                            <q-icon name="check_circle" color="positive" size="16px" />
+                                            <span class="logo-correction-label">Logo confirmed for {{ player.club }}</span>
+                                        </div>
+                                    </template>
+
+                                    <!-- Alternatives picker (shown after rejection) -->
+                                    <template v-else-if="showingAlternatives">
+                                        <div class="logo-correction-row">
+                                            <q-icon name="cancel" color="negative" size="14px" />
+                                            <span class="logo-correction-label">Logo rejected.</span>
+                                        </div>
+                                        <!-- Automatic alternatives -->
+                                        <div v-if="logoAlternatives.length > 0" class="logo-alternatives">
+                                            <span class="logo-correction-label">Is it one of these?</span>
+                                            <div
+                                                v-for="alt in logoAlternatives"
+                                                :key="alt.id"
+                                                class="logo-alternative-row"
+                                            >
+                                                <img
+                                                    v-if="alt.logoUrl"
+                                                    :src="alt.logoUrl"
+                                                    :alt="alt.name"
+                                                    width="24"
+                                                    height="24"
+                                                    class="logo-alt-img"
+                                                />
+                                                <span class="logo-correction-label">{{ alt.name }}</span>
+                                                <q-btn
+                                                    flat dense round size="xs"
+                                                    icon="check" color="positive"
+                                                    :disable="isSubmittingLogoOverride"
+                                                    @click.stop="confirmLogo(alt.id)"
+                                                >
+                                                    <q-tooltip>Use {{ alt.name }} for {{ player.club }}</q-tooltip>
+                                                </q-btn>
+                                            </div>
+                                        </div>
+
+                                        <!-- Manual search -->
+                                        <div class="logo-search-area">
+                                            <span class="logo-correction-label">Search by team name:</span>
+                                            <div class="logo-search-row">
+                                                <q-input
+                                                    v-model="logoSearchQuery"
+                                                    dense outlined
+                                                    placeholder="e.g. Lille"
+                                                    class="logo-search-input"
+                                                    @keyup.enter="searchLogoAlternatives"
+                                                />
+                                                <q-btn
+                                                    flat dense round size="sm"
+                                                    icon="search"
+                                                    :loading="isSearchingLogo"
+                                                    @click.stop="searchLogoAlternatives"
+                                                />
+                                            </div>
+                                            <div v-if="logoSearchResults.length > 0" class="logo-alternatives">
+                                                <div
+                                                    v-for="result in logoSearchResults"
+                                                    :key="result.id"
+                                                    class="logo-alternative-row"
+                                                >
+                                                    <img
+                                                        :src="result.logoUrl"
+                                                        :alt="result.name"
+                                                        width="24"
+                                                        height="24"
+                                                        class="logo-alt-img"
+                                                        @error="$event.target.style.display='none'"
+                                                    />
+                                                    <span class="logo-correction-label">{{ result.name }}</span>
+                                                    <q-btn
+                                                        flat dense round size="xs"
+                                                        icon="check" color="positive"
+                                                        :disable="isSubmittingLogoOverride"
+                                                        @click.stop="confirmLogo(result.id)"
+                                                    >
+                                                        <q-tooltip>Use {{ result.name }} for {{ player.club }}</q-tooltip>
+                                                    </q-btn>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="logo-correction-row">
+                                            <q-btn flat dense size="xs" label="Skip" color="grey" @click.stop="showingAlternatives = false" />
+                                        </div>
+                                    </template>
+
+                                    <!-- Default: ask user to confirm or reject current match -->
+                                    <template v-else-if="logoResolution?.teamId">
+                                        <div class="logo-correction-row">
+                                            <span class="logo-correction-label">Correct logo for {{ player.club }}?</span>
+                                            <q-btn
+                                                flat dense round size="sm"
+                                                icon="check" color="positive"
+                                                :disable="isSubmittingLogoOverride"
+                                                @click.stop="confirmLogo()"
+                                            >
+                                                <q-tooltip>Yes, this logo is correct</q-tooltip>
+                                            </q-btn>
+                                            <q-btn
+                                                flat dense round size="sm"
+                                                icon="close" color="negative"
+                                                :disable="isSubmittingLogoOverride"
+                                                @click.stop="rejectLogo"
+                                            >
+                                                <q-tooltip>No, this logo is wrong</q-tooltip>
+                                            </q-btn>
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
                             
                             <!-- Pros/Cons Component -->
@@ -354,7 +476,8 @@
                                                 <div class="q-mt-sm club-logo-container" v-if="player.club && player.club !== '-'">
                                                     <Suspense v-if="shouldShowTeamLogo">
                                                         <template #default>
-                                                            <TeamLogo 
+                                                            <TeamLogo
+                                                                :key="`sidebar-logo-${logoKey}`"
                                                                 :team-name="player.club"
                                                                 :size="32"
                                                                 class="player-club-logo"
@@ -362,8 +485,8 @@
                                                         </template>
                                                         <template #fallback>
                                                             <div class="club-logo-placeholder">
-                                                                <q-skeleton 
-                                                                    type="circle" 
+                                                                <q-skeleton
+                                                                    type="circle"
                                                                     size="32px"
                                                                     class="club-logo-skeleton"
                                                                 />
@@ -371,12 +494,13 @@
                                                         </template>
                                                     </Suspense>
                                                     <div v-else class="club-logo-placeholder">
-                                                        <q-skeleton 
-                                                            type="circle" 
+                                                        <q-skeleton
+                                                            type="circle"
                                                             size="32px"
                                                             class="club-logo-skeleton"
                                                         />
                                                     </div>
+
                                                 </div>
                                             </div>
                                             
@@ -1440,6 +1564,118 @@ export default defineComponent({
     // Face image handling
     const faceImageLoadError = ref(false)
     const shouldShowTeamLogo = ref(false)
+
+    // Logo correction state
+    const logoResolution = ref(null)
+    const logoOverrideState = ref(null) // null | 'confirmed' | 'rejected'
+    const isSubmittingLogoOverride = ref(false)
+    const showLogoCorrections = computed(() => uiStore.showLogoCorrections)
+
+    let _logoComposable = null
+    const getLogoComposable = async () => {
+      if (!_logoComposable) {
+        const { useTeamLogosBackend } = await import('../composables/useTeamLogosBackend')
+        _logoComposable = useTeamLogosBackend({ cacheTimeout: 3600000 })
+      }
+      return _logoComposable
+    }
+
+    watch(
+      () => [props.show, props.player?.club],
+      async ([isShowing, club]) => {
+        if (!isShowing || !club || club === '-') {
+          logoResolution.value = null
+          logoOverrideState.value = null
+          showingAlternatives.value = false
+          logoSearchQuery.value = ''
+          logoSearchResults.value = []
+          return
+        }
+        try {
+          const composable = await getLogoComposable()
+          const resolution = await composable.getClubLogoResolution(club)
+          logoResolution.value = resolution
+          if (resolution?.reason === 'user override') {
+            logoOverrideState.value = 'confirmed'
+          } else if (resolution?.reason === 'user-rejected') {
+            logoOverrideState.value = 'rejected'
+          } else {
+            logoOverrideState.value = null
+          }
+        } catch (_e) {
+          logoResolution.value = null
+        }
+      },
+      { immediate: true }
+    )
+
+    // After rejection, show alternatives from the resolution so the user can pick the right one
+    const showingAlternatives = ref(false)
+
+    // Incremented after a confirmation to force TeamLogo / PlayerCards to remount and re-fetch
+    const logoKey = ref(0)
+
+    const confirmLogo = async (teamId) => {
+      const club = props.player?.club
+      const resolvedTeamId = teamId ?? logoResolution.value?.teamId
+      if (!club || !resolvedTeamId || isSubmittingLogoOverride.value) return
+      isSubmittingLogoOverride.value = true
+      try {
+        const composable = await getLogoComposable()
+        await composable.submitLogoOverride(club, resolvedTeamId)
+        logoOverrideState.value = 'confirmed'
+        showingAlternatives.value = false
+        logoKey.value++ // trigger remount so the card picks up the new logo immediately
+      } finally {
+        isSubmittingLogoOverride.value = false
+      }
+    }
+
+    const rejectLogo = async () => {
+      const club = props.player?.club
+      if (!club || isSubmittingLogoOverride.value) return
+      isSubmittingLogoOverride.value = true
+      try {
+        const composable = await getLogoComposable()
+        await composable.submitLogoOverride(club, '')
+        logoOverrideState.value = 'rejected'
+        // Switch to alternatives view so the user can pick the correct logo
+        showingAlternatives.value = true
+      } finally {
+        isSubmittingLogoOverride.value = false
+      }
+    }
+
+    // Alternatives are the resolution candidates excluding the one just rejected
+    const logoAlternatives = computed(() => {
+      const alts = logoResolution.value?.alternatives ?? []
+      const rejectedId = logoResolution.value?.teamId
+      return alts.filter((a) => a.id !== rejectedId && a.logoAvailable)
+    })
+
+    // Manual search for when automatic alternatives are all wrong
+    const logoSearchQuery = ref('')
+    const logoSearchResults = ref([])
+    const isSearchingLogo = ref(false)
+
+    const searchLogoAlternatives = async () => {
+      if (!logoSearchQuery.value.trim()) return
+      isSearchingLogo.value = true
+      logoSearchResults.value = []
+      try {
+        const composable = await getLogoComposable()
+        const matches = await composable.getTeamMatches(logoSearchQuery.value)
+        logoSearchResults.value = matches.slice(0, 6).map((m) => ({
+          id: m.id,
+          name: m.name,
+          logoUrl: `/api/logos?size=32&teamId=${encodeURIComponent(m.id)}`,
+        }))
+      } catch (_e) {
+        logoSearchResults.value = []
+      } finally {
+        isSearchingLogo.value = false
+      }
+    }
 
     const handleFlagError = () => {
       flagLoadError.value = true
@@ -2877,6 +3113,19 @@ export default defineComponent({
       showFaces: computed(() => uiStore.showFaces),
       getDisplayAttribute,
       shouldShowTeamLogo,
+      showLogoCorrections,
+      logoResolution,
+      logoOverrideState,
+      isSubmittingLogoOverride,
+      logoKey,
+      showingAlternatives,
+      logoAlternatives,
+      logoSearchQuery,
+      logoSearchResults,
+      isSearchingLogo,
+      searchLogoAlternatives,
+      confirmLogo,
+      rejectLogo,
 
       // Attribute order arrays for loading placeholders
       technicalAttrsOrdered,
@@ -4264,8 +4513,8 @@ $breakpoint-xs-max: 599px !default;
 .simple-view {
     .player-card-container {
         display: flex;
-        justify-content: center;
-        align-items: flex-start;
+        flex-direction: column;
+        align-items: center;
         padding: 16px;
         margin-bottom: 16px; // ensure space below the card
         
@@ -4322,6 +4571,71 @@ $breakpoint-xs-max: 599px !default;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.logo-correction-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.logo-correction-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.logo-alternatives {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.logo-alternative-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.logo-alt-img {
+    border-radius: 2px;
+    object-fit: contain;
+}
+
+.logo-search-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.logo-search-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.logo-search-input {
+    width: 140px;
+    font-size: 0.75rem;
+}
+
+.logo-correction-label {
+    font-size: 0.7rem;
+    opacity: 0.85;
 }
 
 .club-logo-placeholder {

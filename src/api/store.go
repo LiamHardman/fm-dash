@@ -31,10 +31,12 @@ var storeMutex sync.RWMutex
 // Set via environment variable: DISABLE_IN_MEMORY_DATASET_CACHE=true
 var disableInMemoryDatasetCache = strings.ToLower(os.Getenv("DISABLE_IN_MEMORY_DATASET_CACHE")) == "true"
 
-// InitStore initializes the global storage instance
+// InitStore initializes the global storage instance and shared config storage.
 func InitStore() {
 	ctx := context.Background()
 	storage = InitializeStorage(ctx)
+	InitConfigStorage()
+	LoadOverridesFromStorage()
 }
 
 // StoreDataset stores player data using the storage interface

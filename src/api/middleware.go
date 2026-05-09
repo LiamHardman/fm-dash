@@ -246,9 +246,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		// Record API operation metrics
 		RecordAPIOperation(ctx, r.Method, r.URL.Path, wrapped.statusCode, duration)
 
-		// Legacy log for backward compatibility (only for non-200 responses)
-		if wrapped.statusCode != http.StatusOK {
-			logWarn(ctx, "HTTP request completed with non-200 status",
+		// Legacy log for backward compatibility (only for error responses)
+		if wrapped.statusCode >= 400 {
+			logWarn(ctx, "HTTP request completed with error status",
 				"method", r.Method,
 				"path", sanitizeForLogging(r.URL.Path),
 				"status", wrapped.statusCode,
