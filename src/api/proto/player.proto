@@ -74,6 +74,9 @@ message Player {
   map<string, int32> numeric_attributes = 41;
   map<string, double> performance_stats_numeric = 42;
   map<string, PerformancePercentileMap> performance_percentiles = 43;
+
+  // Country/region the club is based in (from FM "Based In" column)
+  string based_in = 44;
 }
 
 message PerformancePercentileMap {

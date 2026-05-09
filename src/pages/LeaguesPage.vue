@@ -139,10 +139,10 @@
                                 v-for="league in displayedLeagues"
                                 :key="league.name"
                                 class="league-row"
-                                @click="selectLeague(league.name)"
+                                @click="selectLeague(league)"
                             >
                                 <div class="league-info">
-                                    <div class="league-name">{{ league.name }}</div>
+                                    <div class="league-name">{{ league.name }}{{ league.country ? ` (${league.country})` : '' }}</div>
                                     <div class="team-count">{{ league.teamCount }} teams</div>
                                     <div class="player-count">{{ league.playerCount }} players</div>
                                 </div>
@@ -345,6 +345,8 @@ export default {
     const { positionGroups } = usePlayerUtils()
 
     const selectedLeagueName = ref(null)
+    const leagueByDisplayName = ref(new Map())
+    const selectedLeagueRaw = computed(() => leagueByDisplayName.value.get(selectedLeagueName.value) || null)
     const leagueOptions = ref([])
     const allLeagueNamesCache = ref([])
     const allLeaguesData = ref([])
@@ -687,7 +689,7 @@ export default {
     }
 
     const teamOfSeasonLineup = computed(() => {
-      const selectedLeague = selectedLeagueName.value
+      const selectedLeague = selectedLeagueRaw.value?.name || selectedLeagueName.value
       const players = Array.isArray(leagueTeams.value)
         ? leagueTeams.value.flatMap((team) => (Array.isArray(team.players) ? team.players : []))
         : []
@@ -793,10 +795,14 @@ export default {
       }
     }
 
-    const fetchTeamsForLeague = async (datasetId, leagueName) => {
+    const fetchTeamsForLeague = async (datasetId, leagueName, country = '') => {
       loadingLeague.value = true
       try {
-        const response = await fetch(`/api/teams/${datasetId}/${encodeURIComponent(leagueName)}`)
+        let url = `/api/teams/${datasetId}/${encodeURIComponent(leagueName)}`
+        if (country) {
+          url += `?country=${encodeURIComponent(country)}`
+        }
+        const response = await fetch(url)
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
@@ -846,11 +852,19 @@ export default {
       if (!allLeaguesData.value || allLeaguesData.value.length === 0) {
         allLeagueNamesCache.value = []
         leagueOptions.value = []
+        leagueByDisplayName.value = new Map()
         return
       }
-      const leagueNames = allLeaguesData.value.map((league) => league.name).sort()
-      allLeagueNamesCache.value = leagueNames
-      leagueOptions.value = leagueNames
+      const lookup = new Map()
+      const labels = allLeaguesData.value.map((league) => {
+        const label = league.country ? `${league.name} (${league.country})` : league.name
+        lookup.set(label, league)
+        return label
+      })
+      labels.sort()
+      leagueByDisplayName.value = lookup
+      allLeagueNamesCache.value = labels
+      leagueOptions.value = labels
     }
 
     const filterLeagueOptions = (val, update) => {
@@ -868,8 +882,9 @@ export default {
       })
     }
 
-    const selectLeague = (leagueName) => {
-      selectedLeagueName.value = leagueName
+    const selectLeague = (league) => {
+      const label = league.country ? `${league.name} (${league.country})` : league.name
+      selectedLeagueName.value = label
       loadLeagueTeams()
     }
 
@@ -881,7 +896,10 @@ export default {
 
       const datasetId = currentDatasetId.value || sessionStorage.getItem('currentDatasetId')
       if (datasetId) {
-        await fetchTeamsForLeague(datasetId, selectedLeagueName.value)
+        const raw = selectedLeagueRaw.value
+        const name = raw?.name || selectedLeagueName.value
+        const country = raw?.country || ''
+        await fetchTeamsForLeague(datasetId, name, country)
       }
     }
 
@@ -1025,6 +1043,7 @@ export default {
     return {
       allLeaguesData,
       selectedLeagueName,
+      selectedLeagueRaw,
       leagueOptions,
       filterLeagueOptions,
       loadLeagueTeams,

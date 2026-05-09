@@ -18,6 +18,7 @@ type Player struct {
 	Age                     string                        `json:"age"`
 	Club                    string                        `json:"club"`
 	Division                string                        `json:"division"`
+	BasedIn                 string                        `json:"basedIn,omitempty"`
 	TransferValue           string                        `json:"transfer_value"`
 	Wage                    string                        `json:"wage"`
 	Personality             string                        `json:"personality,omitempty"`

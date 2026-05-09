@@ -296,36 +296,70 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 	ctx, span := StartSpan(ctx, "async.process_leagues")
 	defer span.End()
 
-	divisionMap := make(map[string][]Player)
+	// First pass: detect division names that appear with multiple distinct countries.
+	// These are "ambiguous" leagues (e.g. two "Premier League"s in different countries)
+	// and need a country suffix to disambiguate them.
+	divisionCountries := make(map[string]map[string]bool)
 	for i := range players {
-		division := players[i].Division
-		if division == "" {
-			division = "Unknown"
+		div := players[i].Division
+		if div == "" {
+			continue
 		}
-		divisionMap[division] = append(divisionMap[division], players[i])
+		if divisionCountries[div] == nil {
+			divisionCountries[div] = make(map[string]bool)
+		}
+		if players[i].BasedIn != "" {
+			divisionCountries[div][players[i].BasedIn] = true
+		}
+	}
+	ambiguous := make(map[string]bool)
+	for div, countries := range divisionCountries {
+		if len(countries) > 1 {
+			ambiguous[div] = true
+		}
 	}
 
-	SetSpanAttributes(ctx, attribute.Int("divisions.count", len(divisionMap)))
+	// Second pass: group players by (division, country) key.
+	// For unambiguous divisions, country is always "".
+	type divisionKey struct {
+		name    string
+		country string
+	}
+	divMap := make(map[divisionKey][]Player)
+	for i := range players {
+		div := players[i].Division
+		if div == "" {
+			continue
+		}
+		country := ""
+		if ambiguous[div] {
+			country = players[i].BasedIn
+		}
+		key := divisionKey{name: div, country: country}
+		divMap[key] = append(divMap[key], players[i])
+	}
+
+	SetSpanAttributes(ctx, attribute.Int("divisions.count", len(divMap)))
 
 	type leagueResult struct {
 		league League
 		err    error
 	}
 
-	resultCh := make(chan leagueResult, len(divisionMap))
+	resultCh := make(chan leagueResult, len(divMap))
 	var wg sync.WaitGroup
 
-	for divisionName, divisionPlayers := range divisionMap {
+	for key, divisionPlayers := range divMap {
 		wg.Add(1)
-		go func(name string, playerList []Player) {
+		go func(k divisionKey, playerList []Player) {
 			defer wg.Done()
 
 			p.semaphore <- struct{}{}
 			defer func() { <-p.semaphore }()
 
-			league := p.processLeagueSync(name, playerList)
+			league := p.processLeagueSync(k.name, k.country, playerList)
 			resultCh <- leagueResult{league: league}
-		}(divisionName, divisionPlayers)
+		}(key, divisionPlayers)
 	}
 
 	go func() {
@@ -341,7 +375,6 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 	}
 
 	// Sort leagues by overall rating
-	// (sorting logic same as original)
 	for i := 0; i < len(leagues)-1; i++ {
 		for j := i + 1; j < len(leagues); j++ {
 			if leagues[i].BestOverall < leagues[j].BestOverall {
@@ -354,9 +387,10 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 }
 
 // processLeagueSync processes a single league synchronously
-func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divisionPlayers []Player) League {
+func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName, country string, divisionPlayers []Player) League {
 	league := League{
 		Name:        divisionName,
+		Country:     country,
 		PlayerCount: len(divisionPlayers),
 	}
 

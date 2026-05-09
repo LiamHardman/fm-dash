@@ -143,6 +143,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		case "Division":
 			player.Division = cellValue
 			isAnAttributeField = false
+		case "Based in":
+			player.BasedIn = cellValue
+			isAnAttributeField = false
 		case "Transfer Value":
 			originalDisplay, numericValue, _ := ParseMonetaryValueGo(cellValue)
 			player.TransferValue = originalDisplay

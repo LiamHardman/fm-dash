@@ -130,8 +130,10 @@ type Player struct {
 	NumericAttributes       map[string]int32                     `protobuf:"bytes,41,rep,name=numeric_attributes,json=numericAttributes,proto3" json:"numeric_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	PerformanceStatsNumeric map[string]float64                   `protobuf:"bytes,42,rep,name=performance_stats_numeric,json=performanceStatsNumeric,proto3" json:"performance_stats_numeric,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	PerformancePercentiles  map[string]*PerformancePercentileMap `protobuf:"bytes,43,rep,name=performance_percentiles,json=performancePercentiles,proto3" json:"performance_percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Country/region the club is based in (from FM "Based In" column)
+	BasedIn       string `protobuf:"bytes,44,opt,name=based_in,json=basedIn,proto3" json:"based_in,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
@@ -465,6 +467,13 @@ func (x *Player) GetPerformancePercentiles() map[string]*PerformancePercentileMa
 	return nil
 }
 
+func (x *Player) GetBasedIn() string {
+	if x != nil {
+		return x.BasedIn
+	}
+	return ""
+}
+
 type PerformancePercentileMap struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Percentiles   map[string]float64     `protobuf:"bytes,1,rep,name=percentiles,proto3" json:"percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
@@ -577,7 +586,7 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\x90\x0f\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\xab\x0f\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -626,7 +635,8 @@ const file_proto_player_proto_rawDesc = "" +
 	"attributes\x12T\n" +
 	"\x12numeric_attributes\x18) \x03(\v2%.player.Player.NumericAttributesEntryR\x11numericAttributes\x12g\n" +
 	"\x19performance_stats_numeric\x18* \x03(\v2+.player.Player.PerformanceStatsNumericEntryR\x17performanceStatsNumeric\x12c\n" +
-	"\x17performance_percentiles\x18+ \x03(\v2*.player.Player.PerformancePercentilesEntryR\x16performancePercentiles\x1aF\n" +
+	"\x17performance_percentiles\x18+ \x03(\v2*.player.Player.PerformancePercentilesEntryR\x16performancePercentiles\x12\x19\n" +
+	"\bbased_in\x18, \x01(\tR\abasedIn\x1aF\n" +
 	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +

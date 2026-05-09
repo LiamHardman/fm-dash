@@ -384,6 +384,7 @@ var csvHeaderNormalize = map[string]string{
 	"Nation":         "Nat",
 	"League":         "Division",
 	"Competition":    "Division",
+	"Based In":       "Based in",
 	"Rating":         "Av Rat",
 	"Average Rating": "Av Rat",
 	"Appearances":    "Apps",

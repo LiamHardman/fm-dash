@@ -208,6 +208,7 @@ func logError(ctx context.Context, msg string, args ...any) {
 // League represents a division/league with its teams
 type League struct {
 	Name        string `json:"name"`
+	Country     string `json:"country,omitempty"`
 	TeamCount   int    `json:"teamCount"`
 	PlayerCount int    `json:"playerCount"`
 	BestOverall int    `json:"bestOverall"`
@@ -1310,11 +1311,12 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	datasetID := pathParts[0]
 	division := pathParts[1]
+	country := r.URL.Query().Get("country")
 
 	logInfo(ctx, "Processing teams request", "dataset_id", datasetID, "division", division)
 
 	// Try to get teams data from cache first
-	cacheKey := fmt.Sprintf("teams_%s_%s", datasetID, division)
+	cacheKey := fmt.Sprintf("teams_%s_%s_%s", datasetID, division, country)
 	if cached, found := getFromMemCache(cacheKey); found {
 		if teamsData, ok := cached.([]Team); ok {
 			logInfo(ctx, "Retrieved teams data from memory cache", "dataset_id", datasetID, "division", division)
@@ -1390,7 +1392,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 
 	// Process teams data for the specific division
-	teamsData := processTeamsData(players, division)
+	teamsData := processTeamsData(players, division, country)
 
 	// Cache the result for 5 minutes
 	setInMemCache(cacheKey, teamsData, 5*time.Minute)
@@ -1405,7 +1407,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // processTeamsData returns detailed team data for a specific division
-func processTeamsData(players []Player, division string) []Team {
+func processTeamsData(players []Player, division, country string) []Team {
 	// Pre-allocate division players with estimated capacity
 	estimatedDivisionPlayers := len(players) / 10 // Estimate ~10% of players in any given division
 	if estimatedDivisionPlayers < 50 {
@@ -1413,11 +1415,15 @@ func processTeamsData(players []Player, division string) []Team {
 	}
 	divisionPlayers := make([]Player, 0, estimatedDivisionPlayers)
 
-	// Filter players by division
+	// Filter players by division (and country/BasedIn when the league name is ambiguous)
 	for i := range players {
-		if players[i].Division == division {
-			divisionPlayers = append(divisionPlayers, players[i])
+		if players[i].Division != division {
+			continue
 		}
+		if country != "" && players[i].BasedIn != country {
+			continue
+		}
+		divisionPlayers = append(divisionPlayers, players[i])
 	}
 
 	// Group by team with estimated team count

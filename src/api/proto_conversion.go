@@ -281,7 +281,8 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 			return protoRoleOveralls
 		}(),
 
-		Ca: safeIntToInt32(p.CA),
+		Ca:      safeIntToInt32(p.CA),
+		BasedIn: p.BasedIn,
 	}
 
 	duration := time.Since(start)
@@ -425,6 +426,8 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 			}
 			return roleSpecificOveralls
 		}(),
+
+		BasedIn: protoPlayer.GetBasedIn(),
 	}
 
 	// Use cached CA from protobuf

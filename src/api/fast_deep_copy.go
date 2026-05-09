@@ -91,6 +91,7 @@ func fastDeepCopyPlayer(original *Player) Player {
 		TotalStats:          original.TotalStats,
 		MBR:                 original.MBR,
 		Mbr:                 original.Mbr,
+		BasedIn:             original.BasedIn,
 
 		// Initialize new mutex
 		mu: sync.RWMutex{},
