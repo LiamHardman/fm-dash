@@ -16,13 +16,21 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		panic(err)
 	}
-	defer gz.Close()
+	defer func() {
+		if err := gz.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	data, err := io.ReadAll(gz)
 	if err != nil {

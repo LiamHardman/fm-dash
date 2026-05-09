@@ -346,7 +346,9 @@ export default {
 
     const selectedLeagueName = ref(null)
     const leagueByDisplayName = ref(new Map())
-    const selectedLeagueRaw = computed(() => leagueByDisplayName.value.get(selectedLeagueName.value) || null)
+    const selectedLeagueRaw = computed(
+      () => leagueByDisplayName.value.get(selectedLeagueName.value) || null
+    )
     const leagueOptions = ref([])
     const allLeagueNamesCache = ref([])
     const allLeaguesData = ref([])
