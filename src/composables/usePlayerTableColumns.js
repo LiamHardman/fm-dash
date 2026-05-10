@@ -2,12 +2,10 @@ import { computed } from 'vue'
 
 export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) {
   // Column styles
-  const nameColumnStyle =
-    'width: 200px; min-width: 200px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
+  const nameColumnStyle = 'width: 220px; min-width: 220px; max-width: 220px; overflow: hidden;'
   const ageColumnStyle =
     'width: 60px; min-width: 60px; max-width: 60px; text-align: center; white-space: nowrap;'
-  const positionColumnStyle =
-    'width: 150px; min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
+  const positionColumnStyle = 'width: 150px; min-width: 150px; max-width: 150px; overflow: hidden;'
   const clubColumnStyle =
     'width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
   const moneyColumnStyle =
@@ -97,6 +95,7 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
       sortable: true,
       align: 'center',
       isOverallStat: true,
+      gaugeMax: 200,
       style: overallColumnStyle,
       headerStyle: overallColumnStyle,
     },
@@ -287,6 +286,7 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
       sortable: true,
       align: 'center',
       isFifaStat: true,
+      gaugeMax: 100,
       style: widerFifaStatColumnStyle,
       headerStyle: widerFifaStatColumnStyle,
     },
@@ -295,7 +295,6 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
   const currentColumns = computed(() => {
     const newOrderBase = [
       baseColumnDefinitions.name,
-      baseColumnDefinitions.nationality_display,
       baseColumnDefinitions.age,
       baseColumnDefinitions.position,
       baseColumnDefinitions.club,
@@ -335,12 +334,7 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
           allFifaStatDefinitions.MBR,
         ]
 
-    const trailingColumns = [
-      baseColumnDefinitions.personality,
-      baseColumnDefinitions.media_handling,
-    ]
-
-    return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns]
+    return [...newOrderBase, ...fifaColumnsInOrder]
   })
 
   const getColumnLabel = (fieldName) => {

@@ -1,13 +1,10 @@
 <template>
-  <span v-if="column.isFifaStat || column.isOverallStat" 
-        :class="[
-          column.name === 'TotalStats'
-            ? getTotalStatsRatingClass(displayValue)
-            : getUnifiedRatingClass(displayValue, 100),
-          'attribute-value fifa-stat-value modern-stat-badge'
-        ]">
-    {{ displayValue !== undefined ? displayValue : "-" }}
-  </span>
+  <!-- Circular gauge for all per-stat columns -->
+  <StatGauge
+    v-if="column.isFifaStat || column.isOverallStat"
+    :value="typeof displayValue === 'number' ? displayValue : (displayValue !== undefined && displayValue !== null ? Number(displayValue) : null)"
+    :max="column.gaugeMax || columnMaxValues[column.name] || 100"
+  />
 
   <span v-else-if="column.isValueScore"
         :class="[getValueScoreClass(player.valueScore), 'attribute-value value-score-value modern-stat-badge']">
@@ -24,10 +21,38 @@
       ) }}
   </span>
 
-  <div v-else-if="column.name === 'nationality_display'" 
+  <!-- Name cell: flag inline + personality/media subtitle -->
+  <div v-else-if="column.name === 'name'" class="name-cell">
+    <div class="name-primary">
+      <img
+        v-if="player.nationalityIso"
+        :src="`https://flagcdn.com/w20/${player.nationalityIso.toLowerCase()}.png`"
+        :alt="player.nationality || 'Flag'"
+        width="16"
+        height="11"
+        class="name-flag"
+        @error="onFlagError($event, player)"
+      />
+      <q-icon
+        v-else
+        name="flag"
+        size="14px"
+        class="name-flag-placeholder"
+      />
+      <span class="name-text">{{ player.name || '-' }}</span>
+    </div>
+    <div
+      v-if="player.personality || player.media_handling"
+      class="name-meta"
+    >
+      {{ [player.personality, player.media_handling].filter(Boolean).join(' · ') }}
+    </div>
+  </div>
+
+  <div v-else-if="column.name === 'nationality_display'"
        class="flex items-center no-wrap nationality-cell">
-            <img v-if="player.nationalityIso"
-             :src="`https://flagcdn.com/w20/${player.nationalityIso.toLowerCase()}.png`"
+    <img v-if="player.nationalityIso"
+         :src="`https://flagcdn.com/w20/${player.nationalityIso.toLowerCase()}.png`"
          :alt="player.nationality || 'Flag'"
          width="20"
          height="13"
@@ -41,6 +66,12 @@
     <span class="nationality-text">{{ player.nationality || "-" }}</span>
   </div>
 
+  <!-- Position cell: position text + best role subtitle -->
+  <div v-else-if="column.name === 'position'" class="position-cell">
+    <span class="position-text">{{ player.position || '-' }}</span>
+    <span v-if="player.bestRoleOverall" class="position-role">{{ player.bestRoleOverall }}</span>
+  </div>
+
   <div v-else-if="column.name === 'club'" class="club-cell">
     <span class="club-link"
           @click.stop="$emit('club-click', player)"
@@ -49,6 +80,12 @@
           ? player[column.field]
           : "-" }}
     </span>
+    <span
+      v-if="player.division"
+      class="club-division"
+      @click.stop="$emit('division-click', player.division)"
+      :title="`View ${player.division} league page`"
+    >{{ player.division }}</span>
   </div>
 
   <span v-else>
@@ -61,9 +98,11 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed } from 'vue'
+import StatGauge from './StatGauge.vue'
 
 export default {
   name: 'PlayerTableCell',
+  components: { StatGauge },
   props: {
     player: {
       type: Object,
@@ -101,34 +140,35 @@ export default {
       type: Function,
       required: true,
     },
+    columnMaxValues: {
+      type: Object,
+      default: () => ({}),
+    },
   },
-  emits: ['club-click'],
+  emits: ['club-click', 'division-click'],
   setup() {
     const $q = useQuasar()
-
     const isDark = computed(() => $q.dark.isActive)
-
-    return {
-      isDark,
-    }
+    return { isDark }
   },
 }
 </script>
 
 <style lang="scss" scoped>
 @import './PlayerTableStyles.scss';
+
 .modern-stat-badge {
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-align: center;
-  min-width: 36px;
+  min-width: 34px;
   display: inline-block;
   border: 1px solid transparent;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  
+
   .body--dark & {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
@@ -152,6 +192,67 @@ export default {
   }
 }
 
+/* Name cell */
+.name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.name-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.name-flag {
+  flex-shrink: 0;
+  width: 16px !important;
+  height: 11px !important;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  object-fit: cover;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+  .body--dark & {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.name-flag-placeholder {
+  flex-shrink: 0;
+  width: 16px;
+  color: #9ca3af;
+
+  .body--dark & {
+    color: #6b7280;
+  }
+}
+
+.name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.name-meta {
+  font-size: 0.72rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+
+  .body--dark & {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+/* Legacy nationality cell (kept in case column is still used elsewhere) */
 .nationality-flag {
   border: 1px solid rgba(0, 0, 0, 0.15);
   object-fit: cover;
@@ -174,7 +275,7 @@ export default {
   height: 13px;
   flex-shrink: 0;
   color: #9ca3af;
-  
+
   .body--dark & {
     color: #6b7280;
   }
@@ -183,7 +284,7 @@ export default {
 .nationality-cell {
   width: 100%;
   overflow: hidden;
-  
+
   .nationality-text {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -196,16 +297,16 @@ export default {
 
 .club-cell {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
 .club-cell .club-link {
   cursor: pointer;
   color: inherit;
   text-decoration: none;
-  flex: 1;
-  min-width: 0;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -222,4 +323,55 @@ export default {
 .body--light .club-cell .club-link:hover {
   color: #2E7D32;
 }
-</style> 
+
+/* Position cell */
+.position-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.position-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.position-role {
+  font-size: 0.72rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+
+  .body--dark & {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+.club-division {
+  font-size: 0.72rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  cursor: pointer;
+
+  &:hover {
+    color: #2e74b5;
+    text-decoration: underline;
+  }
+
+  .body--dark & {
+    color: rgba(255, 255, 255, 0.45);
+
+    &:hover {
+      color: #60a5fa;
+    }
+  }
+}
+</style>

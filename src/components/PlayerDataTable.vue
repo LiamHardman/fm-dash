@@ -58,10 +58,9 @@
                     { 'table-sorting': isAsyncSorting }
                 ]"
                 table-header-class="player-table-header"
-                dense
                 virtual-scroll
-                :virtual-scroll-item-size="32"
-                :virtual-scroll-sticky-size-start="40"
+                :virtual-scroll-item-size="68"
+                :virtual-scroll-sticky-size-start="48"
                 :virtual-scroll-sticky-size-end="55"
                 style="height: 100%; min-height: 500px;"
                 separator="horizontal"
@@ -88,9 +87,11 @@
                     :get-money-class="getMoneyClass"
                     :format-display-currency="formatDisplayCurrency"
                     :on-flag-error="onFlagError"
+                    :column-max-values="columnMaxValues"
                     @row-click="onRowClick"
                     @right-click="onRightClick"
                     @club-click="onClubClick"
+                    @division-click="onDivisionClick"
                 />
             </template>
 
@@ -178,7 +179,7 @@ export default {
     const $q = useQuasar()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
-    const _router = useRouter()
+    const router = useRouter()
     const uiStore = useUiStore()
 
     // Reactive CA display preference from settings
@@ -713,7 +714,15 @@ export default {
     const onClubClick = (player) => {
       if (player.club && player.club.trim() !== '') {
         emit('team-selected', player.club)
-      } else {
+      }
+    }
+
+    const onDivisionClick = (division) => {
+      if (division && division.trim() !== '') {
+        router.push({
+          name: 'leagues',
+          query: { league: division, datasetId: currentDatasetId.value },
+        })
       }
     }
 
@@ -830,6 +839,17 @@ export default {
       return `table-${currentDatasetId.value || 'no-dataset'}-${sortField.value || 'Overall'}-${sortDirection.value || 'desc'}-${cacheGeneration.value || 0}`
     })
 
+    // Dynamic max values for gauge columns where the scale is data-relative (e.g. TotalStats)
+    const columnMaxValues = computed(() => {
+      if (!props.players || props.players.length === 0) return {}
+      let maxTotal = 0
+      for (const p of props.players) {
+        const v = p.totalStats
+        if (typeof v === 'number' && v > maxTotal) maxTotal = v
+      }
+      return { TotalStats: maxTotal || 1 }
+    })
+
     return {
       qInstance: $q,
       cacheGeneration,
@@ -871,7 +891,9 @@ export default {
       handleRemoveFromWishlist,
       handlePlayerDetails,
       onRightClick,
+      onDivisionClick,
       tableKey,
+      columnMaxValues,
     }
   },
 }

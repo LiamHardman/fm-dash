@@ -8,7 +8,7 @@
           :props="props"
           :class="[col.classes, 'table-cell-enhanced']"
           :style="col.style">
-      <PlayerTableCell 
+      <PlayerTableCell
         :player="props.row"
         :column="col"
         :display-value="getDisplayValue(props.row, col)"
@@ -18,7 +18,9 @@
         :get-money-class="getMoneyClass"
         :format-display-currency="formatDisplayCurrency"
         :on-flag-error="onFlagError"
+        :column-max-values="columnMaxValues"
         @club-click="$emit('club-click', $event)"
+        @division-click="$emit('division-click', $event)"
       />
     </q-td>
   </q-tr>
@@ -65,8 +67,12 @@ export default {
       type: Function,
       required: true,
     },
+    columnMaxValues: {
+      type: Object,
+      default: () => ({}),
+    },
   },
-  emits: ['row-click', 'right-click', 'club-click'],
+  emits: ['row-click', 'right-click', 'club-click', 'division-click'],
 }
 </script>
 
@@ -106,8 +112,8 @@ export default {
 .table-cell-enhanced {
   color: #334155 !important;
   font-weight: 500;
-  padding: 0.75rem !important;
-  
+  padding: 0.5rem 0.75rem !important;
+
   .body--dark & {
     color: rgba(255, 255, 255, 0.85) !important;
   }
