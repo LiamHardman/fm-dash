@@ -41,7 +41,31 @@ trap cleanup SIGINT SIGTERM
 export USE_PROTOBUF=true
 export MAX_UPLOAD_SIZE=100
 export FORMAT_AWARE_CACHE_ENABLED=true
-export IMAGE_API_URL=https://sortitoutsi.b-cdn.net/uploads
+export S3_BUCKET_NAME=v2fmdash
+
+# --- Extract S3 credentials from Kubernetes ---
+echo "Extracting S3 credentials from Kubernetes secret 'v2fmdash-minio-secret'..."
+if command -v kubectl &>/dev/null; then
+    S3_ENDPOINT=$(kubectl get secret v2fmdash-minio-secret -o jsonpath='{.data.endpoint}'   2>/dev/null | base64 --decode)
+    S3_ACCESS_KEY=$(kubectl get secret v2fmdash-minio-secret -o jsonpath='{.data.access-key}' 2>/dev/null | base64 --decode)
+    S3_SECRET_KEY=$(kubectl get secret v2fmdash-minio-secret -o jsonpath='{.data.secret-key}' 2>/dev/null | base64 --decode)
+    S3_USE_SSL=$(kubectl get secret v2fmdash-minio-secret -o jsonpath='{.data.use-ssl}'     2>/dev/null | base64 --decode)
+    S3_USE_SSL="${S3_USE_SSL:-true}"
+
+    [ -n "$S3_ENDPOINT" ]   && echo "  endpoint:   OK" || echo "  endpoint:   MISSING"
+    [ -n "$S3_ACCESS_KEY" ] && echo "  access-key: OK" || echo "  access-key: MISSING"
+    [ -n "$S3_SECRET_KEY" ] && echo "  secret-key: OK" || echo "  secret-key: MISSING"
+
+    if [ -n "$S3_ENDPOINT" ] && [ -n "$S3_ACCESS_KEY" ] && [ -n "$S3_SECRET_KEY" ]; then
+        export S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY S3_USE_SSL
+        echo "S3 credentials loaded successfully."
+    else
+        echo "Warning: One or more S3 credentials are missing (see above). Images may not load."
+    fi
+else
+    echo "Warning: kubectl not found. S3 credentials not loaded. Images may not load."
+fi
+
 echo "Protobuf serialization: ENABLED"
 echo "Format-aware caching: ENABLED"
 echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line above"

@@ -3111,7 +3111,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	faceFileName := uid + ".png"
 
 	// Try S3 first if configured
-	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
+	if s3Storage := underlyingS3Storage(); s3Storage != nil && s3Storage.client != nil {
 		logDebug(ctx, "Attempting to retrieve face from S3", "filename", sanitizeForLogging(faceFileName))
 
 		// Get face image from S3
@@ -3206,7 +3206,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	logoFileName := teamID + ".png"
 
 	// Try S3 first if configured
-	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
+	if s3Storage := underlyingS3Storage(); s3Storage != nil && s3Storage.client != nil {
 		logDebug(ctx, "Attempting to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName))
 
 		// Get logo image from S3

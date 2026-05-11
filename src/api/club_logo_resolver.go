@@ -247,7 +247,7 @@ func isTeamLogoAvailable(teamID string) bool {
 		return true
 	}
 
-	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
+	if s3Storage := underlyingS3Storage(); s3Storage != nil && s3Storage.client != nil {
 		return true
 	}
 

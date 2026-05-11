@@ -60,6 +60,48 @@ function Stop-DevServers {
     Write-Host "Shutdown complete." -ForegroundColor Green
 }
 
+# --- Extract S3 credentials from Kubernetes ---
+Write-Host "Extracting S3 credentials from Kubernetes secret 'v2fmdash-minio-secret'..."
+$s3Endpoint  = $null
+$s3AccessKey = $null
+$s3SecretKey = $null
+$s3UseSSL    = "true"
+
+if (Get-Command kubectl -ErrorAction SilentlyContinue) {
+    try {
+        function Decode-Base64Secret {
+            param([Parameter(ValueFromPipeline=$true)][string]$encoded)
+            process { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($encoded.Trim())) }
+        }
+        $s3Endpoint  = kubectl get secret v2fmdash-minio-secret -o "jsonpath={.data.endpoint}"   | Decode-Base64Secret
+        $s3AccessKey = kubectl get secret v2fmdash-minio-secret -o "jsonpath={.data.access-key}" | Decode-Base64Secret
+        $s3SecretKey = kubectl get secret v2fmdash-minio-secret -o "jsonpath={.data.secret-key}" | Decode-Base64Secret
+        $s3UseSslRaw = kubectl get secret v2fmdash-minio-secret -o "jsonpath={.data.use-ssl}"    | Decode-Base64Secret
+        if ($s3UseSslRaw) { $s3UseSSL = $s3UseSslRaw }
+
+        Write-Host "  endpoint:   $(if ($s3Endpoint)  { 'OK' } else { 'MISSING' })"
+        Write-Host "  access-key: $(if ($s3AccessKey) { 'OK' } else { 'MISSING' })"
+        Write-Host "  secret-key: $(if ($s3SecretKey) { 'OK' } else { 'MISSING' })"
+
+        if ($s3Endpoint -and $s3AccessKey -and $s3SecretKey) {
+            $env:S3_ENDPOINT    = $s3Endpoint
+            $env:S3_ACCESS_KEY  = $s3AccessKey
+            $env:S3_SECRET_KEY  = $s3SecretKey
+            $env:S3_USE_SSL     = $s3UseSSL
+            $env:S3_BUCKET_NAME = "v2fmdash"
+            Write-Host "S3 credentials loaded successfully." -ForegroundColor Green
+        } else {
+            Write-Warning "One or more S3 credentials are missing (see above). Images may not load."
+        }
+    } catch {
+        Write-Warning "Failed to extract S3 credentials: $($_.Exception.Message). Images may not load."
+    }
+} else {
+    Write-Warning "kubectl not found. S3 credentials not loaded. Images may not load."
+}
+
+Write-Host ""
+
 try {
     # --- Start Frontend ---
     try {
@@ -94,7 +136,11 @@ try {
                 $env:USE_PROTOBUF               = "true"
                 $env:MAX_UPLOAD_SIZE            = "100"
                 $env:FORMAT_AWARE_CACHE_ENABLED = "true"
-                $env:IMAGE_API_URL              = "https://sortitoutsi.b-cdn.net/uploads"
+                $env:S3_ENDPOINT               = $using:s3Endpoint
+                $env:S3_ACCESS_KEY             = $using:s3AccessKey
+                $env:S3_SECRET_KEY             = $using:s3SecretKey
+                $env:S3_USE_SSL                = $using:s3UseSSL
+                $env:S3_BUCKET_NAME            = "v2fmdash"
                 go run . *>&1
             } -ArgumentList $goApiDir, $backendPidFile
 

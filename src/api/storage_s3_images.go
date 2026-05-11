@@ -12,6 +12,20 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+// underlyingS3Storage unwraps ProtobufStorage (and any future wrappers) to find
+// the S3Storage underneath, returning nil if S3 is not the backing store.
+func underlyingS3Storage() *S3Storage {
+	if s3, ok := storage.(*S3Storage); ok {
+		return s3
+	}
+	if proto, ok := storage.(*ProtobufStorage); ok {
+		if s3, ok := proto.backend.(*S3Storage); ok {
+			return s3
+		}
+	}
+	return nil
+}
+
 // getFaceImage retrieves a face image from S3 and writes it to the response writer
 func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.ResponseWriter) error {
 	if s.client == nil {
