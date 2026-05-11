@@ -84,7 +84,7 @@
     "lint-staged": "^16.1.0",
     "rollup-plugin-visualizer": "^6.0.3",
     "sass": "^1.71.1",
-    "semantic-release": "^24.2.7",
+    "semantic-release": "^25.0.3",
     "terser": "^5.43.1",
     "vite": "^7.3.2",
     "vitest": "^3.2.0"
