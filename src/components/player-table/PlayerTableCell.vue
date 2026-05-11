@@ -73,19 +73,27 @@
   </div>
 
   <div v-else-if="column.name === 'club'" class="club-cell">
-    <span class="club-link"
-          @click.stop="$emit('club-click', player)"
-          :title="`View ${player[column.field]} team page`">
-      {{ player[column.field] !== undefined && player[column.field] !== null
-          ? player[column.field]
-          : "-" }}
-    </span>
-    <span
-      v-if="player.division"
-      class="club-division"
-      @click.stop="$emit('division-click', player.division)"
-      :title="`View ${player.division} league page`"
-    >{{ player.division }}</span>
+    <TeamLogo
+      v-if="player[column.field] && player[column.field] !== '-'"
+      :team-name="player[column.field]"
+      :size="28"
+      class="club-logo"
+    />
+    <div class="club-text">
+      <span class="club-link"
+            @click.stop="$emit('club-click', player)"
+            :title="`View ${player[column.field]} team page`">
+        {{ player[column.field] !== undefined && player[column.field] !== null
+            ? player[column.field]
+            : "-" }}
+      </span>
+      <span
+        v-if="player.division"
+        class="club-division"
+        @click.stop="$emit('division-click', player.division)"
+        :title="`View ${player.division} league page`"
+      >{{ player.division }}</span>
+    </div>
   </div>
 
   <span v-else>
@@ -98,11 +106,12 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed } from 'vue'
+import TeamLogo from '../TeamLogo.vue'
 import StatGauge from './StatGauge.vue'
 
 export default {
   name: 'PlayerTableCell',
-  components: { StatGauge },
+  components: { StatGauge, TeamLogo },
   props: {
     player: {
       type: Object,
@@ -297,9 +306,22 @@ export default {
 
 .club-cell {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.club-logo {
+  flex-shrink: 0;
+}
+
+.club-text {
+  display: flex;
   flex-direction: column;
   gap: 1px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .club-cell .club-link {

@@ -4,7 +4,15 @@ import { computed, reactive, ref } from 'vue'
  * Backend-powered composable for team logo handling
  * Uses the Go API for team name to ID matching instead of loading full teams data
  */
+
+// Module-level singleton so all callers share the same cache. This ensures
+// that when submitLogoOverride invalidates a cache entry, the next fetch
+// from any component (e.g. TeamLogo) re-requests from the API.
+let _singleton = null
+
 export function useTeamLogosBackend(options = {}) {
+  if (_singleton) return _singleton
+
   const {
     similarityThreshold = 0.7,
     maxResults: _maxResults = 10,
@@ -343,7 +351,7 @@ export function useTeamLogosBackend(options = {}) {
     await Promise.allSettled(promises)
   }
 
-  return {
+  _singleton = {
     // Data
     isLoading: computed(() => isLoading.value),
     lastError: computed(() => lastError.value),
@@ -366,4 +374,5 @@ export function useTeamLogosBackend(options = {}) {
     // Utilities
     getCacheStats,
   }
+  return _singleton
 }

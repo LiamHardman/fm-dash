@@ -13,11 +13,10 @@
         >
             <span v-if="col.name === 'club' && displayValue(col)" class="club-link">
                 <div class="club-cell">
-                    <TeamLogo 
+                    <TeamLogo
+                        v-if="displayValue(col) && displayValue(col) !== '-'"
                         :team-name="displayValue(col)"
                         :size="18"
-                        class="q-mr-xs"
-                        v-if="displayValue(col) && displayValue(col) !== '-'"
                     />
                     <a
                         href="#"
@@ -44,9 +43,11 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed } from 'vue'
+import TeamLogo from './TeamLogo.vue'
 
 export default {
   name: 'PlayerTableRow',
+  components: { TeamLogo },
   props: {
     player: { type: Object, required: true },
     columns: { type: Array, required: true },
@@ -110,6 +111,12 @@ export default {
 
 .club-link a:hover {
     text-decoration: underline;
+}
+
+.club-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .goalkeeper-row {

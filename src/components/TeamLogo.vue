@@ -42,9 +42,6 @@ import { useQuasar } from 'quasar'
 import { computed, defineComponent, ref, watch } from 'vue'
 import { useUiStore } from '../stores/uiStore'
 
-// Single global composable instance to avoid recreation
-let globalTeamLogos = null
-
 export default defineComponent({
   name: 'TeamLogo',
   props: {
@@ -93,21 +90,13 @@ export default defineComponent({
         return
       }
 
-      // Initialize backend composable if needed
-      if (!globalTeamLogos) {
-        const module = await import('../composables/useTeamLogosBackend')
-        globalTeamLogos = module.useTeamLogosBackend({
-          cacheTimeout: 3600000, // 1 hour cache
-          similarityThreshold: 0.7,
-        })
-      }
-
       // Load with loading state
       isLoadingLogo.value = true
       logoLoadError.value = false
 
       try {
-        const url = await globalTeamLogos.getTeamLogoUrl(teamName)
+        const { useTeamLogosBackend } = await import('../composables/useTeamLogosBackend')
+        const url = await useTeamLogosBackend().getTeamLogoUrl(teamName)
         logoUrl.value = url
         logoLoadError.value = !url // Set error if no URL found
       } catch (_error) {
