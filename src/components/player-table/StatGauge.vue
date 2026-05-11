@@ -60,7 +60,7 @@ export default {
     const circumference = computed(() => 2 * Math.PI * radius.value)
 
     const hasValue = computed(
-      () => props.value !== null && props.value !== undefined && !isNaN(props.value)
+      () => props.value !== null && props.value !== undefined && !Number.isNaN(props.value)
     )
 
     const fraction = computed(() => {
