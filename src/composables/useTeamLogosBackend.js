@@ -18,6 +18,10 @@ export function useTeamLogosBackend(options = {}) {
   const isLoading = ref(false)
   const lastError = ref(null)
 
+  // In-flight request deduplication: maps cache key → pending Promise
+  const pendingResolutions = new Map()
+  const pendingMatches = new Map()
+
   /**
    * Get team matches from backend API
    * @param {string} teamName - Team name to search for
@@ -31,37 +35,45 @@ export function useTeamLogosBackend(options = {}) {
     const normalizedName = teamName.trim()
     const cacheKey = `matches_${normalizedName.toLowerCase()}`
 
-    // Check cache first
     const cached = matchCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < cacheTimeout) {
       return cached.data
     }
 
-    try {
-      isLoading.value = true
-      lastError.value = null
-
-      const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const matches = await response.json()
-
-      // Cache the results
-      matchCache.set(cacheKey, {
-        data: matches,
-        timestamp: Date.now(),
-      })
-
-      return matches
-    } catch (error) {
-      lastError.value = error.message
-      return []
-    } finally {
-      isLoading.value = false
+    if (pendingMatches.has(cacheKey)) {
+      return pendingMatches.get(cacheKey)
     }
+
+    const promise = (async () => {
+      try {
+        isLoading.value = true
+        lastError.value = null
+
+        const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`)
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const matches = await response.json()
+
+        matchCache.set(cacheKey, {
+          data: matches,
+          timestamp: Date.now(),
+        })
+
+        return matches
+      } catch (error) {
+        lastError.value = error.message
+        return []
+      } finally {
+        isLoading.value = false
+        pendingMatches.delete(cacheKey)
+      }
+    })()
+
+    pendingMatches.set(cacheKey, promise)
+    return promise
   }
 
   /**
@@ -82,31 +94,41 @@ export function useTeamLogosBackend(options = {}) {
       return cached.data
     }
 
-    try {
-      isLoading.value = true
-      lastError.value = null
-
-      const response = await fetch(
-        `/api/club-logo/resolve?name=${encodeURIComponent(normalizedName)}`
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const resolution = await response.json()
-      resolutionCache.set(cacheKey, {
-        data: resolution,
-        timestamp: Date.now(),
-      })
-
-      return resolution
-    } catch (error) {
-      lastError.value = error.message
-      return null
-    } finally {
-      isLoading.value = false
+    if (pendingResolutions.has(cacheKey)) {
+      return pendingResolutions.get(cacheKey)
     }
+
+    const promise = (async () => {
+      try {
+        isLoading.value = true
+        lastError.value = null
+
+        const response = await fetch(
+          `/api/club-logo/resolve?name=${encodeURIComponent(normalizedName)}`
+        )
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const resolution = await response.json()
+        resolutionCache.set(cacheKey, {
+          data: resolution,
+          timestamp: Date.now(),
+        })
+
+        return resolution
+      } catch (error) {
+        lastError.value = error.message
+        return null
+      } finally {
+        isLoading.value = false
+        pendingResolutions.delete(cacheKey)
+      }
+    })()
+
+    pendingResolutions.set(cacheKey, promise)
+    return promise
   }
 
   /**
