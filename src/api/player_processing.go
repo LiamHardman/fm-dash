@@ -117,7 +117,7 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		isAnAttributeField := true // Assume it's an attribute unless handled otherwise
 
 		switch headerNameClean {
-		case "UID", "uid", "Uid", "ID", "id", "Id", "Player ID", "PlayerId", "player_id", "unique_id", "UniqueId":
+		case "UID", "uid", "Uid", "ID", "id", "Id", "Player ID", "PlayerId", "player_id", "unique_id", "UniqueId", "Unique ID":
 			uid, err := strconv.ParseInt(cellValue, 10, 64)
 			if err != nil {
 				// Log the error or handle it as needed. For now, we'll default to 0.
