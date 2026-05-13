@@ -153,7 +153,7 @@
                                 :datasetId="currentDatasetId"
                                 :currency-symbol="detectedCurrencySymbol"
                             />
-                            <div class="prestige-card-label icon-label">Icon</div>
+                            <div class="prestige-card-label icon-label">Highest Rating: {{ iconCardPlayer.originalOverall }}</div>
                         </div>
                         <div v-if="heroCardPlayer" class="prestige-card-wrapper">
                             <PlayerCards
@@ -163,7 +163,7 @@
                                 :datasetId="currentDatasetId"
                                 :currency-symbol="detectedCurrencySymbol"
                             />
-                            <div class="prestige-card-label hero-label">Hero</div>
+                            <div class="prestige-card-label hero-label">Old but gold, {{ heroCardPlayer.originalOverall }} rating and {{ heroCardPlayer.originalAge }} age</div>
                         </div>
                         <div v-if="motmCardPlayer" class="prestige-card-wrapper">
                             <PlayerCards
@@ -173,7 +173,7 @@
                                 :datasetId="currentDatasetId"
                                 :currency-symbol="detectedCurrencySymbol"
                             />
-                            <div class="prestige-card-label motm-label">Man of the Match</div>
+                            <div class="prestige-card-label motm-label">Top Performer: {{ motmCardPlayer.originalAvgRating }}</div>
                         </div>
                     </div>
                 </div>
@@ -1739,7 +1739,11 @@ export default {
       const best = teamPlayers.value.reduce((prev, curr) =>
         getOverallValueLocal(curr) > getOverallValueLocal(prev) ? curr : prev
       )
-      return { ...createPrestigePlayer(best, 10, 85), isIcon: true }
+      return {
+        ...createPrestigePlayer(best, 10, 85),
+        isIcon: true,
+        originalOverall: getOverallValueLocal(best),
+      }
     })
 
     const heroCardPlayer = computed(() => {
@@ -1754,7 +1758,11 @@ export default {
         const currAge = Number(curr.age ?? curr.Age ?? 0)
         return currAge > prevAge ? curr : prev
       })
-      return createPrestigePlayer(oldest, 8)
+      return {
+        ...createPrestigePlayer(oldest, 8),
+        originalOverall: getOverallValueLocal(oldest),
+        originalAge: Number(oldest.age ?? oldest.Age ?? 0),
+      }
     })
 
     const motmCardPlayer = computed(() => {
@@ -1776,7 +1784,11 @@ export default {
         )
         chosen = sorted[1] ?? sorted[0]
       }
-      return createPrestigePlayer(chosen, 5)
+      const avRat = Number(chosen['Av Rat'] ?? chosen.avRat ?? 0)
+      return {
+        ...createPrestigePlayer(chosen, 5),
+        originalAvgRating: avRat > 0 ? avRat : getOverallValueLocal(chosen),
+      }
     })
 
     const _startersWithRoleRatings = computed(() => {
