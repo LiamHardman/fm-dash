@@ -26,6 +26,9 @@
                 <q-tab name="all" label="All card designs" />
                 <q-tab name="rare-hover-effects" label="Rare hover effects" />
                 <q-tab name="tots-hover-effects" label="TOTS hover effects" />
+                <q-tab name="icon-hover-effects" label="Icon hover effects" />
+                <q-tab name="hero-hover-effects" label="Hero hover effects" />
+                <q-tab name="motm-hover-effects" label="MOTM hover effects" />
             </q-tabs>
 
             <div class="design-sections">
@@ -1885,6 +1888,207 @@ const totsHoverEffectSection = {
   designs: totsHoverEffectDesigns,
 }
 
+const iconHoverEffectDesigns = [
+  {
+    ...iconDesigns[0],
+    id: 'icon-effect-antique-shimmer',
+    baseDesignId: iconDesigns[0].id,
+    effect: 'icon-antique-shimmer',
+    name: 'Antique Shimmer',
+    description:
+      'Warm gold iridescence blooms over the ivory surface, recalling the faint sheen of an aged print seen under gallery lighting.',
+  },
+  {
+    ...iconDesigns[0],
+    id: 'icon-effect-heritage-foil',
+    baseDesignId: iconDesigns[0].id,
+    effect: 'icon-heritage-foil',
+    name: 'Heritage Foil',
+    description:
+      'Deep antique-gold foil panels sweep across the parchment base with a bright diagonal cut that shifts across the card face.',
+  },
+  {
+    ...iconDesigns[0],
+    id: 'icon-effect-vellum-iridescence',
+    baseDesignId: iconDesigns[0].id,
+    effect: 'icon-vellum-iridescence',
+    name: 'Vellum Iridescence',
+    description:
+      'A pearl iridescence travels across the ivory like light through aged vellum, cycling through warm amber and cool cream tones.',
+  },
+  {
+    ...iconDesigns[0],
+    id: 'icon-effect-museum-plate',
+    baseDesignId: iconDesigns[0].id,
+    effect: 'icon-museum-plate',
+    name: 'Museum Plate',
+    description:
+      'Museum-grade embossed plate finish with a heavy diagonal gold flash and raised border relief — the heirloom version of a player card.',
+  },
+  {
+    ...iconDesigns[0],
+    id: 'icon-effect-illuminated-leaf',
+    baseDesignId: iconDesigns[0].id,
+    effect: 'icon-illuminated-leaf',
+    name: 'Illuminated Leaf',
+    description:
+      'Manuscript-style gold leaf illumination with fine hatching detail, giving the card the feel of a gilded historical portrait.',
+  },
+  {
+    ...iconDesigns[0],
+    id: 'icon-effect-ivory-aurora',
+    baseDesignId: iconDesigns[0].id,
+    effect: 'icon-ivory-aurora',
+    name: 'Ivory Aurora',
+    description:
+      'A soft amber-gold aurora washes across the ivory base on hover, like warm gallery lighting playing over an antique photograph.',
+  },
+]
+
+const heroHoverEffectDesigns = [
+  {
+    ...heroDesigns[2],
+    id: 'hero-effect-poster-varnish',
+    baseDesignId: heroDesigns[2].id,
+    effect: 'hero-poster-varnish',
+    name: 'Poster Varnish',
+    description:
+      'UV spot varnish over the dark poster base, with cyan-gold interference that shifts across the graphic block colors.',
+  },
+  {
+    ...heroDesigns[2],
+    id: 'hero-effect-stadium-flare',
+    baseDesignId: heroDesigns[2].id,
+    effect: 'hero-stadium-flare',
+    name: 'Stadium Flare',
+    description:
+      'Floodlight beams explode from behind the player silhouette, flooding the card in raw match-night energy.',
+  },
+  {
+    ...heroDesigns[2],
+    id: 'hero-effect-club-foil',
+    baseDesignId: heroDesigns[2].id,
+    effect: 'hero-club-foil',
+    name: 'Club Foil',
+    description:
+      'Club-color foil shifts across the badge graphic, pairing cyan and gold over dark navy in a fan-scarf chromatic sweep.',
+  },
+  {
+    ...heroDesigns[2],
+    id: 'hero-effect-broadcast-cut',
+    baseDesignId: heroDesigns[2].id,
+    effect: 'hero-broadcast-cut',
+    name: 'Broadcast Cut',
+    description:
+      'A sharp broadcast-presentation sweep cuts gold and white across the card with cyan accents — matched to the exact moment of a live reveal.',
+  },
+  {
+    ...heroDesigns[2],
+    id: 'hero-effect-mural-holo',
+    baseDesignId: heroDesigns[2].id,
+    effect: 'hero-mural-holo',
+    name: 'Mural Holo',
+    description:
+      'Full holographic mural overlay: club colors refract across dark graphic rays, and the poster blocks shimmer with pointer-led spectra.',
+  },
+  {
+    ...heroDesigns[2],
+    id: 'hero-effect-anthem-prism',
+    baseDesignId: heroDesigns[2].id,
+    effect: 'hero-anthem-prism',
+    name: 'Anthem Prism',
+    description:
+      'Anthem-moment prism treatment with multi-color celebration bands, like a cup-final tifo seen through a prismatic foil window.',
+  },
+]
+
+const motmHoverEffectDesigns = [
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'motm-effect-impact-foil',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'motm-impact-foil',
+    name: 'Impact Foil',
+    description:
+      'Hot orange impact foil at maximum heat intensity — white and amber interference erupts where the pointer moves.',
+  },
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'motm-effect-ember-reactive',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'motm-ember-reactive',
+    name: 'Ember Reactive',
+    description:
+      'A heat-reactive ember surface that intensifies with pointer movement, cycling from dark ochre to vivid amber to a white flash.',
+  },
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'motm-effect-floodlight-flash',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'motm-floodlight-flash',
+    name: 'Floodlight Flash',
+    description:
+      'Stadium floodlight moment: a crisp white flash punches through the dark match-night base, leaving hot orange trails behind.',
+  },
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'motm-effect-match-holo',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'motm-match-holo',
+    name: 'Match-Night Holo',
+    description:
+      'Orange-amber holographic chromatic shift over the dark base, with pointer-led fringing that trails like heat from the crowd.',
+  },
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'motm-effect-goal-burst',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'motm-goal-burst',
+    name: 'Goal Burst',
+    description:
+      'Goal-celebration burst: orange sparks and white confetti scatter reactively across the card face with each pointer position.',
+  },
+  {
+    ...manOfTheMatchDesigns[1],
+    id: 'motm-effect-award-night',
+    baseDesignId: manOfTheMatchDesigns[1].id,
+    effect: 'motm-award-night',
+    name: 'Award Night',
+    description:
+      "Award-night foil finish — formal but hot, pairing polished gold with orange enamel for the feeling of lifting a winner's trophy.",
+  },
+]
+
+const iconHoverEffectSection = {
+  id: 'icon-hover-effects',
+  kicker: 'Legacy legend',
+  title: 'Icon Prestige Hover Effects',
+  description:
+    'Museum-grade hover treatments on the Ivory Museum Icon base: antique gold iridescence, heritage foil, vellum shimmer, and illuminated finishes as timeless as the legends they celebrate.',
+  player: iconPlayer,
+  designs: iconHoverEffectDesigns,
+}
+
+const heroHoverEffectSection = {
+  id: 'hero-hover-effects',
+  kicker: 'Story favourite',
+  title: 'Hero Prestige Hover Effects',
+  description:
+    'Graphic story-card hover effects on the Badge Poster Hero base: stadium energy, broadcast cuts, club foil, and fan-culture shimmer built into the dark poster canvas.',
+  player: heroPlayer,
+  designs: heroHoverEffectDesigns,
+}
+
+const motmHoverEffectSection = {
+  id: 'motm-hover-effects',
+  kicker: 'Single-match event',
+  title: 'Man of the Match Hover Effects',
+  description:
+    'High-energy hover treatments on the Match-Night Flare MOTM base: impact foil, ember reactions, floodlight flash, and award-night shine for the standout performer.',
+  player: manOfTheMatchPlayer,
+  designs: motmHoverEffectDesigns,
+}
+
 const designSections = [
   {
     id: 'bronze-non-rare',
@@ -2099,6 +2303,18 @@ export default defineComponent({
 
       if (activeDesignTab.value === 'tots-hover-effects') {
         return [totsHoverEffectSection]
+      }
+
+      if (activeDesignTab.value === 'icon-hover-effects') {
+        return [iconHoverEffectSection]
+      }
+
+      if (activeDesignTab.value === 'hero-hover-effects') {
+        return [heroHoverEffectSection]
+      }
+
+      if (activeDesignTab.value === 'motm-hover-effects') {
+        return [motmHoverEffectSection]
       }
 
       return renderedDesignSections
@@ -5862,6 +6078,896 @@ export default defineComponent({
             radial-gradient(circle at 60% 28%, rgba(255, 151, 51, 0.24), transparent 8rem),
             repeating-linear-gradient(96deg, rgba(255, 127, 34, 0.05) 0 1px, transparent 1px 9px);
         opacity: 0.8;
+    }
+}
+
+// ─── Icon hover effects ─────────────────────────────────────────────────────
+
+.concept-card--fx-icon-antique-shimmer,
+.concept-card--fx-icon-heritage-foil,
+.concept-card--fx-icon-vellum-iridescence,
+.concept-card--fx-icon-museum-plate,
+.concept-card--fx-icon-illuminated-leaf,
+.concept-card--fx-icon-ivory-aurora {
+    --effect-spotlight-opacity: 0.78;
+    --effect-pattern-opacity: 0.62;
+    --effect-glare-opacity: 0.46;
+
+    border-color: #d4a73a;
+    box-shadow:
+        0 20px 52px rgba(0, 0, 0, 0.26),
+        inset 0 0 0 1px rgba(255, 252, 230, 0.72),
+        inset 0 0 0 7px rgba(184, 140, 53, 0.12),
+        0 0 30px rgba(220, 175, 80, 0.38),
+        0 0 24px rgba(200, 150, 50, 0.16);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 34px 72px rgba(0, 0, 0, 0.32),
+            inset 0 0 0 1px rgba(255, 253, 240, 0.86),
+            inset 0 0 0 7px rgba(184, 140, 53, 0.1),
+            0 0 44px rgba(230, 190, 90, 0.48),
+            0 0 32px rgba(210, 165, 55, 0.26);
+    }
+
+    &::before {
+        inset: 7px;
+        border-color: rgba(196, 152, 58, 0.82);
+        box-shadow:
+            inset 0 0 0 1px rgba(244, 217, 139, 0.46),
+            inset 0 0 20px rgba(230, 190, 90, 0.1),
+            0 0 24px rgba(200, 155, 55, 0.22);
+    }
+
+    &::after {
+        height: 4px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            #d4a73a,
+            #f8eaaa,
+            #e8c458,
+            #f8eaaa,
+            #d4a73a,
+            transparent
+        );
+        box-shadow:
+            0 0 18px rgba(220, 180, 80, 0.56),
+            0 0 14px rgba(200, 155, 55, 0.28);
+    }
+
+    .concept-card__rating,
+    .concept-card__name {
+        text-shadow:
+            0 1px 6px rgba(100, 72, 22, 0.28),
+            0 0 12px rgba(200, 155, 55, 0.2);
+    }
+
+    .concept-card__club {
+        border-color: rgba(196, 152, 58, 0.52);
+        box-shadow:
+            0 5px 14px rgba(0, 0, 0, 0.12),
+            inset 0 0 0 1px rgba(248, 230, 170, 0.36),
+            0 0 14px rgba(200, 155, 55, 0.18);
+    }
+
+    .concept-card__content::before {
+        mix-blend-mode: overlay;
+    }
+}
+
+.concept-card--fx-icon-antique-shimmer {
+    --effect-pattern-opacity: 0.68;
+    --effect-glare-opacity: 0.52;
+
+    .concept-card__texture {
+        background:
+            conic-gradient(from 218deg at 52% 28%, rgba(196, 152, 58, 0.18) 0deg 16deg, transparent 16deg 42deg, rgba(240, 210, 120, 0.12) 42deg 62deg, transparent 62deg 360deg),
+            repeating-linear-gradient(112deg, rgba(111, 84, 32, 0.06) 0 1px, transparent 1px 14px),
+            radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.38), transparent 6rem);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 252, 220, 0.72), rgba(230, 190, 90, 0.36) 18%, rgba(200, 155, 55, 0.14) 34%, transparent 56%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 235, 130, 0.3), rgba(240, 200, 80, 0.24), rgba(255, 250, 200, 0.28), rgba(210, 170, 60, 0.26), rgba(255, 235, 130, 0.3));
+        mix-blend-mode: overlay;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(106deg, transparent 0 12px, rgba(180, 138, 50, 0.14) 12px 13px, transparent 13px 26px),
+            repeating-radial-gradient(ellipse at 50% 26%, transparent 0 16px, rgba(196, 152, 58, 0.1) 16px 18px, transparent 18px 36px);
+        mix-blend-mode: multiply;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(var(--glare-angle), transparent 0 28%, rgba(255, 252, 230, 0.62) 42%, rgba(240, 200, 90, 0.28) 50%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-icon-heritage-foil {
+    --effect-spotlight-opacity: 0.86;
+    --effect-pattern-opacity: 0.58;
+    --effect-glare-opacity: 0.56;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(138deg, transparent 0 22%, rgba(196, 152, 58, 0.22) 22% 26%, rgba(230, 200, 120, 0.1) 26% 44%, transparent 44% 62%, rgba(196, 152, 58, 0.16) 62% 65%, transparent 65%),
+            repeating-linear-gradient(112deg, rgba(111, 84, 32, 0.04) 0 1px, transparent 1px 16px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 38% 16%, rgba(255, 252, 230, 0.48), rgba(220, 178, 70, 0.22) 20%, transparent 50%),
+            linear-gradient(118deg, transparent 0 26%, rgba(255, 250, 215, 0.78) 38%, rgba(220, 175, 65, 0.36) 44%, transparent 60% 100%);
+        mix-blend-mode: overlay;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(62deg, rgba(196, 152, 58, 0.16) 0 2px, transparent 2px 18px, rgba(111, 84, 32, 0.1) 18px 22px, transparent 22px 38px);
+        mix-blend-mode: multiply;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(110deg, transparent 0 30%, rgba(255, 253, 238, 0.82) 42%, rgba(230, 190, 72, 0.36) 49%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-icon-vellum-iridescence {
+    --effect-spotlight-opacity: 0.72;
+    --effect-pattern-opacity: 0.64;
+    --effect-glare-opacity: 0.38;
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 24%, transparent 0 18px, rgba(196, 152, 58, 0.09) 18px 20px, transparent 20px 42px),
+            linear-gradient(128deg, rgba(255, 255, 255, 0.28), transparent 28%),
+            conic-gradient(from 215deg at 50% 32%, rgba(196, 152, 58, 0.14) 0deg 24deg, rgba(220, 200, 150, 0.1) 24deg 52deg, transparent 52deg 360deg);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 245, 0.54), rgba(220, 190, 100, 0.2) 20%, rgba(200, 220, 255, 0.12) 34%, transparent 58%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 238, 160, 0.24), rgba(220, 200, 255, 0.18), rgba(180, 240, 220, 0.14), rgba(255, 230, 130, 0.22), rgba(255, 238, 160, 0.24));
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-radial-gradient(ellipse at 50% 28%, transparent 0 14px, rgba(196, 152, 58, 0.12) 14px 16px, transparent 16px 32px),
+            repeating-linear-gradient(98deg, rgba(200, 175, 100, 0.08) 0 1px, transparent 1px 12px);
+        mix-blend-mode: overlay;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(ellipse at 50% 32%, transparent 0 26%, rgba(220, 190, 100, 0.28) 27% 29%, transparent 30% 100%),
+            linear-gradient(108deg, transparent 0 38%, rgba(255, 252, 230, 0.4) 48%, transparent 58% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-icon-museum-plate {
+    --effect-spotlight-opacity: 0.88;
+    --effect-pattern-opacity: 0.72;
+    --effect-glare-opacity: 0.64;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(136deg, transparent 0 18%, rgba(196, 152, 58, 0.2) 18% 22%, rgba(235, 215, 155, 0.12) 22% 36%, transparent 36% 54%, rgba(196, 152, 58, 0.18) 54% 57%, transparent 57%),
+            repeating-linear-gradient(78deg, rgba(111, 84, 32, 0.05) 0 1px, transparent 1px 10px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 34% 14%, rgba(255, 254, 242, 0.52), rgba(220, 176, 66, 0.24) 18%, transparent 48%),
+            linear-gradient(122deg, transparent 0 24%, rgba(255, 252, 234, 0.92) 36%, rgba(220, 175, 62, 0.42) 43%, transparent 58% 100%);
+        mix-blend-mode: overlay;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(136deg, rgba(196, 152, 58, 0.18) 0 2px, transparent 2px 12px, rgba(235, 210, 130, 0.1) 12px 14px, transparent 14px 26px),
+            repeating-radial-gradient(ellipse at 48% 22%, transparent 0 10px, rgba(196, 152, 58, 0.12) 10px 12px, transparent 12px 24px);
+        mix-blend-mode: multiply;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(116deg, transparent 0 26%, rgba(255, 254, 244, 0.94) 39%, rgba(235, 195, 75, 0.44) 46%, transparent 59% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-icon-illuminated-leaf {
+    --effect-spotlight-opacity: 0.76;
+    --effect-pattern-opacity: 0.82;
+    --effect-glare-opacity: 0.44;
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(14deg, rgba(111, 84, 32, 0.05) 0 1px, transparent 1px 8px),
+            repeating-linear-gradient(104deg, transparent 0 20px, rgba(111, 84, 32, 0.04) 20px 21px),
+            conic-gradient(from 222deg at 48% 30%, rgba(196, 152, 58, 0.16) 0deg 12deg, transparent 12deg 44deg, rgba(180, 138, 46, 0.1) 44deg 58deg, transparent 58deg 360deg);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 254, 238, 0.58), rgba(210, 170, 60, 0.22) 16%, transparent 44%),
+            repeating-linear-gradient(44deg, rgba(196, 152, 58, 0.14) 0 1px, transparent 1px 9px),
+            linear-gradient(130deg, rgba(255, 248, 210, 0.24), transparent 38%);
+        mix-blend-mode: overlay;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(12deg, rgba(111, 84, 32, 0.08) 0 1px, transparent 1px 10px),
+            repeating-linear-gradient(102deg, transparent 0 16px, rgba(180, 138, 50, 0.06) 16px 17px),
+            radial-gradient(circle at 68% 22%, rgba(255, 245, 195, 0.28), transparent 5rem);
+        mix-blend-mode: multiply;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), rgba(255, 252, 226, 0.48), rgba(210, 172, 64, 0.2) 22%, transparent 50%),
+            linear-gradient(126deg, transparent 0 42%, rgba(255, 252, 230, 0.38) 52%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-icon-ivory-aurora {
+    --effect-spotlight-opacity: 0.82;
+    --effect-pattern-opacity: 0.54;
+    --effect-glare-opacity: 0.48;
+
+    background:
+        radial-gradient(circle at 50% 12%, rgba(240, 210, 120, 0.28), transparent 8rem),
+        radial-gradient(circle at 80% 20%, rgba(220, 190, 90, 0.16), transparent 6rem),
+        linear-gradient(180deg, #fbf2df 0%, #f0e3c8 58%, #d8c49a 100%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(circle at 52% 18%, rgba(255, 244, 200, 0.38), transparent 6rem),
+            conic-gradient(from 210deg at 50% 32%, rgba(230, 185, 70, 0.18) 0deg 22deg, rgba(255, 240, 190, 0.1) 22deg 54deg, transparent 54deg 360deg),
+            repeating-radial-gradient(circle at 76% 20%, rgba(196, 152, 58, 0.07) 0 1px, transparent 1px 8px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 48% 16%, rgba(255, 253, 232, 0.62), rgba(230, 188, 78, 0.28) 20%, rgba(220, 175, 58, 0.12) 38%, transparent 62%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 245, 180, 0.22), rgba(210, 170, 60, 0.18), rgba(255, 240, 190, 0.2), rgba(230, 190, 80, 0.16), rgba(255, 245, 180, 0.22));
+        mix-blend-mode: overlay;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            conic-gradient(from 216deg at 50% 30%, rgba(230, 185, 70, 0.12) 0deg 18deg, transparent 18deg 46deg, rgba(220, 178, 66, 0.08) 46deg 64deg, transparent 64deg 360deg),
+            repeating-linear-gradient(116deg, transparent 0 16px, rgba(196, 152, 58, 0.1) 16px 17px, transparent 17px 34px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(circle at 52% 22%, rgba(255, 252, 228, 0.52), rgba(230, 188, 78, 0.22) 24%, transparent 56%),
+            linear-gradient(118deg, transparent 0 34%, rgba(255, 252, 232, 0.46) 46%, transparent 58% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+// ─── Hero hover effects ──────────────────────────────────────────────────────
+
+.concept-card--fx-hero-poster-varnish,
+.concept-card--fx-hero-stadium-flare,
+.concept-card--fx-hero-club-foil,
+.concept-card--fx-hero-broadcast-cut,
+.concept-card--fx-hero-mural-holo,
+.concept-card--fx-hero-anthem-prism {
+    --effect-spotlight-opacity: 0.88;
+    --effect-pattern-opacity: 0.74;
+    --effect-glare-opacity: 0.44;
+
+    border-color: #f8c947;
+    box-shadow:
+        0 22px 54px rgba(0, 0, 0, 0.56),
+        inset 0 0 0 1px rgba(255, 244, 175, 0.22),
+        inset 0 0 0 7px rgba(12, 10, 28, 0.36),
+        0 0 32px rgba(102, 211, 255, 0.36),
+        0 0 28px rgba(242, 191, 77, 0.22);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 36px 78px rgba(0, 0, 0, 0.64),
+            inset 0 0 0 1px rgba(255, 246, 190, 0.34),
+            inset 0 0 0 7px rgba(10, 8, 24, 0.3),
+            0 0 48px rgba(102, 211, 255, 0.46),
+            0 0 36px rgba(242, 191, 77, 0.32);
+    }
+
+    &::before {
+        inset: 7px;
+        border-color: rgba(242, 191, 77, 0.78);
+        box-shadow:
+            inset 0 0 0 1px rgba(102, 211, 255, 0.22),
+            inset 0 0 22px rgba(255, 220, 100, 0.1),
+            0 0 28px rgba(242, 191, 77, 0.24);
+    }
+
+    &::after {
+        height: 4px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            #66d3ff,
+            #ffdc74,
+            #f2bf4d,
+            #ffdc74,
+            #66d3ff,
+            transparent
+        );
+        box-shadow:
+            0 0 18px rgba(242, 191, 77, 0.56),
+            0 0 16px rgba(102, 211, 255, 0.32);
+    }
+
+    .concept-card__rating,
+    .concept-card__name {
+        text-shadow:
+            0 2px 10px rgba(0, 0, 0, 0.64),
+            0 0 18px rgba(255, 220, 116, 0.3),
+            0 0 16px rgba(102, 211, 255, 0.18);
+    }
+
+    .concept-card__club {
+        border-color: rgba(242, 191, 77, 0.58);
+        box-shadow:
+            0 7px 18px rgba(0, 0, 0, 0.32),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+            0 0 18px rgba(102, 211, 255, 0.22);
+    }
+}
+
+.concept-card--fx-hero-poster-varnish {
+    --effect-pattern-opacity: 0.68;
+    --effect-glare-opacity: 0.48;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(132deg, rgba(217, 79, 47, 0.24) 0 18%, transparent 18% 44%, rgba(102, 211, 255, 0.18) 44% 57%, transparent 57%),
+            repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, 0.06) 18px 19px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 245, 0.52), rgba(102, 211, 255, 0.24) 16%, rgba(242, 191, 77, 0.14) 32%, transparent 56%),
+            linear-gradient(128deg, transparent 0 22%, rgba(255, 248, 210, 0.48) 36%, rgba(102, 211, 255, 0.22) 46%, transparent 62% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 2px, transparent 2px 18px, rgba(102, 211, 255, 0.07) 18px 20px, transparent 20px 36px),
+            radial-gradient(circle at 64% 22%, rgba(242, 191, 77, 0.2), transparent 5rem);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(116deg, transparent 0 28%, rgba(255, 255, 245, 0.62) 42%, rgba(102, 211, 255, 0.24) 50%, transparent 65% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-hero-stadium-flare {
+    --effect-spotlight-opacity: 0.92;
+    --effect-pattern-opacity: 0.76;
+    --effect-glare-opacity: 0.52;
+
+    background:
+        radial-gradient(circle at 50% 12%, rgba(255, 220, 100, 0.26), transparent 8rem),
+        radial-gradient(circle at 78% 20%, rgba(102, 211, 255, 0.22), transparent 7rem),
+        conic-gradient(from 218deg at 50% 32%, rgba(255, 220, 100, 0.22) 0deg 16deg, rgba(102, 211, 255, 0.18) 16deg 38deg, transparent 38deg 68deg, rgba(255, 220, 100, 0.14) 68deg 88deg, transparent 88deg 360deg),
+        linear-gradient(180deg, #26204b 0%, #121024 48%, #04030f 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 220deg at 52% 30%, rgba(255, 220, 100, 0.16) 0deg 1deg, transparent 1deg 8deg),
+            linear-gradient(134deg, transparent 0 20%, rgba(255, 220, 100, 0.2) 20% 23%, rgba(18, 16, 36, 0.3) 23% 37%, transparent 37%),
+            repeating-radial-gradient(circle at 72% 16%, rgba(102, 211, 255, 0.08) 0 1px, transparent 1px 7px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 40% 16%, rgba(255, 255, 245, 0.56), rgba(102, 211, 255, 0.26) 16%, rgba(255, 220, 100, 0.18) 32%, transparent 56%),
+            conic-gradient(from 228deg at 50% 30%, rgba(102, 211, 255, 0.28), rgba(255, 220, 100, 0.24), rgba(217, 79, 47, 0.18), rgba(102, 211, 255, 0.28));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from 222deg at 50% 28%, rgba(255, 220, 100, 0.2) 0deg 1deg, transparent 1deg 9deg),
+            repeating-linear-gradient(110deg, transparent 0 16px, rgba(255, 255, 255, 0.12) 16px 17px, transparent 17px 34px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(114deg, transparent 0 28%, rgba(255, 255, 245, 0.62) 42%, rgba(102, 211, 255, 0.24) 50%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-hero-club-foil {
+    --effect-spotlight-opacity: 0.78;
+    --effect-pattern-opacity: 0.84;
+    --effect-glare-opacity: 0.38;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(128deg, rgba(217, 79, 47, 0.2) 0 18%, transparent 18% 42%, rgba(102, 211, 255, 0.16) 42% 56%, transparent 56%),
+            repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 16px),
+            linear-gradient(180deg, transparent 0 54%, rgba(0, 0, 0, 0.32) 54% 100%);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 36% 14%, rgba(255, 255, 238, 0.38), rgba(255, 220, 116, 0.18) 18%, transparent 46%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 220, 116, 0.3), rgba(102, 211, 255, 0.26), rgba(217, 79, 47, 0.16), rgba(102, 211, 255, 0.28), rgba(255, 220, 116, 0.3));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(68deg, rgba(102, 211, 255, 0.14) 0 2px, transparent 2px 18px, rgba(7, 14, 34, 0.2) 18px 22px, transparent 22px 36px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(106deg, transparent 0 26%, rgba(255, 255, 245, 0.72) 40%, rgba(102, 211, 255, 0.28) 48%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-hero-broadcast-cut {
+    --effect-spotlight-opacity: 0.84;
+    --effect-pattern-opacity: 0.62;
+    --effect-glare-opacity: 0.56;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(136deg, transparent 0 24%, rgba(255, 220, 116, 0.22) 24% 28%, rgba(18, 16, 36, 0.32) 28% 42%, transparent 42% 62%, rgba(102, 211, 255, 0.16) 62% 74%, transparent 74%),
+            repeating-linear-gradient(106deg, transparent 0 18px, rgba(255, 255, 255, 0.06) 18px 19px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 34% 14%, rgba(255, 254, 230, 0.42), rgba(255, 220, 116, 0.18) 18%, transparent 50%),
+            linear-gradient(76deg, transparent 0 16%, rgba(255, 248, 214, 0.24) 28%, transparent 42% 100%),
+            linear-gradient(108deg, transparent 0 49%, rgba(102, 211, 255, 0.18) 62%, transparent 76% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(circle at 20% 18%, rgba(255, 220, 116, 0.44) 0 1px, transparent 3px),
+            radial-gradient(circle at 54% 22%, rgba(255, 255, 255, 0.28) 0 1px, transparent 3px),
+            radial-gradient(circle at 80% 32%, rgba(102, 211, 255, 0.36) 0 2px, transparent 4px);
+        background-size: 52px 68px, 62px 78px, 72px 88px;
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(109deg, transparent 0 30%, rgba(255, 255, 245, 0.78) 44%, rgba(255, 220, 100, 0.32) 51%, transparent 64% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-hero-mural-holo {
+    --effect-spotlight-opacity: 0.86;
+    --effect-pattern-opacity: 0.78;
+    --effect-glare-opacity: 0.46;
+
+    background:
+        radial-gradient(circle at 50% 10%, rgba(255, 220, 100, 0.28), transparent 8rem),
+        radial-gradient(circle at 82% 18%, rgba(102, 211, 255, 0.22), transparent 7rem),
+        conic-gradient(from 218deg at 50% 30%, rgba(255, 220, 100, 0.24) 0deg 18deg, rgba(102, 211, 255, 0.2) 18deg 42deg, transparent 42deg 68deg, rgba(217, 79, 47, 0.16) 68deg 88deg, transparent 88deg 360deg),
+        linear-gradient(180deg, #26204b 0%, #121024 52%, #030210 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 225deg at 50% 28%, rgba(255, 220, 100, 0.16) 0deg 1deg, transparent 1deg 7deg),
+            linear-gradient(136deg, transparent 0 18%, rgba(102, 211, 255, 0.18) 18% 21%, rgba(18, 16, 36, 0.26) 21% 34%, transparent 34%),
+            repeating-radial-gradient(circle at 74% 16%, rgba(255, 220, 100, 0.08) 0 1px, transparent 1px 7px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 38% 18%, rgba(255, 255, 246, 0.56), rgba(102, 211, 255, 0.26) 18%, rgba(255, 220, 100, 0.18) 34%, transparent 58%),
+            conic-gradient(from 228deg at 50% 30%, rgba(255, 83, 130, 0.24), rgba(255, 220, 100, 0.28), rgba(102, 211, 255, 0.22), rgba(130, 255, 180, 0.18), rgba(255, 83, 130, 0.24));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from 222deg at 50% 27%, rgba(255, 220, 100, 0.2) 0deg 1deg, transparent 1deg 9deg),
+            repeating-linear-gradient(110deg, transparent 0 14px, rgba(255, 255, 255, 0.13) 14px 15px, transparent 15px 30px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(116deg, transparent 0 28%, rgba(255, 255, 245, 0.58) 42%, rgba(102, 211, 255, 0.22) 50%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-hero-anthem-prism {
+    --effect-spotlight-opacity: 0.76;
+    --effect-pattern-opacity: 0.72;
+    --effect-glare-opacity: 0.42;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(122deg, rgba(217, 79, 47, 0.2) 0 16%, rgba(102, 211, 255, 0.16) 16% 32%, rgba(255, 220, 100, 0.2) 32% 44%, rgba(102, 211, 255, 0.14) 44% 58%, transparent 58%),
+            repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 16px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 248, 0.58), rgba(255, 220, 100, 0.26) 16%, rgba(102, 211, 255, 0.2) 32%, transparent 56%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 92, 130, 0.3), rgba(255, 220, 100, 0.28), rgba(102, 255, 180, 0.22), rgba(102, 211, 255, 0.28), rgba(178, 100, 255, 0.24), rgba(255, 92, 130, 0.3));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 11px),
+            repeating-linear-gradient(22deg, rgba(102, 211, 255, 0.1) 0 1px, transparent 1px 17px),
+            radial-gradient(circle at 72% 22%, rgba(255, 220, 100, 0.22), transparent 7rem);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(var(--glare-angle), transparent 0 26%, rgba(255, 255, 245, 0.66) 42%, rgba(102, 211, 255, 0.26) 50%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+// ─── MOTM hover effects ──────────────────────────────────────────────────────
+
+.concept-card--fx-motm-impact-foil,
+.concept-card--fx-motm-ember-reactive,
+.concept-card--fx-motm-floodlight-flash,
+.concept-card--fx-motm-match-holo,
+.concept-card--fx-motm-goal-burst,
+.concept-card--fx-motm-award-night {
+    --effect-spotlight-opacity: 0.88;
+    --effect-pattern-opacity: 0.74;
+    --effect-glare-opacity: 0.48;
+
+    border-color: #ff8c2a;
+    box-shadow:
+        0 22px 54px rgba(0, 0, 0, 0.58),
+        inset 0 0 0 1px rgba(255, 214, 172, 0.2),
+        inset 0 0 0 7px rgba(63, 21, 6, 0.36),
+        0 0 34px rgba(255, 106, 28, 0.52),
+        0 0 28px rgba(255, 92, 24, 0.22);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 36px 78px rgba(0, 0, 0, 0.66),
+            inset 0 0 0 1px rgba(255, 216, 176, 0.32),
+            inset 0 0 0 7px rgba(63, 21, 6, 0.3),
+            0 0 50px rgba(255, 106, 28, 0.64),
+            0 0 36px rgba(255, 92, 24, 0.32);
+    }
+
+    &::before {
+        inset: 7px;
+        border-color: rgba(255, 127, 38, 0.82);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 200, 150, 0.18),
+            inset 0 0 22px rgba(255, 100, 28, 0.12),
+            0 0 28px rgba(255, 92, 24, 0.28);
+    }
+
+    &::after {
+        height: 4px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            #ff6d17,
+            #ffc487,
+            #ff8c2a,
+            #ffc487,
+            #ff6d17,
+            transparent
+        );
+        box-shadow:
+            0 0 20px rgba(255, 100, 28, 0.64),
+            0 0 16px rgba(255, 150, 60, 0.3);
+    }
+
+    .concept-card__rating,
+    .concept-card__name {
+        text-shadow:
+            0 2px 10px rgba(0, 0, 0, 0.62),
+            0 0 18px rgba(255, 120, 40, 0.32),
+            0 0 16px rgba(255, 200, 120, 0.16);
+    }
+
+    .concept-card__club {
+        border-color: rgba(255, 127, 38, 0.64);
+        box-shadow:
+            0 7px 18px rgba(0, 0, 0, 0.36),
+            inset 0 0 0 1px rgba(255, 200, 150, 0.16),
+            0 0 20px rgba(255, 100, 28, 0.28);
+    }
+}
+
+.concept-card--fx-motm-impact-foil {
+    --effect-pattern-opacity: 0.76;
+    --effect-glare-opacity: 0.56;
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 230deg at 58% 28%, rgba(255, 128, 36, 0.28) 0deg 2deg, transparent 2deg 10deg),
+            linear-gradient(126deg, transparent 0 24%, rgba(255, 208, 154, 0.24) 24% 26%, transparent 26%),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.42) 58% 100%);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 255, 245, 0.72), rgba(255, 140, 50, 0.36) 16%, rgba(255, 200, 100, 0.18) 32%, transparent 56%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 180, 80, 0.36), rgba(255, 240, 180, 0.32), rgba(255, 100, 30, 0.24), rgba(255, 220, 140, 0.28), rgba(255, 180, 80, 0.36));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-conic-gradient(from 228deg at 58% 26%, rgba(255, 128, 36, 0.24) 0deg 2deg, transparent 2deg 10deg),
+            repeating-linear-gradient(110deg, transparent 0 16px, rgba(255, 255, 255, 0.14) 16px 17px, transparent 17px 34px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(114deg, transparent 0 28%, rgba(255, 255, 245, 0.7) 42%, rgba(255, 140, 50, 0.3) 50%, transparent 65% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-motm-ember-reactive {
+    --effect-spotlight-opacity: 0.82;
+    --effect-pattern-opacity: 0.72;
+    --effect-glare-opacity: 0.44;
+
+    .concept-card__texture {
+        background:
+            conic-gradient(from 225deg at 58% 30%, transparent 0deg, rgba(255, 127, 34, 0.36) 26deg, rgba(255, 200, 120, 0.18) 42deg, transparent 64deg, transparent 360deg),
+            radial-gradient(circle at 60% 28%, rgba(255, 151, 51, 0.28), transparent 8rem),
+            repeating-linear-gradient(96deg, rgba(255, 127, 34, 0.06) 0 1px, transparent 1px 9px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 252, 232, 0.66), rgba(255, 160, 60, 0.3) 18%, rgba(255, 220, 120, 0.14) 36%, transparent 60%),
+            conic-gradient(from 224deg at var(--light-x) var(--light-y), rgba(255, 140, 50, 0.32), rgba(255, 80, 24, 0.22), rgba(255, 220, 120, 0.28), rgba(255, 160, 60, 0.3), rgba(255, 140, 50, 0.32));
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            conic-gradient(from 226deg at 58% 30%, transparent 0deg, rgba(255, 127, 34, 0.26) 24deg, rgba(255, 200, 120, 0.14) 40deg, transparent 62deg, transparent 360deg),
+            repeating-linear-gradient(98deg, rgba(255, 100, 30, 0.08) 0 1px, transparent 1px 10px);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 240, 200, 0.52), rgba(255, 140, 50, 0.2) 22%, transparent 50%),
+            linear-gradient(112deg, transparent 0 36%, rgba(255, 252, 232, 0.38) 48%, transparent 60% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-motm-floodlight-flash {
+    --effect-spotlight-opacity: 0.94;
+    --effect-pattern-opacity: 0.68;
+    --effect-glare-opacity: 0.62;
+
+    background:
+        radial-gradient(circle at 50% 10%, rgba(255, 200, 120, 0.22), transparent 9rem),
+        radial-gradient(circle at 78% 20%, rgba(255, 127, 38, 0.24), transparent 7rem),
+        linear-gradient(180deg, #2d0d08 0%, #150706 48%, #050101 100%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(circle at 70% 18%, rgba(255, 240, 220, 0.24), transparent 4.5rem),
+            linear-gradient(135deg, transparent 0 20%, rgba(255, 109, 23, 0.28) 20% 34%, transparent 34% 52%, rgba(255, 214, 150, 0.18) 52% 54%, transparent 54%),
+            repeating-linear-gradient(108deg, transparent 0 24px, rgba(255, 126, 38, 0.09) 24px 25px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 40% 14%, rgba(255, 255, 255, 0.68), rgba(255, 240, 200, 0.36) 14%, rgba(255, 140, 50, 0.16) 28%, transparent 50%),
+            linear-gradient(114deg, transparent 0 20%, rgba(255, 252, 240, 0.52) 32%, rgba(255, 255, 255, 0.2) 38%, transparent 52% 100%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(circle at 22% 16%, rgba(255, 220, 140, 0.44) 0 1px, transparent 3px),
+            radial-gradient(circle at 56% 22%, rgba(255, 255, 255, 0.36) 0 1px, transparent 3px),
+            radial-gradient(circle at 84% 30%, rgba(255, 140, 50, 0.32) 0 2px, transparent 4px);
+        background-size: 48px 64px, 58px 76px, 68px 88px;
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(106deg, transparent 0 26%, rgba(255, 255, 255, 0.82) 40%, rgba(255, 220, 140, 0.36) 48%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-motm-match-holo {
+    --effect-spotlight-opacity: 0.84;
+    --effect-pattern-opacity: 0.78;
+    --effect-glare-opacity: 0.46;
+
+    .concept-card__texture {
+        background:
+            linear-gradient(128deg, rgba(255, 127, 38, 0.22) 0 18%, transparent 18% 44%, rgba(255, 200, 120, 0.16) 44% 58%, transparent 58%),
+            repeating-linear-gradient(104deg, rgba(255, 100, 30, 0.05) 0 1px, transparent 1px 14px),
+            linear-gradient(180deg, transparent 0 56%, rgba(0, 0, 0, 0.38) 56% 100%);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at 34% 16%, rgba(255, 252, 232, 0.48), rgba(255, 180, 70, 0.24) 18%, transparent 48%),
+            conic-gradient(from var(--glare-angle) at var(--light-x) var(--light-y), rgba(255, 140, 50, 0.32), rgba(255, 220, 130, 0.28), rgba(255, 80, 24, 0.22), rgba(255, 200, 100, 0.26), rgba(255, 140, 50, 0.32));
+        mix-blend-mode: color-dodge;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            repeating-linear-gradient(64deg, rgba(255, 180, 80, 0.18) 0 2px, transparent 2px 18px, rgba(21, 7, 6, 0.22) 18px 22px, transparent 22px 38px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(108deg, transparent 0 26%, rgba(255, 255, 240, 0.72) 40%, rgba(255, 160, 60, 0.3) 48%, transparent 62% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-motm-goal-burst {
+    --effect-spotlight-opacity: 0.88;
+    --effect-pattern-opacity: 0.82;
+    --effect-glare-opacity: 0.44;
+
+    background:
+        radial-gradient(circle at 50% 10%, rgba(255, 190, 100, 0.22), transparent 9rem),
+        radial-gradient(circle at 80% 20%, rgba(255, 127, 38, 0.22), transparent 7rem),
+        radial-gradient(circle at 22% 22%, rgba(255, 100, 30, 0.16), transparent 6rem),
+        linear-gradient(180deg, #2d0d08 0%, #150706 52%, #050101 100%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(circle at 20% 18%, rgba(255, 220, 120, 0.44) 0 1px, transparent 3px),
+            radial-gradient(circle at 54% 22%, rgba(255, 255, 255, 0.3) 0 1px, transparent 3px),
+            radial-gradient(circle at 80% 30%, rgba(255, 130, 40, 0.38) 0 2px, transparent 4px),
+            radial-gradient(circle at 36% 68%, rgba(255, 190, 90, 0.36) 0 1px, transparent 3px),
+            linear-gradient(128deg, transparent 0 20%, rgba(255, 127, 38, 0.22) 20% 32%, transparent 32% 52%, rgba(255, 220, 120, 0.16) 52% 64%, transparent 64%);
+        background-size: 48px 64px, 58px 76px, 70px 90px, 78px 98px, auto;
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(circle at var(--light-x) var(--light-y), rgba(255, 252, 235, 0.58), rgba(255, 160, 60, 0.28) 18%, rgba(255, 220, 120, 0.12) 36%, transparent 58%),
+            conic-gradient(from 228deg at 50% 30%, rgba(255, 140, 50, 0.3), rgba(255, 80, 20, 0.2), rgba(255, 220, 130, 0.26), rgba(255, 180, 80, 0.28), rgba(255, 140, 50, 0.3));
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-x), var(--surface-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(circle at 24% 32%, rgba(255, 220, 130, 0.46) 0 1px, transparent 3px),
+            radial-gradient(circle at 68% 26%, rgba(255, 255, 255, 0.34) 0 1px, transparent 3px),
+            radial-gradient(circle at 72% 72%, rgba(255, 130, 40, 0.34) 0 1px, transparent 3px),
+            repeating-linear-gradient(114deg, transparent 0 20px, rgba(255, 255, 255, 0.11) 20px 21px, transparent 21px 42px);
+        background-size: 46px 58px, 62px 74px, 78px 92px, auto;
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            linear-gradient(105deg, transparent 0 32%, rgba(255, 255, 242, 0.56) 46%, rgba(255, 180, 70, 0.24) 54%, transparent 66% 100%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
+    }
+}
+
+.concept-card--fx-motm-award-night {
+    --effect-spotlight-opacity: 0.78;
+    --effect-pattern-opacity: 0.66;
+    --effect-glare-opacity: 0.52;
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 26%, transparent 0 14px, rgba(255, 140, 50, 0.1) 14px 16px, transparent 16px 32px),
+            conic-gradient(from 220deg at 50% 30%, transparent 0deg, rgba(255, 180, 70, 0.22) 16deg, transparent 36deg, transparent 64deg, rgba(255, 100, 28, 0.16) 78deg, transparent 96deg, transparent 360deg),
+            repeating-linear-gradient(102deg, transparent 0 20px, rgba(255, 160, 60, 0.08) 20px 22px);
+    }
+
+    .concept-card__texture::before {
+        background:
+            radial-gradient(ellipse at 52% 28%, rgba(255, 252, 228, 0.52), rgba(255, 200, 80, 0.22) 20%, transparent 54%),
+            repeating-radial-gradient(ellipse at 50% 32%, transparent 0 24px, rgba(255, 180, 72, 0.18) 24px 26px, transparent 26px 48px),
+            radial-gradient(ellipse at 50% 34%, rgba(255, 160, 60, 0.18), transparent 9rem);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-soft-x), var(--surface-soft-y), 0);
+    }
+
+    .concept-card__texture::after {
+        background:
+            radial-gradient(ellipse at 24% 42%, transparent 0 32%, rgba(255, 200, 80, 0.2) 33% 35%, transparent 36%),
+            radial-gradient(ellipse at 76% 42%, transparent 0 32%, rgba(255, 200, 80, 0.2) 33% 35%, transparent 36%),
+            repeating-conic-gradient(from 44deg at 50% 34%, rgba(255, 255, 220, 0.1) 0deg 1deg, transparent 1deg 8deg);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--surface-reverse-x), var(--surface-reverse-y), 0);
+    }
+
+    .concept-card__content::before {
+        background:
+            radial-gradient(ellipse at 50% 34%, transparent 0 28%, rgba(255, 200, 80, 0.32) 29% 31%, transparent 32% 100%),
+            radial-gradient(circle at 62% 22%, rgba(255, 248, 220, 0.26), transparent 40%);
+        transform: translate3d(var(--surface-hard-x), var(--surface-hard-y), 0);
     }
 }
 

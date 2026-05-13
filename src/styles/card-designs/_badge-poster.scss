@@ -1,0 +1,112 @@
+.card-design--badge-poster {
+    --card-bg: #121024;
+    --card-surface: #26204b;
+    --card-surface-soft: #d94f2f;
+    --card-border: #f2bf4d;
+    --card-border-muted: #342b62;
+    --card-accent: #66d3ff;
+    --card-cut: #ffdc74;
+    --card-highlight: #fff2c2;
+    --card-text: #fff2df;
+    --card-muted: #d0d6ff;
+    --card-stat: #ffda68;
+    --card-shadow: rgba(102, 211, 255, 0.32);
+
+    border-color: var(--card-border);
+    background:
+        radial-gradient(circle at 50% 8%, rgba(102, 211, 255, 0.14), transparent 8rem),
+        linear-gradient(155deg, rgba(102, 211, 255, 0.1), transparent 32%),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 60%, #090817 100%);
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.52),
+        inset 0 0 0 1px rgba(242, 191, 77, 0.22),
+        inset 0 0 0 7px rgba(30, 22, 70, 0.28),
+        0 0 22px var(--card-shadow);
+}
+
+.card-design--badge-poster {
+    .card-finish::before,
+    .card-finish::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+    }
+
+    .card-finish::before {
+        background:
+            radial-gradient(ellipse at var(--card-pointer-x) var(--card-pointer-y), rgba(255, 255, 245, 0.3), rgba(102, 211, 255, 0.18) 22%, rgba(242, 191, 77, 0.1) 46%, transparent 66%),
+            repeating-radial-gradient(ellipse at 50% 36%, transparent 0 14px, rgba(102, 211, 255, 0.06) 14px 16px, transparent 16px 32px),
+            linear-gradient(var(--card-glare-angle), transparent 28%, rgba(180, 228, 255, 0.16) 44%, transparent 58%);
+        mix-blend-mode: screen;
+        transform: translate3d(var(--card-finish-x), var(--card-finish-y), 0);
+    }
+
+    .card-finish::after {
+        background:
+            repeating-conic-gradient(from var(--card-glare-angle) at 50% 36%, rgba(255, 220, 116, 0.08) 0deg 1deg, transparent 1deg 9deg),
+            repeating-linear-gradient(135deg, transparent 0 24px, rgba(102, 211, 255, 0.055) 24px 25px);
+        mix-blend-mode: soft-light;
+        transform: translate3d(var(--card-finish-reverse-x), var(--card-finish-reverse-y), 0);
+    }
+
+    &:hover,
+    &:focus-within {
+        .card-finish::before { opacity: 0.56; }
+        .card-finish::after { opacity: 0.52; }
+    }
+}
+
+.card-design--badge-poster:hover,
+.card-design--badge-poster:focus-within {
+    box-shadow:
+        0 26px 56px rgba(0, 0, 0, 0.58),
+        inset 0 0 0 1px rgba(242, 191, 77, 0.3),
+        inset 0 0 0 7px rgba(30, 22, 70, 0.22),
+        0 0 32px var(--card-shadow);
+}
+
+.card-design--badge-poster::before {
+    border-color: rgba(242, 191, 77, 0.38);
+    box-shadow:
+        inset 0 0 0 1px rgba(102, 211, 255, 0.14),
+        0 0 16px rgba(102, 211, 255, 0.12);
+}
+
+.card-design--badge-poster::after {
+    background: linear-gradient(90deg, transparent, var(--card-border), var(--card-cut), var(--card-border), transparent);
+    box-shadow: 0 0 14px rgba(242, 191, 77, 0.28);
+}
+
+.card-design--badge-poster .card-bg {
+    background:
+        linear-gradient(135deg, transparent 0 18%, rgba(102, 211, 255, 0.07) 18% 19%, transparent 19% 52%, rgba(242, 191, 77, 0.06) 52% 53%, transparent 53%),
+        linear-gradient(45deg, transparent 0 38%, rgba(102, 211, 255, 0.06) 38% 39%, transparent 39% 74%, rgba(255, 220, 116, 0.06) 74% 75%, transparent 75%),
+        radial-gradient(circle at 68% 20%, rgba(102, 211, 255, 0.12), transparent 8rem),
+        repeating-linear-gradient(112deg, transparent 0 28px, rgba(102, 211, 255, 0.036) 28px 29px);
+    opacity: 0.82;
+}
+
+.card-design--badge-poster .player-vitals-container {
+    background: linear-gradient(180deg, var(--card-accent), var(--card-border-muted));
+    border-color: rgba(242, 191, 77, 0.28);
+    color: #090817;
+}
+
+.card-design--badge-poster .nation-flag,
+.card-design--badge-poster .club-logo {
+    background: rgba(9, 8, 23, 0.64);
+    border-color: rgba(242, 191, 77, 0.22);
+}
+
+.card-design--badge-poster .player-photo {
+    color: rgba(208, 214, 255, 0.82);
+    background:
+        radial-gradient(ellipse at 50% 64%, rgba(9, 8, 23, 0.46), transparent 56%),
+        radial-gradient(ellipse at 50% 30%, rgba(102, 211, 255, 0.1), transparent 48%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+}

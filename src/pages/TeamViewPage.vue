@@ -142,6 +142,42 @@
                     </div>
                 </GradientBackground>
 
+                <!-- Prestige Player Cards -->
+                <div v-if="teamPlayers.length > 0" class="prestige-cards-section">
+                    <div class="prestige-cards-row">
+                        <div v-if="iconCardPlayer" class="prestige-card-wrapper">
+                            <PlayerCards
+                                :player="iconCardPlayer"
+                                cardDesignOverride="card-design--parchment-frame"
+                                :positionOverride="getDisplayPosition(iconCardPlayer)"
+                                :datasetId="currentDatasetId"
+                                :currency-symbol="detectedCurrencySymbol"
+                            />
+                            <div class="prestige-card-label icon-label">Icon</div>
+                        </div>
+                        <div v-if="heroCardPlayer" class="prestige-card-wrapper">
+                            <PlayerCards
+                                :player="heroCardPlayer"
+                                cardDesignOverride="card-design--badge-poster"
+                                :positionOverride="getDisplayPosition(heroCardPlayer)"
+                                :datasetId="currentDatasetId"
+                                :currency-symbol="detectedCurrencySymbol"
+                            />
+                            <div class="prestige-card-label hero-label">Hero</div>
+                        </div>
+                        <div v-if="motmCardPlayer" class="prestige-card-wrapper">
+                            <PlayerCards
+                                :player="motmCardPlayer"
+                                cardDesignOverride="card-design--match-night-flare"
+                                :positionOverride="getDisplayPosition(motmCardPlayer)"
+                                :datasetId="currentDatasetId"
+                                :currency-symbol="detectedCurrencySymbol"
+                            />
+                            <div class="prestige-card-label motm-label">Man of the Match</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Formation & Tactics Section -->
                 <div class="formation-tactics-layout">
                     <q-card class="formation-card">
@@ -340,6 +376,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GradientBackground from '../components/GradientBackground.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
+import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import TeamLogo from '../components/TeamLogo.vue'
@@ -375,6 +412,7 @@ export default {
     PlayerDataTable,
     PlayerDetailDialog,
     PitchDisplay,
+    PlayerCards,
     TeamLogo,
     GradientBackground,
   },
@@ -1588,6 +1626,159 @@ export default {
       }
     }
 
+    // --- Prestige Player Card Helpers ---
+    const clampNumber = (value, min, max) => Math.min(max, Math.max(min, value))
+
+    const getOverallValueLocal = (player) => {
+      const overall = Number(player?.Overall ?? player?.overall ?? 0)
+      return Number.isNaN(overall) ? 0 : overall
+    }
+
+    const outfieldStatKeys = ['pac', 'dri', 'sho', 'def', 'pas', 'phy']
+    const goalkeeperStatKeys = ['div', 'han', 'kic', 'ref', 'spd', 'pos']
+
+    const statRelevanceByPosition = {
+      GK: { div: 1.18, han: 1.08, kic: 0.72, ref: 1.2, spd: 0.55, pos: 1.12 },
+      LB: { pac: 0.9, dri: 0.65, sho: 0.22, def: 1.2, pas: 0.76, phy: 1.05 },
+      RB: { pac: 0.9, dri: 0.65, sho: 0.22, def: 1.2, pas: 0.76, phy: 1.05 },
+      CB: { pac: 0.58, dri: 0.28, sho: 0.18, def: 1.24, pas: 0.64, phy: 1.14 },
+      CDM: { pac: 0.5, dri: 0.68, sho: 0.36, def: 1.12, pas: 1.1, phy: 0.96 },
+      CM: { pac: 0.48, dri: 0.9, sho: 0.58, def: 0.68, pas: 1.18, phy: 0.78 },
+      CAM: { pac: 0.72, dri: 1.12, sho: 0.95, def: 0.24, pas: 1.16, phy: 0.52 },
+      LW: { pac: 1.12, dri: 1.14, sho: 0.82, def: 0.22, pas: 0.82, phy: 0.52 },
+      LM: { pac: 1.02, dri: 1.04, sho: 0.62, def: 0.48, pas: 0.92, phy: 0.62 },
+      ST: { pac: 0.84, dri: 0.72, sho: 1.22, def: 0.16, pas: 0.58, phy: 0.92 },
+      RW: { pac: 1.12, dri: 1.14, sho: 0.82, def: 0.22, pas: 0.82, phy: 0.52 },
+      RM: { pac: 1.02, dri: 1.04, sho: 0.62, def: 0.48, pas: 0.92, phy: 0.62 },
+    }
+
+    const getRelevantStatFloor = (targetOverall, relevance) => {
+      if (relevance >= 1.18) return targetOverall - 2
+      if (relevance >= 1) return targetOverall - 7
+      if (relevance >= 0.82) return targetOverall - 8
+      if (relevance >= 0.62) return targetOverall - 10
+      return 0
+    }
+
+    const getUpgradedStat = (
+      statValue,
+      baseOverall,
+      targetOverall,
+      relevance,
+      displayPosition,
+      positionBonus
+    ) => {
+      const numericStat = Number(statValue)
+      if (Number.isNaN(numericStat) || numericStat <= 0) return statValue
+      const overallBoost = Math.max(0, targetOverall - baseOverall)
+      let statBoost = overallBoost * (0.65 + relevance * 0.7) + positionBonus
+      if (numericStat >= targetOverall + 2) statBoost *= 0.35
+      else if (numericStat >= targetOverall) statBoost *= 0.5
+      const floor = getRelevantStatFloor(targetOverall, relevance)
+      const isAttacker = ['LW', 'LM', 'ST', 'RW', 'RM'].includes(displayPosition)
+      const positionCap =
+        relevance >= 0.62 ? targetOverall + 8 : targetOverall - (isAttacker ? 5 : 8)
+      const boosted = Math.max(numericStat + statBoost, floor)
+      return Math.round(clampNumber(boosted, numericStat, Math.min(99, positionCap)))
+    }
+
+    const shortToDisplayPosition = {
+      GK: 'GK',
+      DC: 'CB',
+      DR: 'RB',
+      DL: 'LB',
+      WBR: 'RB',
+      WBL: 'LB',
+      DM: 'CDM',
+      MR: 'RM',
+      ML: 'LM',
+      MC: 'CM',
+      AMR: 'RW',
+      AML: 'LW',
+      AMC: 'CAM',
+      ST: 'ST',
+    }
+
+    const getDisplayPosition = (player) => {
+      if (!player) return 'CM'
+      const positions = player.shortPositions || player.short_positions || []
+      for (const pos of positions) {
+        const mapped = shortToDisplayPosition[pos]
+        if (mapped) return mapped
+      }
+      return 'CM'
+    }
+
+    const createPrestigePlayer = (player, boostAmount, minOverall = 0) => {
+      const baseOverall = getOverallValueLocal(player)
+      const displayPosition = getDisplayPosition(player)
+      const isGK = displayPosition === 'GK'
+      const targetOverall = Math.min(99, Math.max(baseOverall + boostAmount, minOverall))
+      const relevance = statRelevanceByPosition[displayPosition] || statRelevanceByPosition.CM
+      const statKeys = isGK ? goalkeeperStatKeys : outfieldStatKeys
+      const positionBonus = isGK ? 0 : 1
+
+      const boostedPlayer = { ...player, Overall: targetOverall, overall: targetOverall }
+      for (const key of statKeys) {
+        if (player[key] !== undefined) {
+          boostedPlayer[key] = getUpgradedStat(
+            player[key],
+            baseOverall,
+            targetOverall,
+            relevance[key] || 0.5,
+            displayPosition,
+            positionBonus
+          )
+        }
+      }
+      return boostedPlayer
+    }
+
+    const iconCardPlayer = computed(() => {
+      if (!teamPlayers.value.length) return null
+      const best = teamPlayers.value.reduce((prev, curr) =>
+        getOverallValueLocal(curr) > getOverallValueLocal(prev) ? curr : prev
+      )
+      return { ...createPrestigePlayer(best, 10, 85), isIcon: true }
+    })
+
+    const heroCardPlayer = computed(() => {
+      if (!teamPlayers.value.length) return null
+      const withApps = teamPlayers.value.filter((p) => {
+        const apps = Number(p.Apps ?? p.apps ?? p['Ap'] ?? 0)
+        return !Number.isNaN(apps) && apps >= 10
+      })
+      const pool = withApps.length > 0 ? withApps : teamPlayers.value
+      const oldest = pool.reduce((prev, curr) => {
+        const prevAge = Number(prev.age ?? prev.Age ?? 0)
+        const currAge = Number(curr.age ?? curr.Age ?? 0)
+        return currAge > prevAge ? curr : prev
+      })
+      return createPrestigePlayer(oldest, 8)
+    })
+
+    const motmCardPlayer = computed(() => {
+      if (!teamPlayers.value.length) return null
+      const withRating = teamPlayers.value.filter((p) => {
+        const rating = Number(p['Av Rat'] ?? p.avRat ?? 0)
+        return !Number.isNaN(rating) && rating > 0
+      })
+      let chosen
+      if (withRating.length > 0) {
+        chosen = withRating.reduce((prev, curr) => {
+          const prevRat = Number(prev['Av Rat'] ?? prev.avRat ?? 0)
+          const currRat = Number(curr['Av Rat'] ?? curr.avRat ?? 0)
+          return currRat > prevRat ? curr : prev
+        })
+      } else {
+        const sorted = [...teamPlayers.value].sort(
+          (a, b) => getOverallValueLocal(b) - getOverallValueLocal(a)
+        )
+        chosen = sorted[1] ?? sorted[0]
+      }
+      return createPrestigePlayer(chosen, 5)
+    })
+
     const _startersWithRoleRatings = computed(() => {
       if (!squadComposition.value || Object.keys(squadComposition.value).length === 0) {
         return {}
@@ -1643,6 +1834,10 @@ export default {
       currentDatasetId,
       shareDataset,
       teamLogoUrl,
+      iconCardPlayer,
+      heroCardPlayer,
+      motmCardPlayer,
+      getDisplayPosition,
     }
   },
 }
@@ -2433,4 +2628,56 @@ $border-radius-small: 8px;
 .rating-tier-3 { color: #f57c00; background-color: rgba(245, 124, 0, 0.1); }
 .rating-tier-2 { color: #d32f2f; background-color: rgba(211, 47, 47, 0.1); }
 .rating-tier-1 { color: #616161; background-color: rgba(97, 97, 97, 0.1); }
+
+// Prestige Player Cards Section
+.prestige-cards-section {
+    margin: 2.5rem 0;
+
+    .prestige-cards-row {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 3rem;
+        flex-wrap: wrap;
+    }
+
+    .prestige-card-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .prestige-card-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+
+        &.icon-label {
+            background: linear-gradient(135deg, #e9d8b4 0%, #ad8432 100%);
+            color: #35240f;
+        }
+
+        &.hero-label {
+            background: linear-gradient(135deg, #26204b 0%, #f2bf4d 100%);
+            color: #fff2df;
+        }
+
+        &.motm-label {
+            background: linear-gradient(135deg, #2d0d08 0%, #ff7f26 100%);
+            color: #fff2e8;
+        }
+    }
+
+    @media (max-width: 768px) {
+        margin: 1.5rem 0;
+
+        .prestige-cards-row {
+            gap: 1.5rem;
+        }
+    }
+}
 </style>
