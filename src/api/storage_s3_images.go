@@ -66,6 +66,34 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 	return nil
 }
 
+// getRegenImage retrieves a regen fallback face image from S3 and writes it to the response writer.
+// Regen images live under the regen/ prefix in the same bucket as faces.
+func (s *S3Storage) getRegenImage(ctx context.Context, region, filename string, w http.ResponseWriter) error {
+	if s.client == nil {
+		return apperrors.ErrS3ClientNotAvailable
+	}
+
+	bucket := regenS3Bucket(s)
+	objectKey := "regen/" + region + "/" + filename
+
+	reader, err := s.client.GetObject(ctx, bucket, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get regen image from S3: %w", err)
+	}
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			LogWarn("Failed to close S3 regen reader: %v", closeErr)
+		}
+	}()
+
+	_, err = io.Copy(w, reader)
+	if err != nil {
+		return fmt.Errorf("failed to write regen image to response: %w", err)
+	}
+
+	return nil
+}
+
 // getTeamLogo retrieves a team logo image from S3 and writes it to the response writer
 func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.ResponseWriter) error {
 	if s.client == nil {

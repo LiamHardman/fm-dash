@@ -1703,7 +1703,8 @@ export default defineComponent({
       }
 
       // Construct the face API URL
-      return `/api/faces?uid=${encodeURIComponent(playerUID)}`
+      const nat = props.player.nationality_fifa_code || ''
+      return `/api/faces?uid=${encodeURIComponent(playerUID)}&nationality=${encodeURIComponent(nat)}`
     })
 
     // Reset face image error when player changes

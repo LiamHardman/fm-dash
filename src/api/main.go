@@ -167,6 +167,9 @@ func main() {
 		configInitOnce.Do(initializeConfigAsync)
 	}()
 
+	// Initialize regen fallback face cache
+	initRegenCache()
+
 	// Start performance monitoring (log metrics every 30 seconds)
 	StartPerformanceMonitoring(30 * time.Second)
 	// Serve the main index.html page (assuming it's built into a 'public' or 'dist' folder by Vue)

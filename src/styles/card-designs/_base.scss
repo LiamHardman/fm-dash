@@ -245,8 +245,8 @@
 
 .nation-flag,
 .club-logo {
-    width: 42px;
-    height: 30px;
+    width: 55px;
+    height: 39px;
     overflow: hidden;
     border: 1px solid rgba(255, 235, 214, 0.24);
     border-radius: 3px;
@@ -261,7 +261,7 @@
 }
 
 .club-logo {
-    height: 42px;
+    height: 55px;
     display: grid;
     place-items: center;
     color: var(--card-accent);
@@ -280,11 +280,10 @@
 .player-photo {
     position: absolute;
     left: calc(50% + 34px);
-    top: -34px;
-    width: 166px;
-    height: 164px;
-    display: grid;
-    place-items: center;
+    top: -37px;
+    width: 173px;
+    height: 170px;
+    overflow: hidden;
     color: rgba(255, 229, 203, 0.82);
     background:
         radial-gradient(
@@ -313,7 +312,7 @@
 
     img {
         object-fit: contain;
-        object-position: bottom center;
+        object-position: center;
         filter: drop-shadow(0 14px 16px rgba(0, 0, 0, 0.4));
     }
 

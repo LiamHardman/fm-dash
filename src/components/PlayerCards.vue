@@ -513,7 +513,8 @@ export default defineComponent({
       if (props.playerFaceUrl) return props.playerFaceUrl
       const playerUID = props.player.UID || props.player.uid
       if (playerUID) {
-        return `/api/faces?uid=${encodeURIComponent(playerUID)}`
+        const nat = props.player.nationality_fifa_code || ''
+        return `/api/faces?uid=${encodeURIComponent(playerUID)}&nationality=${encodeURIComponent(nat)}`
       }
       return null
     })

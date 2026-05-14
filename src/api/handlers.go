@@ -3140,6 +3140,15 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if file exists
 	if _, err := os.Stat(faceFilePath); os.IsNotExist(err) {
 		logWarn(ctx, "Face image not found", "path", sanitizeForLogging(faceFilePath))
+
+		// Attempt regen fallback using the player's nationality (FIFA code).
+		if nationality := r.URL.Query().Get("nationality"); nationality != "" {
+			if serveRegenFace(ctx, w, r, uid, nationality) {
+				logInfo(ctx, "Served regen fallback face", "nationality", sanitizeForLogging(nationality))
+				return
+			}
+		}
+
 		http.Error(w, "Face image not found", http.StatusNotFound)
 		return
 	}

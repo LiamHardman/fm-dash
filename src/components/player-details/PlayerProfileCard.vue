@@ -264,7 +264,8 @@ export default defineComponent({
     // Player face image URL
     const playerFaceImageUrl = computed(() => {
       if (!props.player?.uid || !showFaces.value) return null
-      return `/faces/${props.player.uid}.png`
+      const nat = props.player.nationality_fifa_code || ''
+      return `/api/faces?uid=${encodeURIComponent(props.player.uid)}&nationality=${encodeURIComponent(nat)}`
     })
 
     // Formatted financial values
