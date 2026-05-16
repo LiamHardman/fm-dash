@@ -6,7 +6,9 @@
         >
             <q-toolbar class="header-toolbar">
                 <q-toolbar-title class="header-title">
-                    <router-link to="/" class="app-title-link">FM-Dash</router-link>
+                    <router-link to="/" class="app-title-link">
+                        <q-icon name="sports_soccer" class="brand-icon" />FM-Dash
+                    </router-link>
                 </q-toolbar-title>
                 
                 <div class="nav-links">
@@ -171,14 +173,14 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .app-header {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(26, 35, 126, 0.1);
-    
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 2px 16px rgba(26, 35, 126, 0.08);
+
     .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
+        background: rgba(16, 16, 28, 0.88);
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(14px);
     }
 }
 
@@ -194,24 +196,32 @@ export default defineComponent({
 .app-title-link {
     text-decoration: none;
     color: #1a237e;
-    font-weight: 300;
+    font-weight: 400;
     font-size: 1.5rem;
     letter-spacing: 2px;
     text-transform: uppercase;
     transition: opacity 0.2s ease;
-    
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+
     &:hover {
         opacity: 0.7;
     }
-    
+
     .body--dark & {
         color: rgba(255, 255, 255, 0.9);
     }
 }
 
+.brand-icon {
+    font-size: 1.3rem;
+    opacity: 0.85;
+}
+
 .nav-links {
     display: flex;
-    gap: 2rem;
+    gap: 0.25rem;
     margin-left: 3rem;
 }
 
@@ -222,47 +232,40 @@ export default defineComponent({
 
 .nav-link {
     text-decoration: none;
-    color: #666;
+    color: #555;
     font-weight: 400;
     font-size: 0.9rem;
     letter-spacing: 0.5px;
-    padding: 0.5rem 0;
+    padding: 0.4rem 0.75rem;
+    border-radius: 20px;
     position: relative;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
     display: flex;
     align-items: center;
-    
+
     &:hover {
         color: #1a237e;
+        background-color: rgba(26, 35, 126, 0.06);
     }
-    
+
     &.router-link-active {
         color: #1a237e;
-        
-        &::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #1a237e;
-        }
+        background-color: rgba(26, 35, 126, 0.1);
+        font-weight: 500;
     }
-    
+
     .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
+        color: rgba(255, 255, 255, 0.65);
+
         &:hover {
             color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.08);
         }
-        
+
         &.router-link-active {
-            color: rgba(255, 255, 255, 0.9);
-            
-            &::after {
-                background: rgba(255, 255, 255, 0.9);
-            }
+            color: rgba(255, 255, 255, 0.95);
+            background-color: rgba(255, 255, 255, 0.12);
+            font-weight: 500;
         }
     }
 }
@@ -314,10 +317,10 @@ export default defineComponent({
     margin-right: 1rem;
     display: flex;
     align-items: center;
-    
+
     .bmc-button {
-        background: #FFDD00;
-        border: 1px solid #000000;
+        background: transparent;
+        border: 1.5px solid #1a237e;
         border-radius: 8px;
         height: 36px;
         display: flex;
@@ -325,18 +328,28 @@ export default defineComponent({
         justify-content: center;
         padding: 0 1rem;
         text-decoration: none;
-        color: #000000;
-        font-size: 14px;
+        color: #1a237e;
+        font-size: 13px;
         font-weight: 500;
         transition: all 0.2s ease;
         white-space: nowrap;
-        
+
         &:hover {
-            background: #FFE55C;
+            background: rgba(26, 35, 126, 0.08);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(26, 35, 126, 0.15);
         }
-        
+
+        .body--dark & {
+            border-color: rgba(255, 255, 255, 0.45);
+            color: rgba(255, 255, 255, 0.85);
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
         .bmc-text {
             display: flex;
             align-items: center;
