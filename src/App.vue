@@ -93,12 +93,6 @@
             <router-view />
         </q-page-container>
 
-        <q-footer class="app-footer">
-            <div class="footer-content">
-                <p>&copy; {{ new Date().getFullYear() }} Liam Hardman.</p>
-            </div>
-        </q-footer>
-
         <!-- Settings Modal -->
         <SettingsModal v-model="showSettingsModal" />
         
@@ -358,31 +352,6 @@ export default defineComponent({
     }
 }
 
-.app-footer {
-    background: transparent;
-    border-top: 1px solid rgba(26, 35, 126, 0.1);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-}
-
-.footer-content {
-    padding: 1rem 2rem;
-    text-align: center;
-    
-    p {
-        margin: 0;
-        color: #666;
-        font-size: 0.85rem;
-        font-weight: 300;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.6);
-        }
-    }
-}
 
 @media (max-width: 768px) {
     .header-toolbar {
@@ -406,18 +375,10 @@ export default defineComponent({
     
     .bmc-button-wrapper {
         margin-right: 0.5rem;
-        
+
         .bmc-button {
             height: 32px !important;
             font-size: 12px !important;
-        }
-    }
-    
-    .footer-content {
-        padding: 1rem;
-        
-        p {
-            font-size: 0.8rem;
         }
     }
 }
