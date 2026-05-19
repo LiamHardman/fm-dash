@@ -4,10 +4,12 @@
             <!-- Left Content Panel -->
             <div class="content-panel">
                 <div class="hero-content">
-                    <h1 class="hero-title">
-                        Revolutionize Your
-                        <span class="gradient-text" :class="{ 'is-fading': isTransitioning }">{{ currentWord }}</span>
-                    </h1>
+                    <div class="accent-block">
+                        <h1 class="hero-title">
+                            Revolutionize Your
+                            <span class="gradient-text" :class="{ 'is-fading': isTransitioning }">{{ currentWord }}</span>
+                        </h1>
+                    </div>
                     <p class="hero-subtitle">
                         Advanced player analysis and team optimization. Upload your data and discover insights that will transform your tactical approach.
                     </p>
@@ -34,17 +36,12 @@
                             <q-icon name="play_arrow" class="q-mr-xs" />
                             View Demo
                         </q-btn>
-                        <q-btn
-                            outline
-                            color="white"
-                            size="md"
-                            @click="openGitHub"
-                            class="github-action-btn"
-                            no-caps
-                        >
-                            <q-icon name="code" class="q-mr-xs" />
-                            View on GitHub
-                        </q-btn>
+                    </div>
+                    <div class="hero-meta">
+                        Open source &nbsp;·&nbsp; No account needed &nbsp;·&nbsp;
+                        <span class="hero-meta-link" @click="openGitHub">
+                            <q-icon name="code" size="0.85rem" /> GitHub
+                        </span>
                     </div>
                 </div>
             </div>
@@ -55,64 +52,17 @@
                     <h3 class="features-title">Complete FM24 Analysis Suite</h3>
                 </div>
 
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <q-icon name="upload" size="1.5rem" color="primary" />
-                        </div>
-                        <div class="feature-content">
-                            <h4 class="feature-title">Data Upload</h4>
-                            <p class="feature-description">Upload your FM24 HTML exports for instant analysis</p>
-                        </div>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <q-icon name="search" size="1.5rem" color="secondary" />
-                        </div>
-                        <div class="feature-content">
-                            <h4 class="feature-title">Player Search</h4>
-                            <p class="feature-description">Advanced filtering by position, age, stats, and more</p>
-                        </div>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <q-icon name="stars" size="1.5rem" color="accent" />
-                        </div>
-                        <div class="feature-content">
-                            <h4 class="feature-title">Scouting Tools</h4>
-                            <p class="feature-description">Find wonderkids, bargains, and player upgrades</p>
-                        </div>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <q-icon name="flag" size="1.5rem" color="info" />
-                        </div>
-                        <div class="feature-content">
-                            <h4 class="feature-title">Nation Analysis</h4>
-                            <p class="feature-description">Scout out other national teams.</p>
-                        </div>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <q-icon name="emoji_events" size="1.5rem" color="positive" />
-                        </div>
-                        <div class="feature-content">
-                            <h4 class="feature-title">League Analysis</h4>
-                            <p class="feature-description">Browse teams and players by competition</p>
-                        </div>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <q-icon name="favorite" size="1.5rem" color="warning" />
-                        </div>
-                        <div class="feature-content">
-                            <h4 class="feature-title">Wishlist System</h4>
-                            <p class="feature-description">Save and track players across datasets</p>
+                <div class="feature-rows">
+                    <div
+                        v-for="(feature, i) in features"
+                        :key="feature.name"
+                        class="row-item"
+                        :style="{ animationDelay: `${0.3 + i * 0.07}s` }"
+                    >
+                        <q-icon :name="feature.icon" :color="feature.color" size="1.1rem" class="row-icon" />
+                        <div class="row-text">
+                            <span class="row-name">{{ feature.name }}</span>
+                            <span class="row-desc">{{ feature.description }}</span>
                         </div>
                     </div>
                 </div>
@@ -128,13 +78,64 @@ import { useUiStore } from '@/stores/uiStore'
 
 const ROTATING_WORDS = ['Scouting Approach', 'Transfer Strategy', 'Tactical Edge']
 
+const FEATURES = [
+  {
+    name: 'Data Upload',
+    icon: 'upload',
+    color: 'primary',
+    description: 'Upload your FM24 HTML exports for instant analysis.',
+  },
+  {
+    name: 'Player Search',
+    icon: 'search',
+    color: 'secondary',
+    description: 'Advanced filtering by position, age, stats, and more.',
+  },
+  {
+    name: 'Scouting Tools',
+    icon: 'stars',
+    color: 'accent',
+    description: 'Find wonderkids, bargains, and player upgrades.',
+  },
+  {
+    name: 'Nation Analysis',
+    icon: 'flag',
+    color: 'info',
+    description: 'Scout out other national teams and compare squads.',
+  },
+  {
+    name: 'League Analysis',
+    icon: 'emoji_events',
+    color: 'positive',
+    description: 'Browse teams and players by competition.',
+  },
+  {
+    name: 'Top Performers',
+    icon: 'leaderboard',
+    color: 'warning',
+    description: 'See who leads in passes/90, dribbles/90, and other key stats.',
+  },
+  {
+    name: 'Wishlist System',
+    icon: 'favorite',
+    color: 'negative',
+    description: 'Save and track players across datasets.',
+  },
+  {
+    name: 'Team of the Season',
+    icon: 'style',
+    color: 'purple',
+    description: 'Special card designs that turn FM into a trading card game.',
+  },
+]
+
 export default defineComponent({
   name: 'LandingPage',
   setup() {
     const router = useRouter()
     const uiStore = useUiStore()
 
-    // --- Rotating headline text ---
+    // Rotating headline
     const wordIndex = ref(0)
     const isTransitioning = ref(false)
     const currentWord = computed(() => ROTATING_WORDS[wordIndex.value])
@@ -154,23 +155,13 @@ export default defineComponent({
       clearInterval(wordInterval)
     })
 
-    const navigateToUpload = () => {
-      router.push('/upload')
-    }
-
-    const navigateToDemo = () => {
-      router.push('/dataset/45e277af-1cf1-4688-9874-c59e1f3026ae')
-    }
-
-    const showTutorial = () => {
-      uiStore.showTutorial()
-    }
-
-    const openGitHub = () => {
-      window.open('https://github.com/LiamHardman/fm-dash', '_blank')
-    }
+    const navigateToUpload = () => router.push('/upload')
+    const navigateToDemo = () => router.push('/dataset/45e277af-1cf1-4688-9874-c59e1f3026ae')
+    const showTutorial = () => uiStore.showTutorial()
+    const openGitHub = () => window.open('https://github.com/LiamHardman/fm-dash', '_blank')
 
     return {
+      features: FEATURES,
       currentWord,
       isTransitioning,
       navigateToUpload,
@@ -187,46 +178,26 @@ export default defineComponent({
 // ─── Keyframes ────────────────────────────────────────────────────────────────
 
 @keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-36px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-36px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(36px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-// Drifting background orb
 @keyframes bgOrb {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33%       { transform: translate(-70px, 55px) scale(1.1); }
   66%       { transform: translate(55px, -35px) scale(0.92); }
 }
 
-// Shimmer sweep for primary button
 @keyframes shimmerSweep {
   from { left: -100%; }
   to   { left: 100%; }
@@ -242,31 +213,22 @@ export default defineComponent({
     color: white;
     position: relative;
 
-    // Static soft highlight
     &::before {
         content: "";
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(
-            circle at 30% 20%,
-            rgba(255, 255, 255, 0.05) 0%,
-            transparent 50%
-        );
+        inset: 0;
+        background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.05) 0%, transparent 50%);
         pointer-events: none;
         z-index: 0;
     }
 
-    // Animated drifting orb (background motion)
     &::after {
         content: "";
         position: absolute;
         width: 640px;
         height: 640px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(100, 181, 246, 0.09) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(100,181,246,0.09) 0%, transparent 70%);
         top: -120px;
         right: 8%;
         pointer-events: none;
@@ -301,18 +263,23 @@ export default defineComponent({
     padding: 2rem 0;
 }
 
-// ─── Hero content — entrance animations ───────────────────────────────────────
+// ─── Hero content ─────────────────────────────────────────────────────────────
 
 .hero-content {
     max-width: 500px;
+
+    .accent-block {
+        padding-left: 1rem;
+        border-left: 3px solid #42a5f5;
+        animation: slideInLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: 0.05s;
+    }
 
     .hero-title {
         font-size: 3rem;
         font-weight: 700;
         line-height: 1.1;
-        margin: 0 0 1rem 0;
-        animation: slideInLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-        animation-delay: 0.05s;
+        margin: 0;
 
         .gradient-text {
             display: block;
@@ -322,9 +289,7 @@ export default defineComponent({
             background-clip: text;
             transition: opacity 0.35s ease;
 
-            &.is-fading {
-                opacity: 0;
-            }
+            &.is-fading { opacity: 0; }
         }
     }
 
@@ -340,12 +305,12 @@ export default defineComponent({
 
     .hero-actions {
         display: flex;
+        flex-direction: row;
         gap: 1rem;
         flex-wrap: wrap;
         animation: slideInLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
         animation-delay: 0.35s;
 
-        // ── Primary button: shimmer sweep on hover ──
         .primary-action-btn {
             padding: 0.8rem 1.8rem;
             font-weight: 600;
@@ -362,12 +327,7 @@ export default defineComponent({
                 left: -100%;
                 width: 60%;
                 height: 100%;
-                background: linear-gradient(
-                    90deg,
-                    transparent,
-                    rgba(255, 255, 255, 0.18),
-                    transparent
-                );
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
                 pointer-events: none;
             }
 
@@ -375,9 +335,7 @@ export default defineComponent({
                 transform: translateY(-2px);
                 box-shadow: 0 8px 28px rgba(66, 165, 245, 0.45);
 
-                &::after {
-                    animation: shimmerSweep 0.55s ease forwards;
-                }
+                &::after { animation: shimmerSweep 0.55s ease forwards; }
             }
         }
 
@@ -394,33 +352,20 @@ export default defineComponent({
                 background: rgba(255, 255, 255, 0.1);
             }
         }
+    }
 
-        .tutorial-action-btn {
-            padding: 0.8rem 1.5rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            border-radius: 12px;
-            border-width: 2px;
-            transition: transform 0.3s ease, background 0.3s ease;
+    .hero-meta {
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.4);
+        animation: slideInLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: 0.48s;
 
-            &:hover {
-                transform: translateY(-2px);
-                background: rgba(255, 255, 255, 0.1);
-            }
-        }
+        .hero-meta-link {
+            color: rgba(100, 181, 246, 0.7);
+            cursor: pointer;
+            transition: color 0.2s ease;
 
-        .github-action-btn {
-            padding: 0.8rem 1.5rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            border-radius: 12px;
-            border-width: 2px;
-            transition: transform 0.3s ease, background 0.3s ease;
-
-            &:hover {
-                transform: translateY(-2px);
-                background: rgba(255, 255, 255, 0.1);
-            }
+            &:hover { color: #64b5f6; }
         }
     }
 }
@@ -437,8 +382,7 @@ export default defineComponent({
 }
 
 .features-header {
-    text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: 0.25s;
 
@@ -446,155 +390,68 @@ export default defineComponent({
         font-size: 2rem;
         font-weight: 700;
         color: rgba(255, 255, 255, 0.95);
-        margin: 0 0 1rem 0;
+        margin: 0;
 
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.9);
-        }
+        .body--dark & { color: rgba(255, 255, 255, 0.9); }
     }
 }
 
-// ─── Feature cards — entrance + hover ─────────────────────────────────────────
+// ─── Stacked rows ─────────────────────────────────────────────────────────────
 
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.2rem;
-    margin-bottom: 2rem;
-    align-items: stretch;
+.feature-rows {
+    display: flex;
+    flex-direction: column;
+}
 
-    .feature-card {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 1.5rem;
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+.row-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 0.6rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    transition: background 0.2s ease;
+    animation: slideInRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    &:last-child { border-bottom: none; }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        cursor: default;
+    }
+
+    .row-icon {
+        flex-shrink: 0;
+    }
+
+    .row-text {
         display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-        min-height: 100px;
-
-        // Staggered entrance
-        animation: slideInRight 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
-        &:nth-child(1) { animation-delay: 0.35s; }
-        &:nth-child(2) { animation-delay: 0.45s; }
-        &:nth-child(3) { animation-delay: 0.55s; }
-        &:nth-child(4) { animation-delay: 0.65s; }
-        &:nth-child(5) { animation-delay: 0.75s; }
-        &:nth-child(6) { animation-delay: 0.85s; }
-
-        // Enhanced hover: lift + glow border + icon scale
-        &:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 32px rgba(100, 181, 246, 0.18);
-            border-color: rgba(100, 181, 246, 0.45);
-
-            .feature-icon {
-                transform: scale(1.15);
-            }
-        }
-
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-
-            &:hover {
-                background: rgba(255, 255, 255, 0.1);
-                box-shadow: 0 10px 32px rgba(100, 181, 246, 0.12);
-            }
-        }
-
-        .feature-icon {
-            flex-shrink: 0;
-            margin-top: 0.2rem;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-            .q-icon {
-                padding: 0.8rem;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 8px;
-
-                .body--dark & {
-                    background: rgba(255, 255, 255, 0.1);
-                }
-            }
-        }
-
-        .feature-content {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-
-            .feature-title {
-                font-size: 1.1rem;
-                font-weight: 600;
-                color: rgba(255, 255, 255, 0.95);
-                margin: 0 0 0.5rem 0;
-                line-height: 1.2;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
-            }
-
-            .feature-description {
-                color: rgba(255, 255, 255, 0.8);
-                line-height: 1.4;
-                margin: 0;
-                font-size: 0.9rem;
-                flex: 1;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-            }
-        }
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
     }
-}
 
-.quick-start {
-    text-align: center;
-
-    .quick-start-btn {
-        padding: 1rem 2.5rem;
-        font-size: 1rem;
+    .row-name {
+        font-size: 0.95rem;
         font-weight: 600;
-        letter-spacing: 0.5px;
-        border-radius: 12px;
-        transition: all 0.3s ease;
+        color: rgba(255, 255, 255, 0.9);
+    }
 
-        &:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-        }
+    .row-desc {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 
 // ─── Responsive ───────────────────────────────────────────────────────────────
 
 @media (max-width: 1200px) {
-    .main-container {
-        padding: 2rem;
-        gap: 2rem;
-    }
-
-    .hero-content {
-        .hero-title {
-            font-size: 2.5rem;
-        }
-    }
-
-    .features-header {
-        .features-title {
-            font-size: 1.8rem;
-        }
-    }
+    .main-container { padding: 2rem; gap: 2rem; }
+    .hero-content .hero-title { font-size: 2.5rem; }
+    .features-header .features-title { font-size: 1.8rem; }
 }
 
 @media (max-width: 1024px) {
@@ -610,15 +467,6 @@ export default defineComponent({
         flex: none;
         height: auto;
         padding: 0;
-    }
-
-    .features-header {
-        margin-bottom: 1.5rem;
-    }
-
-    .features-grid {
-        margin-bottom: 1.5rem;
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -638,98 +486,23 @@ export default defineComponent({
     .hero-content {
         text-align: center;
 
-        .hero-title {
-            font-size: 2rem;
-        }
-
-        .hero-subtitle {
-            font-size: 1rem;
-        }
+        .hero-title { font-size: 2rem; }
+        .hero-subtitle { font-size: 1rem; }
 
         .hero-actions {
-            justify-content: center;
-
-            .primary-action-btn,
-            .secondary-action-btn {
-                width: 100%;
-                max-width: 250px;
-            }
+            align-items: center;
         }
     }
 
-    .features-header {
-        .features-title {
-            font-size: 1.5rem;
-        }
-    }
+    .features-header .features-title { font-size: 1.5rem; }
 
-    .features-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-
-        .feature-card {
-            padding: 1.2rem;
-
-            .feature-content {
-                .feature-title {
-                    font-size: 1rem;
-                    white-space: normal;
-                }
-
-                .feature-description {
-                    font-size: 0.85rem;
-                }
-            }
-        }
-    }
-
-    .quick-start {
-        .quick-start-btn {
-            width: 100%;
-            max-width: 250px;
-        }
-    }
+    .row-item .row-desc { white-space: normal; }
 }
 
 @media (max-width: 480px) {
-    .main-container {
-        padding: 1.5rem;
-    }
-
-    .hero-content {
-        .hero-title {
-            font-size: 1.8rem;
-        }
-
-        .hero-subtitle {
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-        }
-    }
-
-    .features-header {
-        .features-title {
-            font-size: 1.3rem;
-        }
-    }
-
-    .features-grid {
-        .feature-card {
-            padding: 1rem;
-            flex-direction: column;
-            text-align: center;
-            gap: 0.8rem;
-
-            .feature-icon {
-                margin-top: 0;
-            }
-
-            .feature-content {
-                .feature-title {
-                    white-space: normal;
-                }
-            }
-        }
-    }
+    .main-container { padding: 1.5rem; }
+    .hero-content .hero-title { font-size: 1.8rem; }
+    .hero-content .hero-subtitle { font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .features-header .features-title { font-size: 1.3rem; }
 }
 </style>
