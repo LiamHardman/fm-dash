@@ -228,7 +228,7 @@
 <script>
 import { Notify, useQuasar } from 'quasar'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import InteractiveUploadLoader from '../components/InteractiveUploadLoader.vue'
 import playerService from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
@@ -241,6 +241,7 @@ export default {
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const playerStore = usePlayerStore()
     const uiStore = useUiStore()
     const _$q = useQuasar()
@@ -282,6 +283,23 @@ export default {
         datasetRetentionDays.value = config.datasetRetentionDays || 30
       } catch (_error) {
         console.error('Error fetching config:', _error)
+      }
+
+      if (route.query.demo === 'true') {
+        try {
+          const response = await fetch('/demo.html')
+          const blob = await response.blob()
+          playerFile.value = new File([blob], 'demo.html', { type: 'text/html' })
+          await uploadAndParse()
+        } catch (e) {
+          console.error('Failed to load demo file:', e)
+          Notify.create({
+            type: 'negative',
+            message: 'Failed to load demo dataset. Please try uploading a file manually.',
+            position: 'top',
+            timeout: 5000,
+          })
+        }
       }
     })
 

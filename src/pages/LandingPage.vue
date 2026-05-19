@@ -156,7 +156,7 @@ export default defineComponent({
     })
 
     const navigateToUpload = () => router.push('/upload')
-    const navigateToDemo = () => router.push('/dataset/45e277af-1cf1-4688-9874-c59e1f3026ae')
+    const navigateToDemo = () => router.push('/upload?demo=true')
     const showTutorial = () => uiStore.showTutorial()
     const openGitHub = () => window.open('https://github.com/LiamHardman/fm-dash', '_blank')
 

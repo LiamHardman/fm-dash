@@ -87,10 +87,28 @@ func fastDeepCopyPlayer(original *Player) Player {
 		KIC:                 original.KIC,
 		SPD:                 original.SPD,
 		POS:                 original.POS,
+		Pac:                 original.Pac,
+		Sho:                 original.Sho,
+		Pas:                 original.Pas,
+		Dri:                 original.Dri,
+		Def:                 original.Def,
+		Phy:                 original.Phy,
+		Gk:                  original.Gk,
+		Div:                 original.Div,
+		Han:                 original.Han,
+		Ref:                 original.Ref,
+		Kic:                 original.Kic,
+		Spd:                 original.Spd,
+		Pos:                 original.Pos,
 		Overall:             original.Overall,
+		OverallLower:        original.OverallLower,
 		TotalStats:          original.TotalStats,
+		TotalStatsLower:     original.TotalStatsLower,
 		MBR:                 original.MBR,
 		Mbr:                 original.Mbr,
+		CA:                  original.CA,
+		Ca:                  original.Ca,
+		BestRoleOverall:     original.BestRoleOverall,
 		BasedIn:             original.BasedIn,
 
 		// Initialize new mutex
@@ -134,6 +152,16 @@ func fastDeepCopyPlayer(original *Player) Player {
 	if original.ParsedPositions != nil {
 		player.ParsedPositions = make([]string, len(original.ParsedPositions))
 		copy(player.ParsedPositions, original.ParsedPositions)
+	}
+
+	if original.ShortPositions != nil {
+		player.ShortPositions = make([]string, len(original.ShortPositions))
+		copy(player.ShortPositions, original.ShortPositions)
+	}
+
+	if original.PositionGroups != nil {
+		player.PositionGroups = make([]string, len(original.PositionGroups))
+		copy(player.PositionGroups, original.PositionGroups)
 	}
 
 	if original.RoleSpecificOveralls != nil {

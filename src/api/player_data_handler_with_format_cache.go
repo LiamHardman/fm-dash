@@ -193,8 +193,12 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
 	shouldRecalc := true
 	if len(players) > 0 {
-		// Heuristic: if OverallLower is non-zero and NumericAttributes present, assume ratings exist
-		if players[0].OverallLower != 0 && len(players[0].NumericAttributes) > 0 {
+		p := players[0]
+		// Heuristic: skip recalculation only if Overall, NumericAttributes, and CA are all present.
+		// CA = 0 is only valid when the player has no positions; otherwise it signals missing data
+		// (e.g. datasets stored before the ca proto field was added).
+		caValid := p.CA > 0 || len(p.ShortPositions) == 0
+		if p.OverallLower != 0 && len(p.NumericAttributes) > 0 && caValid {
 			shouldRecalc = false
 		}
 	}
