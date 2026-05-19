@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const LandingPage = () => import('../pages/LandingPage.vue')
-const LandingPageTest = () => import('../pages/LandingPageTest.vue')
 const LandingPageHeroTest = () => import('../pages/LandingPageHeroTest.vue')
 const PlayerUploadPage = () => import('../pages/PlayerUploadPage.vue')
 const TeamViewPage = () => import('../pages/TeamViewPage.vue')
@@ -19,11 +18,6 @@ const routes = [
     path: '/',
     name: 'home',
     component: LandingPage,
-  },
-  {
-    path: '/home-test',
-    name: 'home-test',
-    component: LandingPageTest,
   },
   {
     path: '/hero-test',
