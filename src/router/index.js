@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const LandingPage = () => import('../pages/LandingPage.vue')
-const LandingPageHeroTest = () => import('../pages/LandingPageHeroTest.vue')
 const PlayerUploadPage = () => import('../pages/PlayerUploadPage.vue')
 const TeamViewPage = () => import('../pages/TeamViewPage.vue')
 const DatasetPage = () => import('../pages/DatasetPage.vue')
@@ -18,11 +17,6 @@ const routes = [
     path: '/',
     name: 'home',
     component: LandingPage,
-  },
-  {
-    path: '/hero-test',
-    name: 'hero-test',
-    component: LandingPageHeroTest,
   },
   {
     path: '/upload',
