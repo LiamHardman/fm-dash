@@ -293,10 +293,10 @@ function filterPlayers(players, filters) {
       return false
     }
 
-    if (filters.overallMin !== null && player.Overall < filters.overallMin) {
+    if (filters.overallMin !== null && player.overall < filters.overallMin) {
       return false
     }
-    if (filters.overallMax !== null && player.Overall > filters.overallMax) {
+    if (filters.overallMax !== null && player.overall > filters.overallMax) {
       return false
     }
 

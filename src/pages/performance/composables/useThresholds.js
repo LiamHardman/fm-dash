@@ -61,7 +61,7 @@ export function useThresholds(allPlayersData, filters, getNumericValue, getPlaye
     const overallThreshold = sortedOverall[overallTargetIndex] || 0
 
     const playersAfterOverallFilter = filteredByDivisionAndPosition.filter(
-      (player) => (player.Overall || 0) >= overallThreshold
+      (player) => (player.overall || 0) >= overallThreshold
     )
 
     const sortedMinutes = [...playersAfterOverallFilter]

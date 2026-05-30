@@ -419,20 +419,6 @@ func GetPlayerDataForUpgradeFinder(datasetID string) ([]Player, string, bool) {
 				KIC: player.KIC,
 				SPD: player.SPD,
 				POS: player.POS,
-				Pac: player.Pac,
-				Dri: player.Dri,
-				Sho: player.Sho,
-				Pas: player.Pas,
-				Def: player.Def,
-				Phy: player.Phy,
-				Gk:  player.Gk,
-				Div: player.Div,
-				Han: player.Han,
-				Ref: player.Ref,
-				Kic: player.Kic,
-				Spd: player.Spd,
-				Pos: player.Pos,
-
 				// Additional fields for UI display
 				Nationality:    player.Nationality,
 				NationalityISO: player.NationalityISO,
@@ -449,10 +435,7 @@ func GetPlayerDataForUpgradeFinder(datasetID string) ([]Player, string, bool) {
 				PerformanceStatsNumeric: player.PerformanceStatsNumeric,
 				PerformancePercentiles:  player.PerformancePercentiles,
 				TotalStats:              player.TotalStats,
-				TotalStatsLower:         player.TotalStatsLower,
 				MBR:                     player.MBR,
-				Mbr:                     player.Mbr,
-				OverallLower:            player.OverallLower,
 				BestRoleOverall:         player.BestRoleOverall,
 			}
 		}

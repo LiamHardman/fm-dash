@@ -432,23 +432,6 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 
 	// Use cached CA from protobuf
 	player.CA = int(protoPlayer.GetCa())
-	player.Ca = player.CA
-	player.Pac = player.PAC
-	player.Sho = player.SHO
-	player.Pas = player.PAS
-	player.Dri = player.DRI
-	player.Def = player.DEF
-	player.Phy = player.PHY
-	player.Gk = player.GK
-	player.Div = player.DIV
-	player.Han = player.HAN
-	player.Ref = player.REF
-	player.Kic = player.KIC
-	player.Spd = player.SPD
-	player.Pos = player.POS
-	player.OverallLower = player.Overall
-	player.TotalStatsLower = player.TotalStats
-	player.Mbr = player.MBR
 
 	duration := time.Since(start)
 	SetSpanAttributes(ctx,

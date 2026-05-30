@@ -344,8 +344,6 @@ func ConvertFromOptimized(opt *OptimizedPlayer) *Player {
 		TransferValueAmount:     opt.TransferValueAmount,
 		WageAmount:              opt.WageAmount,
 		RoleSpecificOveralls:    opt.RoleSpecificOveralls,
-		TotalStatsLower:         int(opt.TotalStats),
-		Mbr:                     int(opt.MBR),
 		Attributes:              make(map[string]string),
 		NumericAttributes:       make(map[string]int),
 		PerformanceStatsNumeric: make(map[string]float64),

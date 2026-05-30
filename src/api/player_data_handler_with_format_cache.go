@@ -198,7 +198,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// CA = 0 is only valid when the player has no positions; otherwise it signals missing data
 		// (e.g. datasets stored before the ca proto field was added).
 		caValid := p.CA > 0 || len(p.ShortPositions) == 0
-		if p.OverallLower != 0 && len(p.NumericAttributes) > 0 && caValid {
+		if p.Overall != 0 && len(p.NumericAttributes) > 0 && caValid {
 			shouldRecalc = false
 		}
 	}

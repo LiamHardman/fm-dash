@@ -503,22 +503,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Calculate TotalStats (sum of all physical, mental, and technical attributes)
 	player.TotalStats = CalculateTotalStats(numericAttrsCopy)
 
-	// Set lowercase FIFA stats for frontend compatibility
-	player.Pac = player.PAC
-	player.Sho = player.SHO
-	player.Pas = player.PAS
-	player.Dri = player.DRI
-	player.Def = player.DEF
-	player.Phy = player.PHY
-	player.TotalStatsLower = player.TotalStats
-
-	player.Gk = player.GK
-	player.Div = player.DIV
-	player.Han = player.HAN
-	player.Ref = player.REF
-	player.Kic = player.KIC
-	player.Spd = player.SPD
-	player.Pos = player.POS
 	// --- START: Overall Calculation (Optimized) ---
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
@@ -695,17 +679,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 	if meanRoleBasedOverall > 0 || player.Overall == 0 {
 		player.Overall = meanRoleBasedOverall
 	}
-	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
-	player.OverallLower = player.Overall
-
 	// Calculate Moneyball Rating (MBR) - AFTER Overall is calculated
 	valueScore := getExpectedValuePerRating(float64(player.Overall))
 	player.MBR = CalculateMoneyballRating(player, valueScore)
-	player.Mbr = player.MBR // Ensure Mbr is set to the calculated MBR value
 
 	// Calculate fm21-cas Current Ability (CA) estimate - AFTER ShortPositions are derived
 	player.CA = CalculateCAS(player)
-	player.Ca = player.CA
 
 	// Note: We changed from using the mean of all role-specific overall scores
 	// to using the mean of the top 7 role-specific overall scores
@@ -748,7 +727,6 @@ func RecalculatePlayerRatings(player *Player) {
 	// This is crucial for FIFA-style calculations
 	EnhancePlayerWithCalculations(player)
 	if len(player.NumericAttributes) == 0 && len(player.Attributes) == 0 && player.Overall > 0 {
-		player.OverallLower = player.Overall
 		return
 	}
 
@@ -822,21 +800,6 @@ func RecalculatePlayerRatings(player *Player) {
 		player.SPD = 0
 		player.POS = 0
 	}
-
-	// Set lowercase FIFA stats for frontend compatibility
-	player.Pac = player.PAC
-	player.Sho = player.SHO
-	player.Pas = player.PAS
-	player.Dri = player.DRI
-	player.Def = player.DEF
-	player.Phy = player.PHY
-	player.Gk = player.GK
-	player.Div = player.DIV
-	player.Han = player.HAN
-	player.Ref = player.REF
-	player.Kic = player.KIC
-	player.Spd = player.SPD
-	player.Pos = player.POS
 
 	// Recalculate role-specific overalls
 	maxRoleBasedOverall := 0
@@ -913,9 +876,6 @@ func RecalculatePlayerRatings(player *Player) {
 	if meanRoleBasedOverall > 0 || player.Overall == 0 {
 		player.Overall = meanRoleBasedOverall
 	}
-	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
-	player.OverallLower = player.Overall
-
 	// Check ALL attributes for masking and set the AttributeMasked flag
 	// This ensures the flag is updated even during recalculations
 	player.AttributeMasked = false

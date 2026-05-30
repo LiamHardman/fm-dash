@@ -719,7 +719,6 @@ func NormalizeMBRScoresRelativeToMax(players []Player) {
 		// If all players have 0 or negative MBR, set them all to 0
 		for i := range players {
 			players[i].MBR = 0
-			players[i].Mbr = 0 // Keep both fields in sync
 		}
 		return
 	}
@@ -735,6 +734,5 @@ func NormalizeMBRScoresRelativeToMax(players []Player) {
 		}
 
 		players[i].MBR = normalizedMBR
-		players[i].Mbr = normalizedMBR // Keep both fields in sync
 	}
 }

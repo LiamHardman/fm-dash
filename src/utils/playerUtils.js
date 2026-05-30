@@ -49,7 +49,7 @@ export const playerMatchesPosition = (player, position) => {
  * @returns {number} The player's overall rating
  */
 export const getPlayerOverall = (player) => {
-  return player.Overall || player.overall || 0
+  return player.overall || 0
 }
 
 /**
@@ -60,16 +60,16 @@ export const getPlayerOverall = (player) => {
  */
 export const getFifaWeightedOverallByPosition = (player) => {
   if (!player) return 0
-  const isGK = player.position?.includes('GK') || player.GK > 0 || player.gk > 0
+  const isGK = player.position?.includes('GK') || player.gk > 0
   if (isGK) {
     // Use primary GK category if present
     const parts = [
-      player.GK ?? player.gk,
-      player.DIV ?? player.div,
-      player.HAN ?? player.han,
-      player.REF ?? player.ref,
-      player.SPD ?? player.spd,
-      player.POS ?? player.pos,
+      player.gk,
+      player.div,
+      player.han,
+      player.ref,
+      player.spd,
+      player.pos,
     ]
     const valid = parts.filter((v) => typeof v === 'number' && !Number.isNaN(v))
     if (valid.length === 0) return 0
@@ -77,12 +77,12 @@ export const getFifaWeightedOverallByPosition = (player) => {
     return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
   }
 
-  const PAC = player.PAC ?? player.pac ?? 0
-  const SHO = player.SHO ?? player.sho ?? 0
-  const PAS = player.PAS ?? player.pas ?? 0
-  const DRI = player.DRI ?? player.dri ?? 0
-  const DEF = player.DEF ?? player.def ?? 0
-  const PHY = player.PHY ?? player.phy ?? 0
+  const PAC = player.pac ?? 0
+  const SHO = player.sho ?? 0
+  const PAS = player.pas ?? 0
+  const DRI = player.dri ?? 0
+  const DEF = player.def ?? 0
+  const PHY = player.phy ?? 0
 
   const posStrRaw = String(player.position || '').toUpperCase()
   // Collect candidate base positions from short positions and position string (best-of evaluation)

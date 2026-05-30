@@ -13,6 +13,143 @@ import (
 	"time"
 )
 
+// TestPlayerJSONFieldNames verifies that Player serializes with only lowercase JSON keys,
+// matching the field names the frontend uses as data accessors.
+func TestPlayerJSONFieldNames(t *testing.T) {
+	player := Player{
+		UID:        1,
+		Name:       "Test Player",
+		Position:   "ST",
+		Overall:    85,
+		TotalStats: 1200,
+		PAC:        88,
+		SHO:        82,
+		PAS:        75,
+		DRI:        84,
+		DEF:        40,
+		PHY:        79,
+		MBR:        72,
+		CA:         160,
+	}
+
+	data, err := json.Marshal(player)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("json.Unmarshal into map failed: %v", err)
+	}
+
+	// These lowercase keys must be present (frontend data accessors).
+	requiredLower := []string{"overall", "totalStats", "pac", "sho", "pas", "dri", "def", "phy", "mbr", "ca"}
+	for _, key := range requiredLower {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("missing required lowercase JSON key %q", key)
+		}
+	}
+
+	// These uppercase keys must NOT be present (they were the duplicate fields).
+	forbiddenUpper := []string{"Overall", "TotalStats", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "MBR", "CA"}
+	for _, key := range forbiddenUpper {
+		if _, ok := raw[key]; ok {
+			t.Errorf("unexpected uppercase JSON key %q still present; frontend will see duplicate fields", key)
+		}
+	}
+
+	// Verify values round-trip correctly.
+	checks := []struct {
+		key  string
+		want float64
+	}{
+		{"overall", 85},
+		{"totalStats", 1200},
+		{"pac", 88},
+		{"sho", 82},
+		{"pas", 75},
+		{"dri", 84},
+		{"def", 40},
+		{"phy", 79},
+		{"mbr", 72},
+		{"ca", 160},
+	}
+	for _, c := range checks {
+		got, ok := raw[c.key].(float64)
+		if !ok {
+			t.Errorf("key %q: expected float64, got %T", c.key, raw[c.key])
+			continue
+		}
+		if got != c.want {
+			t.Errorf("key %q: got %.0f, want %.0f", c.key, got, c.want)
+		}
+	}
+}
+
+// TestGKPlayerJSONFieldNames verifies GK-specific stat fields use lowercase keys.
+func TestGKPlayerJSONFieldNames(t *testing.T) {
+	player := Player{
+		UID:      2,
+		Name:     "GK Player",
+		Position: "GK",
+		Overall:  80,
+		GK:       82,
+		DIV:      78,
+		HAN:      81,
+		REF:      83,
+		KIC:      65,
+		SPD:      50,
+		POS:      77,
+	}
+
+	data, err := json.Marshal(player)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("json.Unmarshal into map failed: %v", err)
+	}
+
+	requiredLower := []string{"gk", "div", "han", "ref", "kic", "spd", "pos"}
+	for _, key := range requiredLower {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("missing required lowercase GK JSON key %q", key)
+		}
+	}
+
+	forbiddenUpper := []string{"GK", "DIV", "HAN", "REF", "KIC", "SPD", "POS"}
+	for _, key := range forbiddenUpper {
+		if _, ok := raw[key]; ok {
+			t.Errorf("unexpected uppercase JSON key %q present", key)
+		}
+	}
+
+	checks := []struct {
+		key  string
+		want float64
+	}{
+		{"gk", 82},
+		{"div", 78},
+		{"han", 81},
+		{"ref", 83},
+		{"kic", 65},
+		{"spd", 50},
+		{"pos", 77},
+	}
+	for _, c := range checks {
+		got, ok := raw[c.key].(float64)
+		if !ok {
+			t.Errorf("key %q: expected float64, got %T", c.key, raw[c.key])
+			continue
+		}
+		if got != c.want {
+			t.Errorf("key %q: got %.0f, want %.0f", c.key, got, c.want)
+		}
+	}
+}
+
 // TestSimpleAPICompatibility tests basic API compatibility with a shorter timeout
 func TestSimpleAPICompatibility(t *testing.T) {
 	// Initialize test environment

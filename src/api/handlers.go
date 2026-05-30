@@ -5484,7 +5484,6 @@ func processBasicPlayerData(players []Player) []Player {
 		if processedPlayers[i].Overall == 0 {
 			processedPlayers[i].Overall = 50 // Default value
 		}
-		processedPlayers[i].OverallLower = processedPlayers[i].Overall
 	}
 
 	return processedPlayers

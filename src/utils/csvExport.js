@@ -535,15 +535,15 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
 
     if (options.fifahStats) {
       const fifaStats = {
-        Overall: player.Overall,
+        Overall: player.overall,
         Potential: player.Potential,
-        PAC: player.PAC || player.pac,
-        SHO: player.SHO || player.sho,
-        PAS: player.PAS || player.pas,
-        DRI: player.DRI || player.dri,
-        DEF: player.DEF || player.def,
-        PHY: player.PHY || player.phy,
-        GK: player.GK || player.gk,
+        PAC: player.pac,
+        SHO: player.sho,
+        PAS: player.pas,
+        DRI: player.dri,
+        DEF: player.def,
+        PHY: player.phy,
+        GK: player.gk,
       }
       Object.assign(filteredPlayer, safeMerge(filteredPlayer, fifaStats))
     }

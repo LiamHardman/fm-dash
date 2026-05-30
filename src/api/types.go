@@ -34,41 +34,23 @@ type Player struct {
 	ParsedPositions         []string                      `json:"parsedPositions"`
 	ShortPositions          []string                      `json:"shortPositions"`
 	PositionGroups          []string                      `json:"positionGroups"`
-	PAC                     int                           `json:"PAC"`
-	SHO                     int                           `json:"SHO"`
-	PAS                     int                           `json:"PAS"`
-	DRI                     int                           `json:"DRI"`
-	DEF                     int                           `json:"DEF"`
-	PHY                     int                           `json:"PHY"`
-	GK                      int                           `json:"GK,omitempty"`
-	DIV                     int                           `json:"DIV,omitempty"`
-	HAN                     int                           `json:"HAN,omitempty"`
-	REF                     int                           `json:"REF,omitempty"`
-	KIC                     int                           `json:"KIC,omitempty"`
-	SPD                     int                           `json:"SPD,omitempty"`
-	POS                     int                           `json:"POS,omitempty"`
-	// Add lowercase versions for frontend compatibility
-	Pac                  int                `json:"pac,omitempty"`
-	Sho                  int                `json:"sho,omitempty"`
-	Pas                  int                `json:"pas,omitempty"`
-	Dri                  int                `json:"dri,omitempty"`
-	Def                  int                `json:"def,omitempty"`
-	Phy                  int                `json:"phy,omitempty"`
-	Gk                   int                `json:"gk,omitempty"`
-	Div                  int                `json:"div,omitempty"`
-	Han                  int                `json:"han,omitempty"`
-	Ref                  int                `json:"ref,omitempty"`
-	Kic                  int                `json:"kic,omitempty"`
-	Spd                  int                `json:"spd,omitempty"`
-	Pos                  int                `json:"pos,omitempty"`
-	Overall              int                `json:"Overall"`
-	OverallLower         int                `json:"overall"`
-	TotalStats           int                `json:"TotalStats"`
-	TotalStatsLower      int                `json:"totalStats"`
-	MBR                  int                `json:"MBR"`
-	Mbr                  int                `json:"mbr"`
-	CA                   int                `json:"CA"`  // fm21-cas Current Ability estimate (0–200 scale)
-	Ca                   int                `json:"ca"`  // lowercase alias for frontend compatibility
+	PAC                     int                           `json:"pac"`
+	SHO                     int                           `json:"sho"`
+	PAS                     int                           `json:"pas"`
+	DRI                     int                           `json:"dri"`
+	DEF                     int                           `json:"def"`
+	PHY                     int                           `json:"phy"`
+	GK                      int                           `json:"gk,omitempty"`
+	DIV                     int                           `json:"div,omitempty"`
+	HAN                     int                           `json:"han,omitempty"`
+	REF                     int                           `json:"ref,omitempty"`
+	KIC                     int                           `json:"kic,omitempty"`
+	SPD                     int                           `json:"spd,omitempty"`
+	POS                     int                           `json:"pos,omitempty"`
+	Overall              int                `json:"overall"`
+	TotalStats           int                `json:"totalStats"`
+	MBR                  int                `json:"mbr"`
+	CA                   int                `json:"ca"` // fm21-cas Current Ability estimate (0–200 scale)
 	BestRoleOverall      string             `json:"bestRoleOverall"`
 	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
 	TransferValueAmount  int64              `json:"transferValueAmount"`

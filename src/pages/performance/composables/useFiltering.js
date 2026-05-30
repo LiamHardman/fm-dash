@@ -8,7 +8,7 @@ export function useFiltering(allPlayersData, filters) {
 
     return allPlayersData.value.filter((player) => {
       const minutesPlayed = filters.getNumericValue(player.numericAttributes?.Mins) || 0
-      const overall = player.Overall || 0
+      const overall = player.overall || 0
       const division = filters.getPlayerDivision(player)
 
       const matchesMinutes = minutesPlayed >= filters.selectedMinutes.value
