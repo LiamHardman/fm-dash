@@ -736,12 +736,12 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// OPTIMIZATION: Create query fingerprint for result caching
-	queryFingerprint := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+	queryFingerprint := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
 		datasetID, queryValues.Get("position"), queryValues.Get("role"),
 		queryValues.Get("minAge"), queryValues.Get("maxAge"),
 		queryValues.Get("minTransferValue"), queryValues.Get("maxTransferValue"),
 		queryValues.Get("maxSalary"), queryValues.Get("division_filter"),
-		queryValues.Get("target_division"))
+		queryValues.Get("target_division"), queryValues.Get("include"))
 
 	resultCacheKey := "result:" + queryFingerprint
 	if cachedResult, found := getFromMemCache(resultCacheKey); found {
@@ -766,6 +766,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	divisionFilterStr := queryValues.Get("divisionFilter") // "all", "same", "top5"
 	targetDivision := queryValues.Get("targetDivision")
 	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
+	includePercentiles := queryValues.Get("include") == "percentiles"
 
 	logDebug(ctx, "Processing player data request",
 		"dataset_id", datasetID,
@@ -892,9 +893,9 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create cache key for final filtered result
-	finalCacheKey := fmt.Sprintf("filtered:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+	finalCacheKey := fmt.Sprintf("filtered:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%v",
 		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr,
-		minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilterStr, targetDivision)
+		minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilterStr, targetDivision, includePercentiles)
 
 	// Check cache for final filtered result
 	if cachedFiltered, cacheFound := getFromMemCache(finalCacheKey); cacheFound {
@@ -995,6 +996,12 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		processedPlayers = append(processedPlayers, playerCopy)
+	}
+
+	if !includePercentiles {
+		for i := range processedPlayers {
+			processedPlayers[i].PerformancePercentiles = nil
+		}
 	}
 
 	logDebug(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
