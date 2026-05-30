@@ -229,6 +229,7 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 			w.Header().Set("Content-Type", ct)
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("X-Cache-Format", string(format))
+			w.Header().Set("Cache-Control", "private, max-age=300")
 			if _, err := w.Write(csr.Bytes); err != nil {
 				logError(r.Context(), "Error writing serialized response", "error", err)
 			}
@@ -248,6 +249,7 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("X-Cache-Source", "memory")
 		w.Header().Set("X-Cache-Format", "protobuf")
+		w.Header().Set("Cache-Control", "private, max-age=300")
 		if _, err := w.Write(responseData); err != nil {
 			logError(r.Context(), "Error writing protobuf response", "error", err)
 		}
@@ -261,6 +263,7 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Source", "memory")
 	w.Header().Set("X-Cache-Format", "json")
+	w.Header().Set("Cache-Control", "private, max-age=300")
 	return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
 }
 

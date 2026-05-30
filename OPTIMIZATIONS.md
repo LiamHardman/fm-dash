@@ -4,55 +4,6 @@ Six concrete changes ranked by ease vs. impact. The first four are low-effort an
 
 ---
 
-## 1. Remove duplicate fields from the Player struct
-
-**File**: `src/api/types.go:51–75`
-
-### Problem
-
-The `Player` struct carries explicit uppercase **and** lowercase versions of 13 fields:
-
-```go
-PAC int `json:"PAC"`
-Pac int `json:"pac,omitempty"`  // duplicate
-
-Overall      int `json:"Overall"`
-OverallLower int `json:"overall"`  // duplicate
-
-CA int `json:"CA"`
-Ca int `json:"ca,omitempty"`  // duplicate
-
-// ... TotalStats/totalStats, MBR/mbr, SHO/sho, PAS/pas,
-//     DRI/dri, DEF/def, PHY/phy, GK/gk, DIV/div,
-//     HAN/han, REF/ref, KIC/kic, SPD/spd, POS/pos
-```
-
-Every player object sent over the wire carries both versions. For a 10,000-player dataset that's roughly 130,000 redundant JSON field emissions per request.
-
-### What the frontend uses
-
-The player **table** (`src/components/player-table/PlayerTableColumns.js`) uses lowercase field names (`pac`, `overall`, `totalStats`, etc.). The uppercase variants appear only in a few column-definition names (display labels), not as data accessors.
-
-### Fix
-
-1. Keep only the **lowercase** json tags on each field — they match what the table and store already read.
-2. Remove the duplicate `Overall`/`OverallLower` pair; keep `Overall int \`json:"overall"\``.
-3. Search for uppercase field access in the frontend (`player.PAC`, `player.Overall`, etc.) and normalise to lowercase.
-4. Update any CSV export or protobuf mappings that reference the old uppercase keys.
-
-```go
-// Before
-Overall      int `json:"Overall"`
-OverallLower int `json:"overall"`
-
-// After
-Overall int `json:"overall"`
-```
-
-**Expected saving**: ~10–15% payload reduction on top-level fields alone; more significant for GK players where all GK variants are non-zero.
-
----
-
 ## 2. Stop actively disabling browser caching
 
 **File**: `src/services/playerService.js:38–45`

@@ -36,12 +36,9 @@ const parseResponseDataField = (response, contextLabel) => {
 const fetchJsonResponse = async (url, options = {}) => {
   const response = await fetch(url, {
     ...options,
-    cache: 'no-store',
     headers: {
       ...(options.headers || {}),
       Accept: 'application/json',
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache',
     },
   })
 
