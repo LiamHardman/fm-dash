@@ -508,7 +508,15 @@ export const usePlayerStore = defineStore('player', () => {
 
         media_handling: p.media_handling ?? p.mediaHandling ?? '',
         personality: p.personality ?? '',
-        attributes: p.attributes || p.essentialAttributes || p.essential_attributes || {},
+        attributes: (() => {
+          if (p.attributes && Object.keys(p.attributes).length > 0) return p.attributes
+          const derived = {}
+          const numAttrs = p.numericAttributes || {}
+          const perfStats = p.performanceStatsNumeric || {}
+          for (const k in numAttrs) derived[k] = String(numAttrs[k])
+          for (const k in perfStats) derived[k] = String(perfStats[k])
+          return derived
+        })(),
 
         // Ensure FIFA-style stats are numbers
         PAC: Number(p.PAC) || 0,

@@ -1527,13 +1527,26 @@ export default defineComponent({
     const forceRecompute = ref(0) // Force template re-render
 
     // Computed property to get the player data to display (detailed or basic)
+    function deriveAttributes(player) {
+      if (player.attributes && Object.keys(player.attributes).length > 0) return player.attributes
+      const derived = {}
+      const numAttrs = player.numericAttributes || {}
+      const perfStats = player.performanceStatsNumeric || {}
+      for (const k in numAttrs) derived[k] = String(numAttrs[k])
+      for (const k in perfStats) derived[k] = String(perfStats[k])
+      return derived
+    }
+
     const displayPlayer = computed(() => {
       const result = detailedPlayerData.value?.name
         ? detailedPlayerData.value
         : props.player?.name
           ? props.player
           : null
-      return result
+      if (!result) return null
+      const attrs = deriveAttributes(result)
+      if (attrs === result.attributes) return result
+      return { ...result, attributes: attrs }
     })
 
     const cardDisplayPlayer = computed(() => {
