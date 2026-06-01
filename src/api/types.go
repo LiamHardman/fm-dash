@@ -27,7 +27,7 @@ type Player struct {
 	NationalityISO          string                        `json:"nationalityIso"`
 	NationalityFIFACode     string                        `json:"nationality_fifa_code"`
 	AttributeMasked         bool                          `json:"attributeMasked,omitempty"`
-	Attributes              map[string]string             `json:"attributes"`
+	Attributes              map[string]string             `json:"-"`
 	NumericAttributes       map[string]int                `json:"numericAttributes"`
 	PerformanceStatsNumeric map[string]float64            `json:"performanceStatsNumeric"`
 	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"`
