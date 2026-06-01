@@ -559,6 +559,31 @@
                                             class="q-px-sm"
                                         />
                                     </div>
+
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div class="text-caption q-mb-xs slider-label">
+                                            Min MBR:
+                                            <span
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minMBR,
+                                                        100,
+                                                    )
+                                                "
+                                            >
+                                                {{ filters.minMBR || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minMBR"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -1019,6 +1044,7 @@ export default defineComponent({
       minDEF: 0,
       minMEN: 0,
       minGK: 0,
+      minMBR: 0,
     })
 
     const showMinimumStatsModal = ref(false)
@@ -1235,7 +1261,8 @@ export default defineComponent({
         filters.value.minDRI > 0 ||
         filters.value.minDEF > 0 ||
         filters.value.minMEN > 0 ||
-        filters.value.minGK > 0
+        filters.value.minGK > 0 ||
+        filters.value.minMBR > 0
       const hasActiveAttributeFilters = allAttributeKeys.some((attr) => {
         const filterKey = `min${formatAttrKey(attr)}`
         return filters.value[filterKey] > 0
@@ -1555,6 +1582,7 @@ export default defineComponent({
         minDEF: 0,
         minMEN: 0,
         minGK: 0,
+        minMBR: 0,
       }
       for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
@@ -1671,6 +1699,7 @@ export default defineComponent({
       filters.value.minDEF = 0
       filters.value.minMEN = 0
       filters.value.minGK = 0
+      filters.value.minMBR = 0
       for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
       }

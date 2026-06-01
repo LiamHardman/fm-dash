@@ -384,6 +384,7 @@ export default {
       minKIC: 0,
       minSPD: 0,
       minPOS: 0,
+      minMBR: 0,
       continentNationalities: [],
     })
 
@@ -783,6 +784,9 @@ export default {
             return false
           }
           if (currentFilters.value.minPOS > 0 && (player.POS || 0) < currentFilters.value.minPOS) {
+            return false
+          }
+          if (currentFilters.value.minMBR > 0 && (player.MBR || 0) < currentFilters.value.minMBR) {
             return false
           }
 
