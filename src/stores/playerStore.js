@@ -510,24 +510,24 @@ export const usePlayerStore = defineStore('player', () => {
         personality: p.personality ?? '',
         attributes: p.attributes || p.essentialAttributes || p.essential_attributes || {},
 
-        // Ensure FIFA-style stats are numbers
-        PAC: Number(p.PAC) || 0,
-        SHO: Number(p.SHO) || 0,
-        PAS: Number(p.PAS) || 0,
-        DRI: Number(p.DRI) || 0,
-        DEF: Number(p.DEF) || 0,
-        PHY: Number(p.PHY) || 0,
-        TotalStats: Number(p.TotalStats) || Number(p.total_stats) || 0,
-        MBR: Number(p.MBR) || 0,
+        // Ensure FIFA-style stats are numbers (backend sends lowercase keys since struct tag change)
+        PAC: Number(p.PAC) || Number(p.pac) || 0,
+        SHO: Number(p.SHO) || Number(p.sho) || 0,
+        PAS: Number(p.PAS) || Number(p.pas) || 0,
+        DRI: Number(p.DRI) || Number(p.dri) || 0,
+        DEF: Number(p.DEF) || Number(p.def) || 0,
+        PHY: Number(p.PHY) || Number(p.phy) || 0,
+        TotalStats: Number(p.TotalStats) || Number(p.totalStats) || Number(p.total_stats) || 0,
+        MBR: Number(p.MBR) || Number(p.mbr) || 0,
 
-        // Ensure goalkeeper stats are numbers
-        GK: Number.parseInt(p.GK, 10) || 0,
-        DIV: Number.parseInt(p.DIV, 10) || 0,
-        HAN: Number.parseInt(p.HAN, 10) || 0,
-        REF: Number.parseInt(p.REF, 10) || 0,
-        KIC: Number.parseInt(p.KIC, 10) || 0,
-        SPD: Number.parseInt(p.SPD, 10) || 0,
-        POS: Number.parseInt(p.POS, 10) || 0,
+        // Ensure goalkeeper stats are numbers (backend sends lowercase keys since struct tag change)
+        GK: Number.parseInt(p.GK, 10) || Number.parseInt(p.gk, 10) || 0,
+        DIV: Number.parseInt(p.DIV, 10) || Number.parseInt(p.div, 10) || 0,
+        HAN: Number.parseInt(p.HAN, 10) || Number.parseInt(p.han, 10) || 0,
+        REF: Number.parseInt(p.REF, 10) || Number.parseInt(p.ref, 10) || 0,
+        KIC: Number.parseInt(p.KIC, 10) || Number.parseInt(p.kic, 10) || 0,
+        SPD: Number.parseInt(p.SPD, 10) || Number.parseInt(p.spd, 10) || 0,
+        POS: Number.parseInt(p.POS, 10) || Number.parseInt(p.pos, 10) || 0,
 
         // Ensure lowercase FIFA stats for frontend compatibility
         pac: Number(p.pac) || Number(p.PAC) || 0,
