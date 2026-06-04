@@ -25,9 +25,31 @@
       </q-item>
       
       <q-separator />
-      
-      <q-item clickable 
-              v-close-popup 
+
+      <q-item clickable
+              v-close-popup
+              @click="$emit('add-to-comparison')"
+              v-if="contextMenuPlayer && !isPlayerInComparison">
+        <q-item-section avatar>
+          <q-icon name="compare_arrows" color="primary" />
+        </q-item-section>
+        <q-item-section>Add to Comparison</q-item-section>
+      </q-item>
+
+      <q-item clickable
+              v-close-popup
+              @click="$emit('remove-from-comparison')"
+              v-if="contextMenuPlayer && isPlayerInComparison">
+        <q-item-section avatar>
+          <q-icon name="compare_arrows" color="warning" />
+        </q-item-section>
+        <q-item-section>Remove from Comparison</q-item-section>
+      </q-item>
+
+      <q-separator />
+
+      <q-item clickable
+              v-close-popup
               @click="$emit('player-details')"
               v-if="contextMenuPlayer">
         <q-item-section avatar>
@@ -51,8 +73,18 @@ export default {
       type: Boolean,
       default: false,
     },
+    isPlayerInComparison: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ['add-to-wishlist', 'remove-from-wishlist', 'player-details'],
+  emits: [
+    'add-to-wishlist',
+    'remove-from-wishlist',
+    'player-details',
+    'add-to-comparison',
+    'remove-from-comparison',
+  ],
 }
 </script>
 

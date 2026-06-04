@@ -120,9 +120,12 @@
             ref="contextMenu"
             :context-menu-player="contextMenuPlayer"
             :is-player-in-wishlist="contextMenuPlayer ? isPlayerInWishlist(contextMenuPlayer) : false"
+            :is-player-in-comparison="contextMenuPlayer ? comparisonStore.isInComparison(currentDatasetId, contextMenuPlayer) : false"
             @add-to-wishlist="handleAddToWishlist"
             @remove-from-wishlist="handleRemoveFromWishlist"
             @player-details="handlePlayerDetails"
+            @add-to-comparison="handleAddToComparison"
+            @remove-from-comparison="handleRemoveFromComparison"
         />
     </div>
     </div>
@@ -137,6 +140,7 @@ import { usePlayerTableCells } from '../composables/usePlayerTableCells'
 import { usePlayerTableColumns } from '../composables/usePlayerTableColumns'
 import { useOptimizedSorting } from '../composables/useVirtualScrolling'
 import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
+import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
@@ -179,6 +183,7 @@ export default {
     const $q = useQuasar()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const comparisonStore = useComparisonStore()
     const router = useRouter()
     const uiStore = useUiStore()
 
@@ -783,6 +788,32 @@ export default {
       }
     }
 
+    const handleAddToComparison = () => {
+      if (!contextMenuPlayer.value || !currentDatasetId.value) return
+      const added = comparisonStore.addToComparison(currentDatasetId.value, contextMenuPlayer.value)
+      if (added) {
+        $q.notify({
+          type: 'positive',
+          message: `${contextMenuPlayer.value.name} added to comparison`,
+          timeout: 1500,
+        })
+      } else if (
+        comparisonStore.getCount(currentDatasetId.value) >= comparisonStore.MAX_COMPARISON_PLAYERS
+      ) {
+        $q.notify({ type: 'warning', message: 'Comparison is full (max 4 players)', timeout: 1500 })
+      }
+    }
+
+    const handleRemoveFromComparison = () => {
+      if (!contextMenuPlayer.value || !currentDatasetId.value) return
+      comparisonStore.removeFromComparison(currentDatasetId.value, contextMenuPlayer.value)
+      $q.notify({
+        type: 'info',
+        message: `${contextMenuPlayer.value.name} removed from comparison`,
+        timeout: 1500,
+      })
+    }
+
     const onRightClick = (event, player) => {
       event.preventDefault()
       contextMenuPlayer.value = player
@@ -886,10 +917,13 @@ export default {
       paginationEndRow,
       contextMenu,
       contextMenuPlayer,
+      comparisonStore,
       isPlayerInWishlist,
       handleAddToWishlist,
       handleRemoveFromWishlist,
       handlePlayerDetails,
+      handleAddToComparison,
+      handleRemoveFromComparison,
       onRightClick,
       onDivisionClick,
       tableKey,

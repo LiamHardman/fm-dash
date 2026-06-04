@@ -238,6 +238,19 @@
             @close="showExportOptions = false"
             @export="handleExportWithOptions"
         />
+        <PlayerComparisonDialog
+            :show="showComparisonDialog"
+            :players="currentDatasetId ? comparisonStore.getPlayersForDataset(currentDatasetId) : []"
+            @close="showComparisonDialog = false"
+            @remove-player="(p) => comparisonStore.removeFromComparison(currentDatasetId, p)"
+        />
+        <PlayerComparisonTray
+            v-if="currentDatasetId"
+            :players="comparisonStore.getPlayersForDataset(currentDatasetId)"
+            @remove-player="(p) => comparisonStore.removeFromComparison(currentDatasetId, p)"
+            @clear="comparisonStore.clearComparison(currentDatasetId)"
+            @open="showComparisonDialog = true"
+        />
     </q-page>
 </template>
 
@@ -249,11 +262,14 @@ import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import FreeAgentsDialog from '../components/FreeAgentsDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
+import PlayerComparisonDialog from '../components/PlayerComparisonDialog.vue'
+import PlayerComparisonTray from '../components/PlayerComparisonTray.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
+import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
@@ -332,6 +348,8 @@ export default {
     BargainHunterDialog,
     FreeAgentsDialog,
     ExportOptionsDialog,
+    PlayerComparisonTray,
+    PlayerComparisonDialog,
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -339,6 +357,7 @@ export default {
     const route = useRoute()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const comparisonStore = useComparisonStore()
     const uiStore = useUiStore()
     const analytics = useAnalytics()
 
@@ -351,6 +370,7 @@ export default {
     const showBargainHunter = ref(false)
     const showFreeAgents = ref(false)
     const showExportOptions = ref(false)
+    const showComparisonDialog = ref(false)
 
     const currentFilters = ref({
       name: '',
@@ -1253,6 +1273,8 @@ export default {
       showBargainHunter,
       showFreeAgents,
       showExportOptions,
+      showComparisonDialog,
+      comparisonStore,
       shareDataset,
       handlePlayerSelected,
       handleTeamSelected,

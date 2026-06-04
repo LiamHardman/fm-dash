@@ -25,24 +25,39 @@
             }"
             :data-dark-mode="isDarkMode"
         >
-            <!-- Floating Close Button -->
-            <q-btn 
-                dense 
-                flat 
-                icon="close" 
-                @click="$emit('close')" 
-                class="floating-close-btn"
-                :class="isDarkMode ? 'text-grey-4' : 'text-grey-7'"
-            >
-                <q-tooltip
-                    :class="
-                        isDarkMode
-                            ? 'bg-grey-7'
-                            : 'bg-white text-primary'
-                    "
-                    >Close</q-tooltip
+            <!-- Floating action buttons -->
+            <div class="floating-actions">
+                <q-btn
+                    v-if="player"
+                    dense
+                    flat
+                    :icon="isCurrentPlayerInComparison ? 'compare_arrows' : 'add_to_queue'"
+                    :color="isCurrentPlayerInComparison ? 'warning' : 'primary'"
+                    @click="toggleComparison"
+                    class="floating-compare-btn"
                 >
-            </q-btn>
+                    <q-tooltip :class="isDarkMode ? 'bg-grey-7' : 'bg-white text-primary'">
+                        {{ isCurrentPlayerInComparison ? 'Remove from Comparison' : 'Add to Comparison' }}
+                    </q-tooltip>
+                </q-btn>
+                <q-btn
+                    dense
+                    flat
+                    icon="close"
+                    @click="$emit('close')"
+                    class="floating-close-btn"
+                    :class="isDarkMode ? 'text-grey-4' : 'text-grey-7'"
+                >
+                    <q-tooltip
+                        :class="
+                            isDarkMode
+                                ? 'bg-grey-7'
+                                : 'bg-white text-primary'
+                        "
+                        >Close</q-tooltip
+                    >
+                </q-btn>
+            </div>
 
             <!-- Tab Navigation -->
             <div class="tab-navigation">
@@ -1102,6 +1117,7 @@ import {
 } from 'vue'
 import { usePercentileRetry } from '../composables/usePercentileRetry'
 import { fetchFullPlayerStats } from '../services/playerService.js'
+import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
@@ -1468,7 +1484,8 @@ export default defineComponent({
   setup(props) {
     const qInstance = useQuasar()
     const uiStore = useUiStore()
-    const _playerStore = usePlayerStore()
+    const playerStore = usePlayerStore()
+    const comparisonStore = useComparisonStore()
 
     // Create a reactive ref for dark mode state
     const darkModeState = ref(false)
@@ -3094,6 +3111,42 @@ export default defineComponent({
       }
     }
 
+    const isCurrentPlayerInComparison = computed(() => {
+      const p = props.player
+      const dsId = playerStore.currentDatasetId
+      if (!p || !dsId) return false
+      return comparisonStore.isInComparison(dsId, p)
+    })
+
+    const toggleComparison = () => {
+      const p = props.player
+      const dsId = playerStore.currentDatasetId
+      if (!p || !dsId) return
+      if (comparisonStore.isInComparison(dsId, p)) {
+        comparisonStore.removeFromComparison(dsId, p)
+        qInstance.notify({
+          type: 'info',
+          message: `${p.name} removed from comparison`,
+          timeout: 1500,
+        })
+      } else {
+        const added = comparisonStore.addToComparison(dsId, p)
+        if (added) {
+          qInstance.notify({
+            type: 'positive',
+            message: `${p.name} added to comparison`,
+            timeout: 1500,
+          })
+        } else {
+          qInstance.notify({
+            type: 'warning',
+            message: 'Comparison is full (max 4 players)',
+            timeout: 1500,
+          })
+        }
+      }
+    }
+
     return {
       qInstance,
       attributeCategories,
@@ -3175,6 +3228,11 @@ export default defineComponent({
 
       // Clipboard functionality
       copyPlayerName,
+
+      comparisonStore,
+      playerStore,
+      isCurrentPlayerInComparison,
+      toggleComparison,
     }
   },
 })
@@ -4407,9 +4465,11 @@ $breakpoint-xs-max: 599px !default;
         }
     }
     
-    .floating-close-btn {
+    .floating-actions {
         top: 8px;
         right: 8px;
+    }
+    .floating-close-btn, .floating-compare-btn {
         width: 32px;
         height: 32px;
     }
@@ -4551,11 +4611,45 @@ $breakpoint-xs-max: 599px !default;
 
 // (Advanced view specific styles removed - no empty ruleset)
 
-// Floating Close Button
-.floating-close-btn {
+// Floating action buttons container
+.floating-actions {
     position: absolute;
     top: 16px;
     right: 16px;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.floating-compare-btn {
+    position: static;
+    z-index: 10;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .body--dark & {
+        background: rgba(30, 41, 59, 0.9);
+
+        &:hover {
+            background: rgba(30, 41, 59, 1);
+        }
+    }
+}
+
+// Floating Close Button
+.floating-close-btn {
+    position: static;
     z-index: 10;
     border-radius: 50%;
     width: 40px;
