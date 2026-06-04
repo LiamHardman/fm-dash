@@ -83,7 +83,7 @@ func TestCachedPlayerDataOperations(t *testing.T) {
 	currencySymbol := "$"
 
 	// Cache the player data
-	CachePlayerData(ctx, cacheKey, players, currencySymbol, "", 5*time.Minute)
+	CachePlayerData(ctx, cacheKey, players, currencySymbol, "", nil, 5*time.Minute)
 
 	// Test JSON format request
 	reqJSON := httptest.NewRequest(http.MethodGet, "/api/players/"+datasetID, nil)
@@ -130,18 +130,8 @@ func TestCachedPlayerDataOperations(t *testing.T) {
 			t.Errorf("Expected Protobuf format, got %s", cachedProto.Format)
 		}
 
-		if cachedProto.ProtobufData == nil {
-			t.Errorf("Protobuf data is nil")
-		} else {
-			if len(cachedProto.ProtobufData.GetPlayers()) != len(players) {
-				t.Errorf("Expected %d protobuf players, got %d",
-					len(players), len(cachedProto.ProtobufData.GetPlayers()))
-			}
-
-			if cachedProto.ProtobufData.GetCurrencySymbol() != currencySymbol {
-				t.Errorf("Expected protobuf currency symbol %s, got %s",
-					currencySymbol, cachedProto.ProtobufData.GetCurrencySymbol())
-			}
+		if len(cachedProto.ProtoBytes) == 0 {
+			t.Errorf("Protobuf bytes are empty")
 		}
 
 		if cachedProto.CurrencySymbol != currencySymbol {

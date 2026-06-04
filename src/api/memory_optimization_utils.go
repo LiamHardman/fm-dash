@@ -397,7 +397,7 @@ func startMemoryMonitoring() {
 
 		// Enhanced memory pressure levels with automatic responses
 		switch {
-		case stats.TotalAllocMB > 4096: // Critical level - increased to 4096MB
+		case stats.TotalAllocMB > 8192: // Critical level
 			logError(ctx, "CRITICAL: Memory usage triggering aggressive cleanup",
 				"memory_mb", stats.TotalAllocMB,
 				"action", "aggressive_cleanup")
@@ -425,7 +425,7 @@ func startMemoryMonitoring() {
 
 			// Adjust GOGC for more aggressive collection
 			debug.SetGCPercent(25) // Much more aggressive GC
-		case stats.TotalAllocMB > 1024: // Warning level - increased to 1024MB
+		case stats.TotalAllocMB > 4096: // Warning level
 			logWarn(ctx, "High memory usage triggering cache cleanup",
 				"memory_mb", stats.TotalAllocMB,
 				"action", "cache_cleanup")

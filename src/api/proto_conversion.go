@@ -26,12 +26,6 @@ func safeIntToInt32(value int) int32 {
 
 // ToProto converts a RoleOverallScore struct to protobuf format
 func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore, error) {
-	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_overall_score_to_proto", []attribute.KeyValue{
-		attribute.String("conversion.type", "role_overall_score"),
-		attribute.String("conversion.direction", "to_protobuf"),
-	})
-	defer span.End()
-
 	if r == nil {
 		RecordError(ctx, ErrNilRoleOverallScore, "Cannot convert nil RoleOverallScore to protobuf",
 			WithErrorCategory("validation"),
@@ -39,29 +33,10 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 		return nil, ErrNilRoleOverallScore
 	}
 
-	SetSpanAttributes(ctx,
-		attribute.String("role.name", r.RoleName),
-		attribute.Int("role.score", r.Score),
-	)
-
-	logDebug(ctx, "Converting RoleOverallScore to protobuf",
-		"role_name", r.RoleName,
-		"role_score", r.Score,
-		"conversion_type", "role_overall_score",
-		"conversion_direction", "to_protobuf")
-
-	protoRole := &proto.RoleOverallScore{
+	return &proto.RoleOverallScore{
 		RoleName: r.RoleName,
 		Score:    safeIntToInt32(r.Score),
-	}
-
-	logDebug(ctx, "Successfully converted RoleOverallScore to protobuf",
-		"role_name", r.RoleName,
-		"role_score", r.Score,
-		"proto_role_name", protoRole.RoleName,
-		"proto_role_score", protoRole.Score)
-
-	return protoRole, nil
+	}, nil
 }
 
 // RoleOverallScoreFromProto converts a protobuf RoleOverallScore to our struct
@@ -108,33 +83,12 @@ func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverall
 
 // ToProto converts a Player struct to protobuf format (optimized for frontend)
 func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
-	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.player_to_proto", []attribute.KeyValue{
-		attribute.String("conversion.type", "player"),
-		attribute.String("conversion.direction", "to_protobuf"),
-	})
-	defer span.End()
-
-	start := time.Now()
-
 	if p == nil {
 		RecordError(ctx, ErrNilPlayer, "Cannot convert nil Player to protobuf",
 			WithErrorCategory("validation"),
 			WithSeverity("medium"))
 		return nil, ErrNilPlayer
 	}
-
-	SetSpanAttributes(ctx,
-		attribute.Int64("player.uid", p.UID),
-		attribute.String("player.name", p.Name),
-		attribute.String("player.position", p.Position),
-		attribute.String("player.club", p.Club),
-	)
-
-	logDebug(ctx, "Converting Player to protobuf (optimized)",
-		"player_uid", p.UID,
-		"player_name", p.Name,
-		"conversion_type", "player",
-		"conversion_direction", "to_protobuf")
 
 	// Position data
 	parsedPositionsCopy := p.ParsedPositions
@@ -284,19 +238,6 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		Ca:      safeIntToInt32(p.CA),
 		BasedIn: p.BasedIn,
 	}
-
-	duration := time.Since(start)
-	SetSpanAttributes(ctx,
-		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
-		attribute.Bool("conversion.success", true),
-		attribute.Int("conversion.essential_attributes_count", len(essentialAttributes)),
-	)
-
-	logDebug(ctx, "Player conversion to protobuf completed (optimized)",
-		"player_uid", p.UID,
-		"player_name", p.Name,
-		"essential_attributes_count", len(essentialAttributes),
-		"duration_ms", duration.Milliseconds())
 
 	return protoPlayer, nil
 }

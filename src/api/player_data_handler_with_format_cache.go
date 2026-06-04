@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -8,6 +9,7 @@ import (
 	pb "api/proto"
 
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/protobuf/proto"
 )
 
 // formatAwarePlayerDataHandler is an enhanced version of playerDataHandler that uses format-aware caching
@@ -250,47 +252,42 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate filter hash for cache key
 	filterHash := GenerateFilterHash(filters)
 
-	// Cache the filtered player data in both formats
-	CachePlayerData(ctx, cacheKey, filteredPlayers, currencySymbol, filterHash, 5*time.Minute)
+	// Build proto response once — reused for both the current response and the cache entry
+	protoPlayerResponse := &pb.PlayerDataResponse{
+		Players:        make([]*pb.Player, 0, len(filteredPlayers)),
+		CurrencySymbol: currencySymbol,
+		Metadata:       CreateResponseMetadata(requestID, safeInt32(len(filteredPlayers)), false),
+	}
+	for _, player := range filteredPlayers {
+		protoPlayer, err := player.ToProto(ctx)
+		if err != nil {
+			logError(ctx, "Failed to convert player to protobuf",
+				"error", err,
+				"player_uid", player.UID,
+				"player_name", player.Name)
+			continue
+		}
+		protoPlayerResponse.Players = append(protoPlayerResponse.Players, protoPlayer)
+	}
+	var protoBytes []byte
+	if data, err := proto.Marshal(protoPlayerResponse); err == nil {
+		protoBytes = data
+	} else {
+		logError(ctx, "Failed to marshal protobuf for cache", "error", err)
+	}
+	logInfo(ctx, "PERF proto_conversion", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	stageStart = time.Now()
 
-	// Create a cached response object for immediate use
 	cachedResponse := &CachedPlayerDataResponse{
 		Format:         format,
 		JSONData:       filteredPlayers,
+		ProtoBytes:     protoBytes,
 		CurrencySymbol: currencySymbol,
 		CacheTime:      time.Now(),
 		FilterHash:     filterHash,
 	}
 
-	// If protobuf format is requested, create the protobuf data
-	if format == FormatTypeProtobuf {
-		// Create protobuf response
-		protoPlayerResponse := &pb.PlayerDataResponse{
-			Players:        make([]*pb.Player, 0, len(filteredPlayers)),
-			CurrencySymbol: currencySymbol,
-			Metadata:       CreateResponseMetadata(requestID, safeInt32(len(filteredPlayers)), false),
-		}
-
-		// Convert each player to protobuf
-		for _, player := range filteredPlayers {
-			protoPlayer, err := player.ToProto(ctx)
-			if err != nil {
-				logError(ctx, "Failed to convert player to protobuf",
-					"error", err,
-					"player_uid", player.UID,
-					"player_name", player.Name)
-				continue
-			}
-			protoPlayerResponse.Players = append(protoPlayerResponse.Players, protoPlayer)
-		}
-
-		// Set the protobuf data in the cache response
-		cachedResponse.ProtobufData = protoPlayerResponse
-	}
-	logInfo(ctx, "PERF proto_conversion", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "format", string(format))
-	stageStart = time.Now()
-
-	// Write the response using the appropriate format
+	// Write the response immediately using pre-built bytes
 	if err := WritePlayerDataResponse(ctx, w, r, cachedResponse); err != nil {
 		logError(ctx, "Error writing player data response",
 			"error", err,
@@ -299,4 +296,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, r, "response_error", "Error writing response", nil, http.StatusInternalServerError)
 	}
 	logInfo(ctx, "PERF response_write", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+
+	// Cache asynchronously — don't block the response on JSON serialization
+	go CachePlayerData(context.Background(), cacheKey, filteredPlayers, currencySymbol, filterHash, protoBytes, 5*time.Minute)
 }
