@@ -49,6 +49,7 @@ export const playerMatchesPosition = (player, position) => {
  * @returns {number} The player's overall rating
  */
 export const getPlayerOverall = (player) => {
+  if (player.Overall != null) return player.Overall
   return player.overall || 0
 }
 
@@ -63,14 +64,7 @@ export const getFifaWeightedOverallByPosition = (player) => {
   const isGK = player.position?.includes('GK') || player.gk > 0
   if (isGK) {
     // Use primary GK category if present
-    const parts = [
-      player.gk,
-      player.div,
-      player.han,
-      player.ref,
-      player.spd,
-      player.pos,
-    ]
+    const parts = [player.gk, player.div, player.han, player.ref, player.spd, player.pos]
     const valid = parts.filter((v) => typeof v === 'number' && !Number.isNaN(v))
     if (valid.length === 0) return 0
     // Simple average for GK categories

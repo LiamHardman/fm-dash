@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { Quasar } from 'quasar'
 import { describe, expect, it, vi } from 'vitest'
 import PlayerTableRow from './PlayerTableRow.vue'
@@ -13,7 +14,7 @@ const mockQuasar = {
 // Global test config
 const globalConfig = {
   global: {
-    plugins: [Quasar],
+    plugins: [Quasar, createPinia()],
     mocks: {
       $q: mockQuasar,
     },
