@@ -237,7 +237,7 @@
                         </q-card-section>
                     </q-card>
 
-                    <q-card 
+                    <q-card
                         v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
                         class="squad-depth-card"
                     >
@@ -247,24 +247,41 @@
                                     <q-icon name="groups_3" class="card-icon" />
                                     Squad Depth
                                 </h3>
-                                <p class="card-subtitle">Player availability by position</p>
+                                <p class="card-subtitle">Player availability by position — positions with thin coverage are flagged</p>
                             </div>
-                            
+
                             <div class="squad-depth-grid">
                                 <div
                                     v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
                                     :key="slot.id"
                                     class="depth-position-modern"
+                                    :class="getDepthAlertClass(slot.id)"
                                 >
                                     <div class="position-header">
                                         <span class="position-name">
                                             {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
                                         </span>
-                                        <span class="player-count">
-                                            {{ squadComposition[slot.id]?.length || 0 }} players
-                                        </span>
+                                        <div class="position-header-right">
+                                            <span class="player-count">
+                                                {{ squadComposition[slot.id]?.length || 0 }} players
+                                            </span>
+                                            <q-icon
+                                                v-if="(squadComposition[slot.id]?.length || 0) === 0"
+                                                name="warning"
+                                                color="negative"
+                                                size="xs"
+                                                class="q-ml-xs"
+                                            />
+                                            <q-icon
+                                                v-else-if="(squadComposition[slot.id]?.length || 0) === 1"
+                                                name="warning"
+                                                color="warning"
+                                                size="xs"
+                                                class="q-ml-xs"
+                                            />
+                                        </div>
                                     </div>
-                                    
+
                                     <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
                                         <div
                                             v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
@@ -285,10 +302,27 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div v-else class="no-players-state">
                                         <q-icon name="person_off" size="1.5rem" />
                                         <span>No suitable players</span>
+                                    </div>
+
+                                    <!-- Recommend Signing button for thin positions -->
+                                    <div
+                                        v-if="(squadComposition[slot.id]?.length || 0) < 2"
+                                        class="recommend-signing-row"
+                                    >
+                                        <q-btn
+                                            flat
+                                            dense
+                                            :color="(squadComposition[slot.id]?.length || 0) === 0 ? 'negative' : 'warning'"
+                                            icon="person_add"
+                                            label="Recommend Signing"
+                                            size="sm"
+                                            class="recommend-btn full-width"
+                                            @click="openRecommendSigning(slot)"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -367,6 +401,17 @@
             @close="showPlayerDetailDialog = false"
             :currency-symbol="detectedCurrencySymbol"
         />
+
+        <!-- Recommend Signing Dialog -->
+        <RecommendSigningDialog
+            :show="showRecommendSigningDialog"
+            :slot-role="recommendSigningSlotRole"
+            :slot-positions="recommendSigningSlotPositions"
+            :team-players="teamPlayers"
+            :dataset-id="currentDatasetId"
+            :currency-symbol="detectedCurrencySymbol"
+            @close="showRecommendSigningDialog = false"
+        />
     </q-page>
 </template>
 
@@ -379,6 +424,7 @@ import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import RecommendSigningDialog from '../components/RecommendSigningDialog.vue'
 import TeamLogo from '../components/TeamLogo.vue'
 import { fetchTeamData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
@@ -411,6 +457,7 @@ export default {
   components: {
     PlayerDataTable,
     PlayerDetailDialog,
+    RecommendSigningDialog,
     PitchDisplay,
     PlayerCards,
     TeamLogo,
@@ -449,6 +496,10 @@ export default {
 
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
+
+    const showRecommendSigningDialog = ref(false)
+    const recommendSigningSlotRole = ref('')
+    const recommendSigningSlotPositions = ref([])
 
     const fmMatcherToRoleKeyPrefix = {
       GOALKEEPER: 'GK',
@@ -788,6 +839,20 @@ export default {
     const handlePlayerSelectedFromTeam = (player) => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
+    }
+
+    const getDepthAlertClass = (slotId) => {
+      const count = squadComposition.value[slotId]?.length || 0
+      if (count === 0) return 'depth-alert-critical'
+      if (count === 1) return 'depth-alert-thin'
+      return ''
+    }
+
+    const openRecommendSigning = (slot) => {
+      recommendSigningSlotRole.value = slot.role
+      recommendSigningSlotPositions.value =
+        positionSideMap[slot.role.toUpperCase()] || positionSideMap[slot.role] || []
+      showRecommendSigningDialog.value = true
     }
 
     const handleTeamSelected = (teamName) => {
@@ -1833,6 +1898,11 @@ export default {
       showPlayerDetailDialog,
       handlePlayerSelectedFromTeam,
       handleTeamSelected,
+      getDepthAlertClass,
+      openRecommendSigning,
+      showRecommendSigningDialog,
+      recommendSigningSlotRole,
+      recommendSigningSlotPositions,
       teamIsGoalkeeperView,
       teamDivision,
       getStarRating,
@@ -2329,32 +2399,75 @@ $border-radius-small: 8px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         
+        &.depth-alert-critical {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.05);
+
+            .body--dark & {
+                border-color: rgba(239, 68, 68, 0.3);
+                background: rgba(239, 68, 68, 0.08);
+            }
+        }
+
+        &.depth-alert-thin {
+            border-color: rgba(245, 158, 11, 0.4);
+            background: rgba(245, 158, 11, 0.05);
+
+            .body--dark & {
+                border-color: rgba(245, 158, 11, 0.3);
+                background: rgba(245, 158, 11, 0.08);
+            }
+        }
+
         .position-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.75rem;
-            
+
             .position-name {
                 font-weight: 700;
                 font-size: 0.9rem;
                 color: #2d3436;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.9);
                 }
             }
-            
+
+            .position-header-right {
+                display: flex;
+                align-items: center;
+                gap: 0.25rem;
+            }
+
             .player-count {
                 font-size: 0.75rem;
                 color: #636e72;
                 background: rgba(0, 0, 0, 0.05);
                 padding: 0.2rem 0.5rem;
                 border-radius: 12px;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.7);
                     background: rgba(255, 255, 255, 0.1);
+                }
+            }
+        }
+
+        .recommend-signing-row {
+            margin-top: 0.5rem;
+
+            .recommend-btn {
+                border-radius: $border-radius-small;
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: none;
+                opacity: 0.85;
+                transition: opacity 0.2s ease;
+
+                &:hover {
+                    opacity: 1;
                 }
             }
         }

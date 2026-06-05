@@ -4,25 +4,6 @@ Suggested features for FM-Dash based on a high-level review of the codebase. Whe
 
 ---
 
-## 1. Player Comparison Tool
-
-**Summary:** Side-by-side comparison of 2–4 players with a spider/radar chart overlay and a tabular attribute diff.
-
-**Detail:**
-Users regularly need to choose between two or more transfer targets. Today they have to open each player's detail dialog in sequence and mentally compare them. A dedicated comparison view would let users pin players (from the main table, wishlist, or search) and see all their attributes, role suitabilities, percentiles, and financials in a single view.
-
-The radar chart would overlay each player's attribute profile using a common axis scale, making strengths and weaknesses immediately visible. Below the chart, a diff table would highlight which attributes each player leads in (e.g. Player A has higher Pace, Player B has higher Positioning). A "winner" summary row could call out the better player for each selected role.
-
-**Implementation notes:**
-- All data is already present on the `Player` protobuf model — no new API work needed.
-- The existing `PlayerDetailDialog` holds most of the display logic; this would be a new route/modal that accepts an array of player UIDs.
-- A charting library (e.g. Chart.js or ECharts, both common in Vue ecosystems) would handle the radar overlay.
-- Entry points: "Add to comparison" button on player rows and the player detail dialog; a persistent comparison tray (like a cookie bar) shows pinned players.
-
-**Effort estimate:** Medium — mostly frontend work, no backend changes.
-
----
-
 ## 2. Squad Depth Analyzer
 
 **Summary:** For a selected team, visualise positional depth as a layered formation grid and surface coverage gaps.
