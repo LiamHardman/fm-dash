@@ -7,19 +7,6 @@
             >
                 Age / Ability
             </span>
-            <q-btn-toggle
-                v-if="hasPotentialData"
-                v-model="yAxisMode"
-                dense
-                unelevated
-                rounded
-                toggle-color="primary"
-                size="xs"
-                :options="[
-                    { label: 'Overall', value: 'overall' },
-                    { label: 'Potential', value: 'potential' },
-                ]"
-            />
         </div>
         <div
             v-if="hasNoData"
@@ -46,7 +33,7 @@ import {
     Title,
     Tooltip,
 } from 'chart.js'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 // biome-ignore lint/correctness/noUnusedImports: used in template
 import { Bubble } from 'vue-chartjs'
 
@@ -58,8 +45,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['player-click'])
-
-const yAxisMode = ref('overall')
 
 const DEF_POSITIONS = ['DR', 'DC', 'DL', 'WBR', 'WBL']
 const MID_POSITIONS = ['DM', 'MR', 'MC', 'ML', 'AMR', 'AMC', 'AML']
@@ -80,29 +65,54 @@ const getPositionGroup = (player) => {
     return 'MID'
 }
 
-const hasPotentialData = computed(() => props.players.some((p) => Number(p.pa) > 0))
+// Deterministic jitter so same-age players spread into a cluster instead of stacking
+function ageJitter(player) {
+    let hash = 0
+    const key = (player.name || '') + (player.id || '')
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0
+    return ((Math.abs(hash) % 1000) / 1000 - 0.5) * 0.4
+}
 
 const chartData = computed(() => {
     const buckets = Object.fromEntries(Object.keys(POSITION_GROUPS).map((k) => [k, []]))
 
-    const transferValues = props.players.map((p) => p.transferValueAmount || 0)
-    const minVal = Math.min(...transferValues)
-    const maxVal = Math.max(...transferValues)
-    const range = maxVal - minVal
+    // Compute mean overall per age so bubble size encodes above-average-for-age performance
+    const meanByAge = {}
+    for (const player of props.players) {
+        const age = Number(player.age)
+        const overall = Number(player.Overall || player.overall) || 0
+        if (!age || !overall) continue
+        if (!meanByAge[age]) meanByAge[age] = { sum: 0, count: 0 }
+        meanByAge[age].sum += overall
+        meanByAge[age].count++
+    }
+    for (const age of Object.keys(meanByAge)) {
+        meanByAge[age] = meanByAge[age].sum / meanByAge[age].count
+    }
+
+    // Collect all deltas first to normalise radius across the dataset
+    const deltas = []
+    for (const player of props.players) {
+        const age = Number(player.age)
+        const overall = Number(player.Overall || player.overall) || 0
+        if (!age || !overall) continue
+        deltas.push(overall - (meanByAge[age] || 0))
+    }
+    const maxDelta = Math.max(...deltas)
+    const minDelta = Math.min(...deltas)
+    const deltaRange = maxDelta - minDelta
 
     for (const player of props.players) {
         const x = Number(player.age)
-        const y =
-            yAxisMode.value === 'potential'
-                ? Number(player.pa)
-                : Number(player.Overall || player.overall || 0)
+        const y = Number(player.Overall || player.overall || 0)
         if (!x || y <= 0) continue
 
-        const r =
-            range > 0
-                ? Math.round(3 + (((player.transferValueAmount || 0) - minVal) / range) * 7)
-                : 5
-        buckets[getPositionGroup(player)].push({ x, y, r, player })
+        const delta = y - (meanByAge[x] || 0)
+        const r = deltaRange > 0
+            ? Math.round(3 + ((delta - minDelta) / deltaRange) * 9)
+            : 5
+
+        buckets[getPositionGroup(player)].push({ x: x + ageJitter(player), y, r, delta, player })
     }
 
     const colorKey = props.isDarkMode ? 'dark' : 'light'
@@ -151,7 +161,7 @@ const chartOptions = computed(() => ({
         y: {
             title: {
                 display: true,
-                text: yAxisMode.value === 'potential' ? 'Potential Ability' : 'Overall',
+                text: 'Overall',
                 color: theme.value.text,
                 font: { size: 11, weight: 'bold' },
             },
@@ -179,8 +189,9 @@ const chartOptions = computed(() => ({
                 title: () => '',
                 label: (ctx) => {
                     const p = ctx.raw.player
-                    const label = yAxisMode.value === 'potential' ? 'PA' : 'Overall'
-                    return [p.name, `${p.club || '—'}  •  Age ${p.age}  •  ${label}: ${ctx.raw.y}`]
+                    const delta = ctx.raw.delta
+                    const sign = delta >= 0 ? '+' : ''
+                    return [p.name, `${p.club || '—'}  •  Age ${p.age}  •  Overall: ${ctx.raw.y}  •  vs peers: ${sign}${delta.toFixed(1)}`]
                 },
             },
         },
