@@ -1814,7 +1814,7 @@ export default {
     const heroCardPlayer = computed(() => {
       if (!teamPlayers.value.length) return null
       const withApps = teamPlayers.value.filter((p) => {
-        const apps = Number(p.Apps ?? p.apps ?? p['Ap'] ?? 0)
+        const apps = Number(p.Apps ?? p.apps ?? p.Ap ?? 0)
         return !Number.isNaN(apps) && apps >= 10
       })
       const pool = withApps.length > 0 ? withApps : teamPlayers.value

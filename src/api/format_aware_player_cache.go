@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	pb "api/proto"
@@ -235,30 +234,6 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 	w.Header().Set("X-Cache-Format", "json")
 	w.Header().Set("Cache-Control", "private, max-age=300")
 	return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
-}
-
-// cacheKeyFromRequest reconstructs the cache key exactly as the handler does —
-// all filter keys are included even when empty so the keys always match.
-func cacheKeyFromRequest(r *http.Request) string {
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/players/"), "/")
-	datasetID := ""
-	if len(parts) > 0 {
-		datasetID = parts[0]
-	}
-	q := r.URL.Query()
-	filters := map[string]string{
-		"position":         q.Get("position"),
-		"role":             q.Get("role"),
-		"minAge":           q.Get("minAge"),
-		"maxAge":           q.Get("maxAge"),
-		"minTransferValue": q.Get("minTransferValue"),
-		"maxTransferValue": q.Get("maxTransferValue"),
-		"maxSalary":        q.Get("maxSalary"),
-		"divisionFilter":   q.Get("divisionFilter"),
-		"targetDivision":   q.Get("targetDivision"),
-		"positionCompare":  q.Get("positionCompare"),
-	}
-	return GeneratePlayerCacheKey(datasetID, filters)
 }
 
 // WriteJSONPlayerResponse writes a JSON player response
