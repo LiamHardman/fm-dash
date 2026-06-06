@@ -125,7 +125,18 @@
                             (filtered by {{ filterSummary }})
                         </span>
                     </div>
-                    
+
+                    <!-- Age / Ability Scatter Plot -->
+                    <q-card class="wonderkids-chart-container q-mb-md">
+                        <q-card-section class="q-pa-sm q-pt-md">
+                            <WonderkidsScatterPlot
+                                :players="allWonderkids"
+                                :is-dark-mode="qInstance.dark.isActive"
+                                @player-click="handlePlayerSelected"
+                            />
+                        </q-card-section>
+                    </q-card>
+
                     <q-card
                         class="wonderkids-table-container"
                     >
@@ -163,6 +174,7 @@ import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
+import WonderkidsScatterPlot from './WonderkidsScatterPlot.vue'
 
 // Position options matching PlayerFilters
 const orderedShortPositions = [
@@ -198,6 +210,7 @@ export default defineComponent({
   components: {
     PlayerDataTable,
     PlayerDetailDialog,
+    WonderkidsScatterPlot,
   },
   props: {
     show: {
@@ -612,42 +625,55 @@ export default defineComponent({
         }
     }
 
-    // Table container styling
-    .wonderkids-table-container {
+    // Chart container styling
+    .wonderkids-chart-container {
         border-radius: $border-radius;
         box-shadow: $card-shadow;
         border: 1px solid rgba(0, 0, 0, 0.04);
-        
+
         .body--dark & {
             background-color: rgba(255, 255, 255, 0.02);
             border-color: rgba(255, 255, 255, 0.08);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-        
+    }
+
+    // Table container styling
+    .wonderkids-table-container {
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
         :deep(.q-table) {
             border-radius: $border-radius;
             overflow: hidden;
-            
+
             .q-table__top {
                 padding: 1rem;
                 background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
-                
+
                 .body--dark & {
                     background: rgba(255, 255, 255, 0.02);
                 }
             }
-            
+
             .q-table__container {
                 border-radius: 0 0 $border-radius $border-radius;
             }
-            
+
             thead {
                 th {
                     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
                     color: #374151;
                     font-weight: 600;
                     border-bottom: 2px solid #e5e7eb;
-                    
+
                     .body--dark & {
                         background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
                         color: #d1d5db;
@@ -655,31 +681,31 @@ export default defineComponent({
                     }
                 }
             }
-            
+
             tbody {
                 tr {
                     border-bottom: 1px solid #f3f4f6;
-                    
+
                     &:hover {
                         background-color: rgba(46, 116, 181, 0.04);
                     }
-                    
+
                     .body--dark & {
                         border-bottom-color: rgba(255, 255, 255, 0.05);
-                        
+
                         &:hover {
                             background-color: rgba(255, 255, 255, 0.03);
                         }
                     }
                 }
             }
-            
-            // Auto height management
+
+            // Auto height management — reduced to account for the scatter chart above
             height: auto !important;
-            max-height: calc(100vh - 350px);
-            
+            max-height: max(200px, calc(100vh - 660px));
+
             .q-table__middle {
-                max-height: calc(100vh - 350px);
+                max-height: max(200px, calc(100vh - 660px));
             }
         }
     }
@@ -724,10 +750,10 @@ export default defineComponent({
         
         .wonderkids-table-container {
             :deep(.q-table) {
-                max-height: calc(100vh - 300px);
-                
+                max-height: max(150px, calc(100vh - 620px));
+
                 .q-table__middle {
-                    max-height: calc(100vh - 300px);
+                    max-height: max(150px, calc(100vh - 620px));
                 }
             }
         }
@@ -737,25 +763,25 @@ export default defineComponent({
         .card-header {
             padding: 0.75rem;
         }
-        
+
         .q-card-section {
             padding: 0.75rem;
-            
+
             &:last-child {
                 padding-bottom: 0.75rem;
             }
         }
-        
+
         .text-subtitle1 {
             font-size: 1rem;
         }
-        
+
         .wonderkids-table-container {
             :deep(.q-table) {
-                max-height: calc(100vh - 250px);
-                
+                max-height: max(150px, calc(100vh - 580px));
+
                 .q-table__middle {
-                    max-height: calc(100vh - 250px);
+                    max-height: max(150px, calc(100vh - 580px));
                 }
             }
         }

@@ -4,27 +4,6 @@ Suggested features for FM-Dash based on a high-level review of the codebase. Whe
 
 ---
 
-## 2. Squad Depth Analyzer
-
-**Summary:** For a selected team, visualise positional depth as a layered formation grid and surface coverage gaps.
-
-**Detail:**
-Currently the Nations page shows formation-level squad composition, but there's no equivalent tool for club teams. A Squad Depth Analyzer would show, for any team in the dataset, how many players are available at each position and how their quality stacks up (starter / rotation / depth).
-
-The view would render a pitch split into positional zones. Each zone would show the top-rated player for that slot, plus a count badge for backups. Zones where the team has fewer than two viable options would be flagged in amber/red. A sidebar would list recommended signings from the same dataset to fill each gap, linking directly to the Upgrade Finder filtered to that position.
-
-This would be especially useful for players who want to assess a club before joining or identify the weakest areas in their own squad mid-save.
-
-**Implementation notes:**
-- Team roster data is already aggregated; position grouping logic exists in the player model (`position_groups`, `short_positions`).
-- The pitch display component can be extended — it already supports player positioning by role.
-- "Gap detection" is a threshold check: fewer than N players in a position group with an overall above a configurable minimum.
-- Feeds naturally into the Upgrade Finder (roadmap #67 is adjacent — defining a team from a second dataset).
-
-**Effort estimate:** Medium — extends existing pitch display, modest backend filtering work.
-
----
-
 ## 3. Custom Rating Builder
 
 **Summary:** Let users define their own overall formula by weighting individual attributes, then apply it as a sortable column in the player table.
