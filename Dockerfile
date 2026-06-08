@@ -1,4 +1,4 @@
-FROM node:24-alpine AS vue-builder
+FROM node:26-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
 
