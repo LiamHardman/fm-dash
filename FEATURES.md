@@ -23,7 +23,7 @@ The Custom Rating Builder would be a modal (accessible from Settings or the tabl
 
 ---
 
-## 4. Age / Potential Scatter Plot
+## 4. Age / Ability Scatter Plot
 
 **Summary:** A 2D chart plotting all filtered players by age (x-axis) vs. overall or potential (y-axis), with interactive hover and click-through to player details.
 
