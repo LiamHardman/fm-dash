@@ -176,6 +176,8 @@ var PerformanceStatKeys = []string{
 	"Fls", "Apps", "NP-xG/90", "Ps A/90", "Mins", "Clean Sheets", "FA", "CRS A/90",
 	// Goalkeeper-specific stats
 	"Con/90", "Cln/90", "xGP/90", "Sv %",
+	// CSV-only stats (no HTML equivalent)
+	"Pres A/90", "Dist/90", "Saves/90", "Mins/Gl", "K Tck/90",
 }
 
 // PositionGroupsForPercentiles defines broad player categories used for percentile calculations.

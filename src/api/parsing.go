@@ -432,6 +432,13 @@ var csvHeaderNormalize = map[string]string{
 	"Tackling":         "Tck",
 	"Technique":        "Tec",
 
+	// Performance stat name differences (CSV vs HTML)
+	"KP/90":                  "K Ps/90",
+	"Crs A/90":               "CRS A/90",
+	"Goals per 90 minutes":   "Gls/90",
+	"Average Rating Club":    "Av Rat",
+	"Fouls Against":          "FA",
+
 	// Goalkeeper attributes
 	"Aerial Reach":           "Aer",
 	"Command Of Area":        "Cmd",
