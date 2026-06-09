@@ -1589,7 +1589,25 @@ export default defineComponent({
       percentilesRetryCount,
       maxRetries,
       manualRetry,
-    } = usePercentileRetry(displayPlayer, datasetIdRef, selectedComparisonGroup, divisionFilter)
+    } = usePercentileRetry(
+      displayPlayer,
+      datasetIdRef,
+      selectedComparisonGroup,
+      divisionFilter,
+      (updatedPercentiles) => {
+        if (detailedPlayerData.value) {
+          // Replace reference (not Object.assign) so watchers fire and counters increment
+          detailedPlayerData.value.performancePercentiles = {
+            ...(detailedPlayerData.value.performancePercentiles || {}),
+            ...updatedPercentiles,
+          }
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+          performanceStatsCache.clear()
+        }
+      }
+    )
 
     // Face image handling
     const faceImageLoadError = ref(false)
@@ -2252,19 +2270,12 @@ export default defineComponent({
           )
 
           if (updatedPercentiles) {
-            // Replace the percentiles instead of merging them
             if (detailedPlayerData.value) {
               detailedPlayerData.value.performancePercentiles = updatedPercentiles
-              // Force reactivity by incrementing the counters
               percentileUpdateCounter.value++
               percentileDataTrigger.value++
               forceRecompute.value++
             }
-            // Also update props.player if it exists
-            if (props.player) {
-              props.player.performancePercentiles = updatedPercentiles
-            }
-            // Clear all caches to force recomputation
             performanceStatsCache.clear()
             performanceComparisonOptionsCache.clear()
           }
@@ -2468,6 +2479,30 @@ export default defineComponent({
           detailedPlayerData.value = props.player
           const _loadTime = performance.now() - startTime
 
+          // Eagerly fetch if percentiles are missing for the current comparison group
+          const currentGroup = selectedComparisonGroup.value
+          const existingGroup = props.player.performancePercentiles[currentGroup]
+          const hasValidGroup =
+            existingGroup &&
+            Object.values(existingGroup).some((v) => v !== null && v !== undefined && v >= 0)
+          if (!hasValidGroup) {
+            const uid = props.player.uid || props.player.UID
+            let effectiveDivision = divisionFilter.value
+            if (effectiveDivision === 'same') {
+              effectiveDivision = props.player.division || 'same'
+            }
+            const updated = await fetchPlayerPercentiles(uid, effectiveDivision, 'Global')
+            if (updated && detailedPlayerData.value) {
+              detailedPlayerData.value.performancePercentiles = {
+                ...detailedPlayerData.value.performancePercentiles,
+                ...updated,
+              }
+              percentileUpdateCounter.value++
+              percentileDataTrigger.value++
+              forceRecompute.value++
+            }
+          }
+
           // Clear caches to force recomputation
           performanceStatsCache.clear()
           performanceComparisonOptionsCache.clear()
@@ -2482,7 +2517,29 @@ export default defineComponent({
             detailedPlayerData.value = cachedData
             const _loadTime = performance.now() - startTime
 
-            // Cache hit - no need to fetch from API
+            // Eagerly fetch if cached data is missing percentiles for the current group
+            const currentGroup = selectedComparisonGroup.value
+            const existingGroup = cachedData.performancePercentiles?.[currentGroup]
+            const hasValidGroup =
+              existingGroup &&
+              Object.values(existingGroup).some((v) => v !== null && v !== undefined && v >= 0)
+            if (!hasValidGroup) {
+              const uid = cachedData.uid || cachedData.UID
+              let effectiveDivision = divisionFilter.value
+              if (effectiveDivision === 'same') {
+                effectiveDivision = cachedData.division || 'same'
+              }
+              const updated = await fetchPlayerPercentiles(uid, effectiveDivision, 'Global')
+              if (updated && detailedPlayerData.value) {
+                detailedPlayerData.value.performancePercentiles = {
+                  ...(detailedPlayerData.value.performancePercentiles || {}),
+                  ...updated,
+                }
+                percentileUpdateCounter.value++
+                percentileDataTrigger.value++
+                forceRecompute.value++
+              }
+            }
             return
           }
           // OPTIMIZATION: Fetch player data and percentiles in parallel
@@ -2750,43 +2807,42 @@ export default defineComponent({
     watch(
       () => selectedComparisonGroup.value,
       async (newGroup, oldGroup) => {
-        // Clear performance stats cache when comparison group changes
         performanceStatsCache.clear()
 
-        // Fetch new percentiles for the new comparison group
         if (newGroup !== oldGroup && displayPlayer.value && props.datasetId) {
           const playerUID = displayPlayer.value.uid || displayPlayer.value.UID
           if (playerUID) {
-            // Handle the 'same' division filter by converting it to the player's actual division
-            let effectiveDivision = divisionFilter.value
-            if (divisionFilter.value === 'same') {
-              const targetDivision = displayPlayer.value?.division
-              if (targetDivision) {
-                effectiveDivision = targetDivision
-              } else {
-                // If no target division is available, fall back to 'same'
-                effectiveDivision = 'same'
-              }
+            // Skip the API call if valid percentiles already exist for this group
+            const existingGroup = detailedPlayerData.value?.performancePercentiles?.[newGroup]
+            const hasExistingData =
+              existingGroup &&
+              Object.values(existingGroup).some((v) => v !== null && v !== undefined && v >= 0)
+            if (hasExistingData) {
+              percentileUpdateCounter.value++
+              return
             }
 
+            let effectiveDivision = divisionFilter.value
+            if (divisionFilter.value === 'same') {
+              effectiveDivision = displayPlayer.value?.division || 'same'
+            }
+
+            // Always fetch 'Global' so all position groups arrive in one request
             const updatedPercentiles = await fetchPlayerPercentiles(
               playerUID,
               effectiveDivision,
-              newGroup
+              'Global'
             )
 
-            if (updatedPercentiles) {
-              // Replace the percentiles
-              if (detailedPlayerData.value) {
-                detailedPlayerData.value.performancePercentiles = updatedPercentiles
-                // Force reactivity
-                percentileUpdateCounter.value++
-                percentileDataTrigger.value++
-                forceRecompute.value++
+            if (updatedPercentiles && detailedPlayerData.value) {
+              // Merge rather than replace so already-cached groups are preserved
+              detailedPlayerData.value.performancePercentiles = {
+                ...(detailedPlayerData.value.performancePercentiles || {}),
+                ...updatedPercentiles,
               }
-              if (props.player) {
-                props.player.performancePercentiles = updatedPercentiles
-              }
+              percentileUpdateCounter.value++
+              percentileDataTrigger.value++
+              forceRecompute.value++
               performanceStatsCache.clear()
               performanceComparisonOptionsCache.clear()
             }

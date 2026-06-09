@@ -7,7 +7,13 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
  * @param {String} selectedComparisonGroup - The selected comparison group
  * @returns {Object} - Contains loading states and retry functionality
  */
-export function usePercentileRetry(player, datasetId, selectedComparisonGroup, divisionFilter) {
+export function usePercentileRetry(
+  player,
+  datasetId,
+  selectedComparisonGroup,
+  divisionFilter,
+  onPercentilesUpdated
+) {
   // Loading states
   const isLoadingPercentiles = ref(false)
   const percentilesRetryCount = ref(0)
@@ -161,8 +167,11 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
           percentile_groups: Object.keys(updatedPercentiles).length,
         })
 
-        // Update the player's percentiles
-        if (player.value.performancePercentiles) {
+        // Update the player's percentiles via callback if provided (preferred — avoids
+        // mutating a potentially non-reactive spread copy of displayPlayer)
+        if (onPercentilesUpdated) {
+          onPercentilesUpdated(updatedPercentiles)
+        } else if (player.value.performancePercentiles) {
           Object.assign(player.value.performancePercentiles, updatedPercentiles)
         } else {
           player.value.performancePercentiles = updatedPercentiles
