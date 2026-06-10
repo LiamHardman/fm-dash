@@ -2491,16 +2491,17 @@ export default defineComponent({
             if (effectiveDivision === 'same') {
               effectiveDivision = props.player.division || 'same'
             }
-            const updated = await fetchPlayerPercentiles(uid, effectiveDivision, 'Global')
-            if (updated && detailedPlayerData.value) {
-              detailedPlayerData.value.performancePercentiles = {
-                ...detailedPlayerData.value.performancePercentiles,
-                ...updated,
+            fetchPlayerPercentiles(uid, effectiveDivision, 'Global').then((updated) => {
+              if (updated && detailedPlayerData.value) {
+                detailedPlayerData.value.performancePercentiles = {
+                  ...detailedPlayerData.value.performancePercentiles,
+                  ...updated,
+                }
+                percentileUpdateCounter.value++
+                percentileDataTrigger.value++
+                forceRecompute.value++
               }
-              percentileUpdateCounter.value++
-              percentileDataTrigger.value++
-              forceRecompute.value++
-            }
+            })
           }
 
           // Clear caches to force recomputation
@@ -2529,16 +2530,17 @@ export default defineComponent({
               if (effectiveDivision === 'same') {
                 effectiveDivision = cachedData.division || 'same'
               }
-              const updated = await fetchPlayerPercentiles(uid, effectiveDivision, 'Global')
-              if (updated && detailedPlayerData.value) {
-                detailedPlayerData.value.performancePercentiles = {
-                  ...(detailedPlayerData.value.performancePercentiles || {}),
-                  ...updated,
+              fetchPlayerPercentiles(uid, effectiveDivision, 'Global').then((updated) => {
+                if (updated && detailedPlayerData.value) {
+                  detailedPlayerData.value.performancePercentiles = {
+                    ...(detailedPlayerData.value.performancePercentiles || {}),
+                    ...updated,
+                  }
+                  percentileUpdateCounter.value++
+                  percentileDataTrigger.value++
+                  forceRecompute.value++
                 }
-                percentileUpdateCounter.value++
-                percentileDataTrigger.value++
-                forceRecompute.value++
-              }
+              })
             }
             return
           }
