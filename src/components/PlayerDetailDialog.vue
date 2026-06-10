@@ -1528,8 +1528,45 @@ export default defineComponent({
 
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
-    const divisionFilter = ref('same')
     const activeTab = ref('simple') // Default to simple view
+
+    const isTop5League = (division, basedIn) => {
+      if (!division) return false
+      switch (basedIn) {
+        case 'England':
+          return division === 'Premier League'
+        case 'Spain':
+          return (
+            division === 'La Liga' ||
+            division === 'Primera División' ||
+            division === 'Primera Division'
+          )
+        case 'Germany':
+          return division === 'Bundesliga' || division === '1. Bundesliga'
+        case 'France':
+          return division.startsWith('Ligue 1')
+        case 'Italy':
+          return division === 'Serie A'
+        default:
+          return (
+            division === 'Premier League' ||
+            division === 'La Liga' ||
+            division === 'Primera División' ||
+            division === 'Primera Division' ||
+            division === 'Bundesliga' ||
+            division === '1. Bundesliga' ||
+            division.startsWith('Ligue 1') ||
+            division === 'Serie A'
+          )
+      }
+    }
+
+    const getDefaultDivisionFilter = (player) => {
+      if (!player) return 'all'
+      return isTop5League(player.division, player.basedIn) ? 'top5' : 'all'
+    }
+
+    const divisionFilter = ref(getDefaultDivisionFilter(props.player))
 
     // Convert props to refs for the percentile retry composable
     const _playerRef = toRef(props, 'player')
@@ -2737,6 +2774,9 @@ export default defineComponent({
 
         // Reset to Global initially when player changes
         selectedComparisonGroup.value = 'Global'
+
+        // Reset division filter based on whether the new player is in a top 5 league
+        divisionFilter.value = getDefaultDivisionFilter(newPlayer)
       },
       { immediate: true }
     )
