@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -408,13 +409,30 @@ const (
 	DivisionFilterTop5
 )
 
-// TopDivisions lists the top 5 divisions for filtering
-var TopDivisions = []string{
-	"Premier League",
-	"Championship",
-	"Serie A",
-	"Bundesliga",
-	"La Liga",
+// IsTop5League reports whether the given division is one of the top 5 European leagues
+// (Premier League, La Liga, Bundesliga, Ligue 1, Serie A).
+// basedIn (the FM "Based in" country field) disambiguates leagues that share a name
+// across countries. When basedIn is empty, matching falls back to division name only.
+func IsTop5League(division, basedIn string) bool {
+	switch basedIn {
+	case "England":
+		return division == "Premier League"
+	case "Spain":
+		return division == "La Liga" || division == "Primera División" || division == "Primera Division"
+	case "Germany":
+		return division == "Bundesliga" || division == "1. Bundesliga"
+	case "France":
+		return strings.HasPrefix(division, "Ligue 1")
+	case "Italy":
+		return division == "Serie A"
+	default:
+		// basedIn absent or unrecognised: match by name only
+		return division == "Premier League" ||
+			division == "La Liga" || division == "Primera División" || division == "Primera Division" ||
+			division == "Bundesliga" || division == "1. Bundesliga" ||
+			strings.HasPrefix(division, "Ligue 1") ||
+			division == "Serie A"
+	}
 }
 
 // isPlayerInTargetDivision checks if a player should be included based on division filter
@@ -425,13 +443,7 @@ func isPlayerInTargetDivision(player *Player, divisionFilter DivisionFilter, tar
 	case DivisionFilterSame:
 		return player.Division == targetDivision
 	case DivisionFilterTop5:
-		// For top5 filter, include all players from top 5 divisions
-		for _, topDiv := range TopDivisions {
-			if player.Division == topDiv {
-				return true
-			}
-		}
-		return false
+		return IsTop5League(player.Division, player.BasedIn)
 	default:
 		return true
 	}

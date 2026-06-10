@@ -34,15 +34,6 @@ func ApplyDivisionFilter(players []Player, filterType DivisionFilter, targetDivi
 		targetDivision = players[0].Division
 	}
 
-	// Top 5 divisions (hardcoded for simplicity)
-	top5Divisions := map[string]bool{
-		"Premier Division": true,
-		"Championship":     true,
-		"League One":       true,
-		"La Liga":          true,
-		"Serie A":          true,
-	}
-
 	var result []Player
 	for _, player := range players {
 		switch filterType {
@@ -51,7 +42,7 @@ func ApplyDivisionFilter(players []Player, filterType DivisionFilter, targetDivi
 				result = append(result, player)
 			}
 		case DivisionFilterTop5:
-			if top5Divisions[player.Division] {
+			if IsTop5League(player.Division, player.BasedIn) {
 				result = append(result, player)
 			}
 		}
