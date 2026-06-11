@@ -7202,7 +7202,7 @@ export default defineComponent({
     }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
     .preview-header,
     .design-section__header,
     .card-gallery {

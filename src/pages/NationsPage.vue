@@ -80,7 +80,7 @@
                 <!-- Nation Header Section (replaces hero) -->
                 <GradientBackground 
                     :image-url="currentNationFlagISO ? `https://flagcdn.com/w80/${currentNationFlagISO.toLowerCase()}.png` : null"
-                    :fallback-gradient="'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'"
+                    :fallback-gradient="'linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)'"
                     :intensity="0.4"
                     class="nation-hero-section"
                 >
@@ -2419,7 +2419,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     margin-bottom: 2rem;
     
     .share-btn-modern {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
         border: none;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         transition: all 0.3s ease;
@@ -2457,7 +2457,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             
             .empty-state-icon {
                 margin-bottom: 2rem;
-                color: #667eea;
+                color: var(--accent);
                 opacity: 0.7;
             }
             
@@ -2484,7 +2484,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             }
             
             .empty-state-btn {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
                 border: none;
                 padding: 0.75rem 2rem;
                 font-weight: 600;
@@ -2741,7 +2741,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         }
         
         .card-icon {
-            color: #667eea;
+            color: var(--accent);
             font-size: 1.5rem;
         }
     }
@@ -2873,10 +2873,10 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                     &:hover {
                         transform: translateX(4px);
                         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                        background: rgba(103, 126, 234, 0.1);
+                        background: var(--accent-soft);
                         
                         .body--dark & {
-                            background: rgba(103, 126, 234, 0.15);
+                            background: var(--accent-soft-strong);
                         }
                     }
                     
@@ -2886,8 +2886,8 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         justify-content: center;
                         width: 20px;
                         height: 20px;
-                        background: rgba(103, 126, 234, 0.1);
-                        color: #667eea;
+                        background: var(--accent-soft);
+                        color: var(--accent);
                         border-radius: 50%;
                         font-size: 0.7rem;
                         font-weight: 700;
@@ -3093,13 +3093,13 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     .calculation-progress-section {
         margin-bottom: 2rem;
         padding: 1.5rem;
-        background: linear-gradient(135deg, rgba(103, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
+        background: var(--accent-soft);
         border-radius: $border-radius-small;
-        border: 1px solid rgba(103, 126, 234, 0.2);
+        border: 1px solid var(--accent-soft-strong);
         
         .body--dark & {
-            background: linear-gradient(135deg, rgba(103, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.1) 100%);
-            border-color: rgba(103, 126, 234, 0.3);
+            background: var(--accent-soft-strong);
+            border-color: var(--accent-soft-strong);
         }
         
         .progress-header {
@@ -3112,11 +3112,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 display: flex;
                 align-items: center;
                 font-weight: 600;
-                color: #667eea;
+                color: var(--accent);
                 font-size: 1rem;
                 
                 .body--dark & {
-                    color: rgba(103, 126, 234, 0.9);
+                    color: var(--accent);
                 }
             }
             
@@ -3177,22 +3177,22 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             }
             
             &.calculating {
-                background: linear-gradient(135deg, rgba(103, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.04) 100%);
-                border-color: rgba(103, 126, 234, 0.2);
+                background: var(--accent-soft);
+                border-color: var(--accent-soft-strong);
                 
                 .body--dark & {
-                    background: linear-gradient(135deg, rgba(103, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.08) 100%);
-                    border-color: rgba(103, 126, 234, 0.3);
+                    background: var(--accent-soft-strong);
+                    border-color: var(--accent-soft-strong);
                 }
             }
             
             &:hover {
                 transform: translateY(-1px);
                 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                background: rgba(103, 126, 234, 0.05);
+                background: var(--accent-soft);
                 
                 .body--dark & {
-                    background: rgba(103, 126, 234, 0.1);
+                    background: var(--accent-soft);
                 }
             }
             
@@ -3239,11 +3239,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                     
                     .calculating-text {
                         font-size: 0.85rem;
-                        color: #667eea;
+                        color: var(--accent);
                         font-weight: 500;
                         
                         .body--dark & {
-                            color: rgba(103, 126, 234, 0.9);
+                            color: var(--accent);
                         }
                     }
                 }
@@ -3384,36 +3384,9 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     }
 }
 
-// Overall Class Colors
-.excellent {
-    background-color: #10b981 !important;
-    color: white !important;
-}
-
-.very-good {
-    background-color: #34d399 !important;
-    color: white !important;
-}
-
-.good {
-    background-color: #fbbf24 !important;
-    color: white !important;
-}
-
-.average {
-    background-color: #f59e0b !important;
-    color: white !important;
-}
-
-.below-average {
-    background-color: #ef4444 !important;
-    color: white !important;
-}
-
-.poor {
-    background-color: #991b1b !important;
-    color: white !important;
-}
+// Overall Class Colors come from the global rating-tier palette in
+// src/css/app.scss (.excellent/.very-good/.good/.average/.below-average/.poor
+// alias .rating-tier-6…1) so all pages share one rating color language.
 
 // Responsive Design
 @media (max-width: 1200px) {

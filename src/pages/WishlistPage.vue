@@ -21,38 +21,31 @@
 
             <div v-if="currentDatasetId">
                 <!-- Hero Section -->
-                <div class="hero-section">
-                    <div class="hero-container">
-                        <div class="hero-content">
-                            <div class="hero-badge">
-                                <q-icon name="favorite" size="1.2rem" />
-                                <span>Wishlist</span>
-                            </div>
-                            <h1 class="hero-title">
-                                Your Football Manager
-                                <span class="gradient-text">Wishlist</span>
-                            </h1>
-                            <p class="hero-subtitle">
-                                Keep track of players you're interested in scouting or signing. 
-                                Your wishlist is automatically saved for this dataset.
-                            </p>
-                        </div>
+                <PageHero
+                    rounded
+                    icon="favorite"
+                    badge="Wishlist"
+                    title="Your Football Manager"
+                    highlight="Wishlist"
+                    subtitle="Keep track of players you're interested in scouting or signing. Your wishlist is automatically saved for this dataset."
+                >
+                    <template #side>
                         <div class="hero-stats">
-                            <div class="stat-card">
-                                <div class="stat-number">{{ wishlistPlayers.length }}</div>
-                                <div class="stat-label">Wishlisted Players</div>
+                            <div class="hero-stat">
+                                <div class="hero-stat-number">{{ wishlistPlayers.length }}</div>
+                                <div class="hero-stat-label">Wishlisted Players</div>
                             </div>
-                            <div class="stat-card">
-                                <div class="stat-number">{{ uniqueClubsCount }}</div>
-                                <div class="stat-label">Clubs</div>
+                            <div class="hero-stat">
+                                <div class="hero-stat-number">{{ uniqueClubsCount }}</div>
+                                <div class="hero-stat-label">Clubs</div>
                             </div>
-                            <div class="stat-card">
-                                <div class="stat-number">{{ uniqueNationalitiesCount }}</div>
-                                <div class="stat-label">Nations</div>
+                            <div class="hero-stat">
+                                <div class="hero-stat-number">{{ uniqueNationalitiesCount }}</div>
+                                <div class="hero-stat-label">Nations</div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </template>
+                </PageHero>
 
                 <!-- Action Buttons -->
                 <div class="actions-section q-mb-md">
@@ -180,6 +173,7 @@
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import PageHero from '../components/PageHero.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerStore } from '../stores/playerStore'
@@ -188,6 +182,7 @@ import { useWishlistStore } from '../stores/wishlistStore'
 export default defineComponent({
   name: 'WishlistPage',
   components: {
+    PageHero,
     PlayerDataTable,
     PlayerDetailDialog,
   },
@@ -312,128 +307,7 @@ export default defineComponent({
     min-height: 100vh;
 }
 
-.hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 24px;
-    padding: 3rem 0;
-    margin-bottom: 2rem;
-    overflow: hidden;
-    position: relative;
-
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-    }
-
-    .body--dark & {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        
-        &::before {
-            background: linear-gradient(45deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%);
-        }
-    }
-}
-
-.hero-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 2rem;
-    position: relative;
-    z-index: 1;
-
-    @media (max-width: 768px) {
-        flex-direction: column;
-        text-align: center;
-        gap: 2rem;
-    }
-}
-
-.hero-content {
-    flex: 1;
-    max-width: 600px;
-}
-
-.hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.5rem 1rem;
-    border-radius: 50px;
-    color: white;
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 1.5rem;
-    backdrop-filter: blur(10px);
-}
-
-.hero-title {
-    font-size: 3rem;
-    font-weight: 300;
-    color: white;
-    margin-bottom: 1rem;
-    line-height: 1.1;
-
-    @media (max-width: 768px) {
-        font-size: 2.5rem;
-    }
-}
-
-.gradient-text {
-    background: linear-gradient(45deg, #ffd700, #ffed4e);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-weight: 400;
-}
-
-.hero-subtitle {
-    font-size: 1.125rem;
-    color: rgba(255, 255, 255, 0.9);
-    line-height: 1.6;
-    margin-bottom: 0;
-}
-
-.hero-stats {
-    display: flex;
-    gap: 1.5rem;
-
-    @media (max-width: 768px) {
-        justify-content: center;
-    }
-}
-
-.stat-card {
-    background: rgba(255, 255, 255, 0.15);
-    padding: 1.5rem;
-    border-radius: 16px;
-    text-align: center;
-    min-width: 120px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: 600;
-    color: white;
-    margin-bottom: 0.5rem;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.8);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
+// Hero styling comes from the shared PageHero component.
 
 .actions-section {
     display: flex;

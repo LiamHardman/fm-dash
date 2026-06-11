@@ -298,7 +298,7 @@ export default defineComponent({
         line-height: 1.5;
         margin: 0 0 2rem 0;
         opacity: 0.9;
-        font-weight: 300;
+        font-weight: 400;
         animation: slideInLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
         animation-delay: 0.2s;
     }

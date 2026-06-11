@@ -669,7 +669,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             }
             
             .card-icon {
-                color: #3b82f6;
+                color: var(--accent);
             }
         }
         
@@ -711,10 +711,10 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             &:hover {
                 transform: translateY(-1px);
                 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                background: rgba(103, 126, 234, 0.05);
+                background: var(--accent-soft);
                 
                 .body--dark & {
-                    background: rgba(103, 126, 234, 0.1);
+                    background: var(--accent-soft);
                 }
             }
             
@@ -864,7 +864,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             }
             
             .card-icon {
-                color: #3b82f6;
+                color: var(--accent);
             }
         }
         

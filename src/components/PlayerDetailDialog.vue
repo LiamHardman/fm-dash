@@ -3371,27 +3371,7 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 
-// Dark mode dialog backdrop fix
-:deep(.dark-dialog .q-dialog__backdrop) {
-    background: rgba(0, 0, 0, 0.6) !important;
-}
-
-:deep(.light-dialog .q-dialog__backdrop) {
-    background: rgba(0, 0, 0, 0.4) !important;
-}
-
-// Additional dark mode dialog fixes
-.body--dark {
-    :deep(.q-dialog__backdrop) {
-        background: rgba(0, 0, 0, 0.6) !important;
-    }
-}
-
-.body--light {
-    :deep(.q-dialog__backdrop) {
-        background: rgba(0, 0, 0, 0.4) !important;
-    }
-}
+// Dialog backdrop styling lives in the unscoped block at the end of this file.
 
 .main-content-section {
     flex-grow: 1;
@@ -4979,90 +4959,31 @@ $breakpoint-xs-max: 599px !default;
 </style>
 
 <style lang="scss">
-/* Global styles for dialog backdrop - unscoped to override Quasar defaults */
+/* Unscoped: dialog backdrop + card surface overrides for this dialog.
+   Body/page backgrounds are handled globally by src/css/app.scss tokens. */
 
-/* Ensure body background is preserved in dark mode */
-html.body--dark,
-.body--dark,
-body.body--dark {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+.body--dark .q-dialog__backdrop {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(3px);
 }
 
-/* Dialog backdrop styles */
-html.body--dark .q-dialog__backdrop,
-.body--dark .q-dialog__backdrop,
-body.body--dark .q-dialog__backdrop {
-    background-color: rgba(0, 0, 0, 0.8) !important;
-    backdrop-filter: blur(3px) !important;
+.body--light .q-dialog__backdrop {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
 }
 
-html.body--light .q-dialog__backdrop,
-.body--light .q-dialog__backdrop,
-body.body--light .q-dialog__backdrop {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-    backdrop-filter: blur(3px) !important;
-}
-
-/* Target the dialog inner container that might be causing white background */
-.body--dark .q-dialog__inner,
-.dark .q-dialog__inner,
-body.body--dark .q-dialog__inner {
-    background: transparent !important;
-}
-
-/* Target potential white background sources */
-.body--dark .q-dialog,
-.dark .q-dialog,
-body.body--dark .q-dialog {
-    background: transparent !important;
-}
-
-/* Additional specificity for the backdrop element */
-.body--dark .q-dialog .q-dialog__backdrop,
-.dark .q-dialog .q-dialog__backdrop,
-body.body--dark .q-dialog .q-dialog__backdrop {
-    background: rgba(0, 0, 0, 0.8) !important;
-    backdrop-filter: blur(3px) !important;
-}
-
-/* Prevent body scroll changes when dialog is open */
-.body--dark.q-body--dialog {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-}
-
-/* Target any potential page container that might be getting a white background */
-.body--dark .q-page-container,
-.body--dark .q-page,
-body.body--dark .q-page-container,
-body.body--dark .q-page {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-}
-
-/* Dialog card background fix for dark/light mode */
-.dark-dialog .player-detail-dialog-card {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-  color: #fff !important;
-}
-.light-dialog .player-detail-dialog-card {
-  background: #fff !important;
-  color: #222 !important;
-}
-
-/* Force dark background for the main card when it has bg-dark class - HIGH SPECIFICITY */
-.q-dialog .q-card.player-detail-dialog-card.bg-dark,
-.q-dialog .q-card.player-detail-dialog-card.modern-dialog-card.bg-dark,
-.dark-dialog .q-card.player-detail-dialog-card,
-.dark-dialog .q-card.player-detail-dialog-card.modern-dialog-card {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-  color: #fff !important;
-  border: none !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* Override Quasar's bg-dark class specifically for our card */
+/* The card carries Quasar's .bg-dark utility (which has !important), so the
+   override needs !important to win. */
+.dark-dialog .player-detail-dialog-card,
 .q-card.player-detail-dialog-card.bg-dark {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-  color: #fff !important;
+    background: var(--surface-page) !important;
+    color: var(--text-primary) !important;
+    border: none;
+    box-shadow: var(--shadow-3);
 }
 
+.light-dialog .player-detail-dialog-card {
+    background: var(--surface-card) !important;
+    color: var(--text-primary) !important;
+}
 </style>

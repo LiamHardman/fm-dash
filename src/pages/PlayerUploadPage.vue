@@ -1,10 +1,6 @@
 <template>
     <q-page class="upload-page">
         <div class="upload-container">
-            <!-- Hero Section -->
-            <div class="hero-section">
-            </div>
-
             <!-- Upload Section -->
             <div class="upload-section">
                 <q-card class="upload-card" flat bordered>
@@ -475,66 +471,6 @@ export default {
     padding: 2rem;
 }
 
-// Hero Section
-.hero-section {
-    text-align: center;
-    margin-bottom: 3rem;
-
-    .hero-content {
-        margin-bottom: 2rem;
-    }
-
-    .hero-title {
-        font-size: 3rem;
-        font-weight: 300;
-        color: #1a237e;
-        margin: 0 0 1rem 0;
-        letter-spacing: 1px;
-
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.9);
-        }
-    }
-
-    .hero-subtitle {
-        font-size: 1.2rem;
-        color: #666;
-        margin: 0;
-        font-weight: 300;
-        line-height: 1.6;
-        max-width: 600px;
-        margin: 0 auto;
-
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
-    }
-
-    .hero-stats {
-        display: flex;
-        justify-content: center;
-        gap: 3rem;
-        margin-top: 2rem;
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-
-            .stat-text {
-                font-size: 0.9rem;
-                color: #666;
-                font-weight: 500;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-            }
-        }
-    }
-}
-
 // Help Section
 .help-section {
     text-align: center;
@@ -880,27 +816,6 @@ export default {
         padding: 1rem;
     }
 
-    .hero-section {
-        .hero-title {
-            font-size: 2.2rem;
-        }
-
-        .hero-subtitle {
-            font-size: 1rem;
-        }
-
-        .hero-stats {
-            flex-direction: column;
-            gap: 1.5rem;
-
-            .stat-item {
-                flex-direction: row;
-                justify-content: center;
-                gap: 1rem;
-            }
-        }
-    }
-
     .upload-section {
         .upload-card {
             .upload-dropzone {
@@ -933,20 +848,6 @@ export default {
 }
 
 @media (max-width: 480px) {
-    .hero-section {
-        .hero-title {
-            font-size: 1.8rem;
-        }
-
-        .hero-stats {
-            .stat-item {
-                .stat-text {
-                    font-size: 0.8rem;
-                }
-            }
-        }
-    }
-
     .upload-section {
         .upload-card {
             .upload-header {

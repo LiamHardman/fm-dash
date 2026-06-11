@@ -681,7 +681,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 // Modern Design System Variables
-$primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$primary-gradient: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
 $success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
 $warning-gradient: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
 $danger-gradient: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
@@ -1016,7 +1016,7 @@ $border-radius-small: 8px;
             }
 
             &--active {
-                color: #667eea;
+                color: var(--accent);
                 .body--dark & {
                     color: #90caf9;
                 }
@@ -1040,7 +1040,7 @@ $border-radius-small: 8px;
     font-weight: 600;
     color: #333;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid #667eea;
+    border-bottom: 2px solid var(--accent);
     align-self: flex-start;
     margin-bottom: 1rem;
 

@@ -20,7 +20,7 @@ export default defineComponent({
     },
     fallbackGradient: {
       type: String,
-      default: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      default: 'linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)',
     },
     intensity: {
       type: Number,

@@ -146,7 +146,7 @@ export default defineComponent({
   }
   
   .rank-badge {
-    background: linear-gradient(135deg, #764ba2, #667eea);
+    background: linear-gradient(135deg, #1a237e, #3949ab);
     color: white;
     border-radius: 50%;
     width: 28px;
@@ -178,7 +178,7 @@ export default defineComponent({
   
   .stat-value {
     font-weight: 700;
-    color: #667eea;
+    color: var(--accent);
     font-size: 1rem;
   }
   

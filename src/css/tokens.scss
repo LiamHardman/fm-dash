@@ -1,0 +1,82 @@
+// src/css/tokens.scss
+//
+// FM-Dash design tokens — the single source of truth for colors, surfaces,
+// elevation, radii and motion. Defined as CSS custom properties so dark mode
+// is a value flip (under body.body--dark) instead of per-component
+// `.body--dark &` overrides.
+//
+// Components should reference these (e.g. `color: var(--text-secondary)`)
+// instead of hardcoding hex values. This extends the pattern already proven
+// by src/styles/card-designs/_base.scss to the whole app.
+
+:root {
+    // ── Brand ────────────────────────────────────────────────────────────
+    // Deep indigo is the brand color (matches the app header + landing page).
+    --brand: #1a237e;
+    --brand-mid: #283593;
+    --brand-light: #3949ab;
+    --brand-gradient: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+
+    // ── Accent (interactive emphasis, links, icons) ──────────────────────
+    --accent: #1a237e;
+    --accent-soft: rgba(26, 35, 126, 0.08);
+    --accent-soft-strong: rgba(26, 35, 126, 0.12);
+
+    // ── Surfaces ─────────────────────────────────────────────────────────
+    --surface-page: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    --surface-card: #ffffff;
+    --surface-raised: #f8fafc;
+    --surface-overlay: rgba(255, 255, 255, 0.96);
+    --surface-border: rgba(0, 0, 0, 0.06);
+    --surface-border-strong: rgba(0, 0, 0, 0.1);
+
+    // ── Text ─────────────────────────────────────────────────────────────
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --text-on-brand: #ffffff;
+
+    // ── Elevation ────────────────────────────────────────────────────────
+    --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.08); // rows, chips
+    --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08); // cards
+    --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.14); // dialogs, popovers
+
+    // ── Radii ────────────────────────────────────────────────────────────
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+
+    // ── Motion ───────────────────────────────────────────────────────────
+    --lift-sm: translateY(-1px); // rows, chips, small buttons
+    --lift-md: translateY(-3px); // interactive cards
+}
+
+body.body--dark {
+    --brand: #1a237e;
+    --brand-mid: #283593;
+    --brand-light: #3949ab;
+    --brand-gradient: linear-gradient(135deg, #151c4f 0%, #1a237e 60%, #283593 100%);
+
+    --accent: #60a5fa;
+    --accent-soft: rgba(96, 165, 250, 0.12);
+    --accent-soft-strong: rgba(96, 165, 250, 0.18);
+
+    --surface-page: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --surface-card: #1e293b;
+    --surface-raised: #273449;
+    --surface-overlay: rgba(15, 23, 42, 0.92);
+    --surface-border: rgba(255, 255, 255, 0.1);
+    --surface-border-strong: rgba(255, 255, 255, 0.18);
+
+    --text-primary: rgba(255, 255, 255, 0.9);
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --text-muted: rgba(255, 255, 255, 0.5);
+    --text-on-brand: #ffffff;
+
+    --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.35);
+    --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+// Breakpoint SCSS variables ($bp-xs/sm/md/lg) live in src/quasar-variables.scss,
+// which the Quasar Vite plugin injects into every .vue style block.

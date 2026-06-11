@@ -1,23 +1,13 @@
 <template>
     <q-page class="leagues-page">
         <!-- Hero Section -->
-        <div class="hero-section">
-            <div class="hero-container">
-                <div class="hero-content">
-                    <div class="hero-badge">
-                        <q-icon name="sports" size="1.2rem" />
-                        <span>League Explorer</span>
-                    </div>
-                    <h1 class="hero-title">
-                        League
-                        <span class="gradient-text">Analytics</span>
-                    </h1>
-                    <p class="hero-subtitle">
-                        Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents.
-                    </p>
-                </div>
-            </div>
-        </div>
+        <PageHero
+            icon="sports"
+            badge="League Explorer"
+            title="League"
+            highlight="Analytics"
+            subtitle="Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents."
+        />
         
         <div class="q-pa-md">
 
@@ -329,6 +319,7 @@
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PageHero from '../components/PageHero.vue'
 import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerUtils } from '../composables/usePlayerUtils'
@@ -336,7 +327,7 @@ import { usePlayerStore } from '../stores/playerStore'
 
 export default {
   name: 'LeaguesPage',
-  components: { PlayerDetailDialog, PlayerCards },
+  components: { PageHero, PlayerDetailDialog, PlayerCards },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
@@ -1083,90 +1074,7 @@ export default {
     margin: 0 auto;
 }
 
-// Hero Section
-.hero-section {
-    padding: 4rem 0;
-    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-    color: white;
-    position: relative;
-    overflow: hidden;
-    margin: -1.5rem -1.5rem 2rem -1.5rem;
-    
-    &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(
-            circle at 30% 20%,
-            rgba(255, 255, 255, 0.05) 0%,
-            transparent 50%
-        );
-        pointer-events: none;
-    }
-    
-    .hero-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 2rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .hero-content {
-        text-align: center;
-        
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 2rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            line-height: 1.1;
-            margin: 0 0 1.5rem 0;
-            
-            @media (max-width: 768px) {
-                font-size: 2.5rem;
-            }
-            
-            .gradient-text {
-                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            margin: 0;
-            opacity: 0.9;
-            font-weight: 300;
-            max-width: 600px;
-            margin: 0 auto;
-            
-            @media (max-width: 768px) {
-                font-size: 1.1rem;
-            }
-        }
-    }
-}
+// Hero styling comes from the shared PageHero component.
 
 .share-button-container {
     display: flex;
@@ -1617,7 +1525,7 @@ export default {
     }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
     .tots-lineup {
         padding: 0.85rem;
     }

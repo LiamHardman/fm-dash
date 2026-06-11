@@ -20,11 +20,15 @@
 // Tip: Use the Quasar Color Palette Generator to find the ideal shades
 // -> https://quasar.dev/style/color-palette#color-palette-generator
 
-$primary: #2e74b5; // Your custom primary
-$secondary: #6c757d; // Your custom secondary
-$accent: #545b62; // Your custom accent
+// Brand: deep indigo (matches the app header, landing page and PageHero).
+// Light/dark variants derive from this family — see src/css/tokens.scss for
+// the CSS-custom-property side of the design tokens.
+$primary: #1a237e;
+$secondary: #6c757d;
+$accent: #3949ab; // lighter indigo for accents
 
-$dark: #1d1d1d; // Your custom dark page background for dark mode
+$dark: #1e293b; // slate card surface used across the app in dark mode
+$dark-page: #0f172a;
 
 $positive: #28a745; // Your custom positive
 $negative: #dc3545; // Your custom negative
@@ -37,8 +41,17 @@ $warning: #ffc107; // Your custom warning
 
 $typography-font-family: "Inter", sans-serif !default;
 
-// Custom design system variables
+// Custom design system variables (single source of truth — do not redefine
+// these elsewhere; app.scss uses the CSS-custom-property equivalents from
+// src/css/tokens.scss).
 $border-radius: 12px;
 $border-radius-small: 8px;
-$card-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
-$card-shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+$card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+$card-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.14);
+
+// Standard responsive breakpoints — use these in component media queries
+// instead of one-off pixel values.
+$bp-xs: 480px;
+$bp-sm: 768px;
+$bp-md: 1024px;
+$bp-lg: 1200px;

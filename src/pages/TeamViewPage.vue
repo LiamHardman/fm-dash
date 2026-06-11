@@ -75,7 +75,7 @@
                 <!-- Team Header Section (replaces hero) -->
                 <GradientBackground 
                     :image-url="teamLogoUrl"
-                    :fallback-gradient="'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'"
+                    :fallback-gradient="'linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)'"
                     :intensity="0.4"
                     class="team-hero-section"
                 >
@@ -1927,7 +1927,7 @@ export default {
 
 <style lang="scss" scoped>
 // Modern Design System Variables
-$primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$primary-gradient: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
 $success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
 $warning-gradient: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
 $danger-gradient: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
@@ -2092,7 +2092,7 @@ $border-radius-small: 8px;
         gap: 3rem;
         align-items: center;
         
-        @media (max-width: 968px) {
+        @media (max-width: 1024px) {
             grid-template-columns: 1fr;
             gap: 2rem;
             text-align: center;
@@ -2150,7 +2150,7 @@ $border-radius-small: 8px;
                         color: #ffd700;
                     }
                     
-                    @media (max-width: 968px) {
+                    @media (max-width: 1024px) {
                         justify-content: center;
                     }
                 }
@@ -2161,7 +2161,7 @@ $border-radius-small: 8px;
                 align-items: center;
                 gap: 1rem;
                 
-                @media (max-width: 968px) {
+                @media (max-width: 1024px) {
                     justify-content: center;
                 }
                 
@@ -2335,7 +2335,7 @@ $border-radius-small: 8px;
             }
             
             .card-icon {
-                color: #667eea;
+                color: var(--accent);
             }
         }
         
@@ -2503,10 +2503,10 @@ $border-radius-small: 8px;
                 &:hover {
                     transform: translateX(4px);
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                    background: rgba(103, 126, 234, 0.1);
+                    background: var(--accent-soft);
                     
                     .body--dark & {
-                        background: rgba(103, 126, 234, 0.15);
+                        background: var(--accent-soft-strong);
                     }
                 }
                 
@@ -2516,8 +2516,8 @@ $border-radius-small: 8px;
                     justify-content: center;
                     width: 20px;
                     height: 20px;
-                    background: rgba(103, 126, 234, 0.1);
-                    color: #667eea;
+                    background: var(--accent-soft);
+                    color: var(--accent);
                     border-radius: 50%;
                     font-size: 0.7rem;
                     font-weight: 700;

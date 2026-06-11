@@ -1,52 +1,45 @@
 <template>
     <q-page class="docs-page">
         <!-- Hero Section -->
-        <div class="hero-section">
-            <div class="hero-container">
-                <div class="hero-content">
-                    <div class="hero-badge">
-                        <q-icon name="menu_book" size="1.2rem" />
-                        <span>Documentation</span>
-                    </div>
-                    <h1 class="hero-title">
-                        Complete Guide to
-                        <span class="gradient-text">FM-Dash</span>
-                    </h1>
-                    <p class="hero-subtitle">
-                        Everything you need to master Football Manager data
-                        analysis, from getting started to advanced team
-                        management strategies.
-                    </p>
-                    <div class="hero-actions">
-                        <q-btn
-                            unelevated
-                            size="lg"
-                            color="primary"
-                            label="Get Started"
-                            icon="play_arrow"
-                            @click="setActiveSection('getting-started')"
-                            class="hero-cta"
-                        />
-                        <q-btn
-                            outline
-                            size="lg"
-                            color="primary"
-                            label="API Reference"
-                            icon="code"
-                            @click="setActiveSection('api-reference')"
-                            class="hero-secondary"
-                        />
-                        <q-btn
-                            outline
-                            size="lg"
-                            color="secondary"
-                            label="First Time Guide"
-                            icon="school"
-                            @click="showTutorial"
-                            class="hero-tutorial"
-                        />
-                    </div>
-                </div>
+        <PageHero
+            icon="menu_book"
+            badge="Documentation"
+            title="Complete Guide to"
+            highlight="FM-Dash"
+            subtitle="Everything you need to master Football Manager data analysis, from getting started to advanced team management strategies."
+            class="docs-hero"
+        >
+            <template #actions>
+                <q-btn
+                    unelevated
+                    size="lg"
+                    color="white"
+                    text-color="primary"
+                    label="Get Started"
+                    icon="play_arrow"
+                    @click="setActiveSection('getting-started')"
+                    class="hero-cta"
+                />
+                <q-btn
+                    outline
+                    size="lg"
+                    color="white"
+                    label="API Reference"
+                    icon="code"
+                    @click="setActiveSection('api-reference')"
+                    class="hero-secondary"
+                />
+                <q-btn
+                    outline
+                    size="lg"
+                    color="white"
+                    label="First Time Guide"
+                    icon="school"
+                    @click="showTutorial"
+                    class="hero-tutorial"
+                />
+            </template>
+            <template #side>
                 <div class="hero-visual">
                     <div class="feature-grid">
                         <div
@@ -63,8 +56,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </template>
+        </PageHero>
 
         <div class="docs-container">
             <div class="docs-sidebar">
@@ -1050,10 +1043,12 @@
 
 <script>
 import { defineComponent, ref } from 'vue'
+import PageHero from '@/components/PageHero.vue'
 import { useUiStore } from '@/stores/uiStore'
 
 export default defineComponent({
   name: 'DocsPage',
+  components: { PageHero },
   setup() {
     const activeSection = ref('getting-started')
     const mobileSidebarOpen = ref(false)
@@ -1509,128 +1504,39 @@ volumes:
     min-height: 100vh;
 }
 
-// Hero Section
-.hero-section {
-    background: linear-gradient(
-        135deg,
-        rgba(25, 118, 210, 0.95) 0%,
-        rgba(33, 150, 243, 0.95) 100%
-    );
-    color: white;
-    padding: 4rem 0;
-    position: relative;
-    overflow: hidden;
+// Hero layout/colors come from the shared PageHero component; the styles
+// below only cover the slotted content (buttons + feature grid).
+.docs-hero {
+    // Let .docs-container's negative margin overlap the hero gradient.
+    margin-bottom: 0;
+}
 
-    .body--light & {
-        background: linear-gradient(
-            135deg,
-            rgba(25, 118, 210, 0.95) 0%,
-            rgba(33, 150, 243, 0.95) 100%
-        );
-    }
+.hero-cta {
+    padding: 0.75rem 2rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    text-transform: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
 
-    &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        opacity: 0.3;
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
 }
 
-.hero-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 2rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    align-items: center;
-    position: relative;
-    z-index: 1;
+.hero-secondary,
+.hero-tutorial {
+    padding: 0.75rem 2rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    text-transform: none;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
 
-    @media (max-width: 768px) {
-        grid-template-columns: 1fr;
-        gap: 2rem;
-        text-align: center;
-    }
-}
-
-.hero-content {
-    .hero-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: rgba(255, 255, 255, 0.15);
-        padding: 0.5rem 1rem;
-        border-radius: 2rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        margin-bottom: 1.5rem;
-        backdrop-filter: blur(10px);
-    }
-
-    .hero-title {
-        font-size: clamp(2.5rem, 4vw, 3.5rem);
-        font-weight: 700;
-        line-height: 1.1;
-        margin-bottom: 1rem;
-
-        .gradient-text {
-            background: linear-gradient(135deg, #ffd700, #ff6b35);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-    }
-
-    .hero-subtitle {
-        font-size: 1.25rem;
-        line-height: 1.6;
-        margin-bottom: 2rem;
-        opacity: 0.9;
-    }
-
-    .hero-actions {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-
-        @media (max-width: 768px) {
-            justify-content: center;
-        }
-
-        .hero-cta {
-            padding: 0.75rem 2rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            text-transform: none;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-
-            &:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-            }
-        }
-
-        .hero-secondary {
-            padding: 0.75rem 2rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            text-transform: none;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-
-            &:hover {
-                background: rgba(255, 255, 255, 0.1);
-                transform: translateY(-2px);
-            }
-        }
+    &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
     }
 }
 
@@ -1747,7 +1653,7 @@ volumes:
     }
 
     &.q-item--active {
-        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        background: linear-gradient(135deg, var(--q-primary), #3949ab);
         color: white;
         box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
 
@@ -1773,7 +1679,7 @@ volumes:
     border-top: 1px solid var(--q-separator-color);
 
     .help-card {
-        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        background: linear-gradient(135deg, var(--q-primary), #3949ab);
         color: white;
         border-radius: 12px;
         box-shadow: 0 4px 15px rgba(25, 118, 210, 0.2);
@@ -1835,7 +1741,7 @@ volumes:
     .section-title {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #1976d2;
+        color: var(--accent);
         margin-bottom: 1rem;
         line-height: 1.2;
 
@@ -1891,7 +1797,7 @@ volumes:
             margin: 0;
             font-size: 1.25rem;
             font-weight: 700;
-            color: #1976d2;
+            color: var(--accent);
 
             .body--dark & {
                 color: #64b5f6;
@@ -1919,7 +1825,7 @@ volumes:
     gap: 1rem;
 
     .step-number {
-        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        background: linear-gradient(135deg, var(--q-primary), #3949ab);
         color: white;
         width: 2rem;
         height: 2rem;
@@ -1937,7 +1843,7 @@ volumes:
         h4 {
             margin: 0 0 0.5rem 0;
             font-weight: 600;
-            color: #1976d2;
+            color: var(--accent);
 
             .body--dark & {
                 color: #64b5f6;
@@ -1970,7 +1876,7 @@ volumes:
     h4 {
         margin: 0 0 0.5rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1rem;
 
         .body--dark & {
@@ -2016,7 +1922,7 @@ volumes:
         }
 
         &.get {
-            background: #2196f3;
+            background: var(--accent);
         }
 
         &.put {
@@ -2115,7 +2021,7 @@ volumes:
     h4 {
         margin: 0 0 0.5rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1rem;
 
         .body--dark & {
@@ -2143,7 +2049,7 @@ volumes:
     gap: 1rem;
 
     .step-number {
-        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        background: linear-gradient(135deg, var(--q-primary), #3949ab);
         color: white;
         width: 2.5rem;
         height: 2.5rem;
@@ -2163,7 +2069,7 @@ volumes:
         h4 {
             margin: 0 0 0.5rem 0;
             font-weight: 600;
-            color: #1976d2;
+            color: var(--accent);
             font-size: 1.1rem;
 
             .body--dark & {
@@ -2248,7 +2154,7 @@ volumes:
     h4 {
         margin: 0 0 1rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1rem;
 
         .body--dark & {
@@ -2434,7 +2340,7 @@ volumes:
     h4 {
         margin: 0 0 0.75rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1rem;
         line-height: 1.3;
 
@@ -2505,7 +2411,7 @@ volumes:
     border: 2px solid transparent;
     
     &.docker-method {
-        border-color: #2196f3;
+        border-color: var(--accent);
         background: linear-gradient(135deg, rgba(33, 150, 243, 0.05), rgba(33, 150, 243, 0.02));
     }
     
@@ -2528,14 +2434,14 @@ volumes:
         
         &.recommended {
             background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
-            border: 2px solid #2196f3;
+            border: 2px solid var(--accent);
             
             &::after {
                 content: "RECOMMENDED";
                 position: absolute;
                 top: -8px;
                 right: 1rem;
-                background: #2196f3;
+                background: var(--accent);
                 color: white;
                 padding: 0.25rem 0.75rem;
                 border-radius: 4px;
@@ -2557,7 +2463,7 @@ volumes:
             margin: 0 0 0.5rem 0;
             font-size: 1.5rem;
             font-weight: 700;
-            color: #1976d2;
+            color: var(--accent);
             
             .body--dark & {
                 color: #64b5f6;
@@ -2668,7 +2574,7 @@ volumes:
     h4 {
         margin: 0 0 0.5rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1rem;
 
         .body--dark & {
@@ -2696,7 +2602,7 @@ volumes:
     gap: 1rem;
 
     .step-number {
-        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        background: linear-gradient(135deg, var(--q-primary), #3949ab);
         color: white;
         width: 2.5rem;
         height: 2.5rem;
@@ -2716,7 +2622,7 @@ volumes:
         h4 {
             margin: 0 0 0.5rem 0;
             font-weight: 600;
-            color: #1976d2;
+            color: var(--accent);
             font-size: 1.1rem;
 
             .body--dark & {
@@ -2854,16 +2760,16 @@ volumes:
     }
 
     &.use-card {
-        border-color: #1976d2;
+        border-color: var(--accent);
         background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.02));
 
         &:hover {
-            border-color: #1976d2;
+            border-color: var(--accent);
             box-shadow: 0 12px 40px rgba(25, 118, 210, 0.2);
         }
 
         .hub-icon {
-            color: #1976d2;
+            color: var(--accent);
         }
     }
 
@@ -2914,7 +2820,7 @@ volumes:
     margin: 0 0 1rem 0;
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1976d2;
+    color: var(--accent);
 
     .body--dark & {
         color: #64b5f6;
@@ -3062,7 +2968,7 @@ volumes:
     h4 {
         margin: 0 0 0.5rem 0;
         font-weight: 700;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1.1rem;
 
         .body--dark & {
@@ -3120,7 +3026,7 @@ volumes:
     h4 {
         margin: 0 0 1rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 1rem;
 
         .body--dark & {
@@ -3176,7 +3082,7 @@ volumes:
     h5 {
         margin: 0 0 0.5rem 0;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         font-size: 0.95rem;
 
         .body--dark & {

@@ -5,6 +5,14 @@
             class="app-header"
         >
             <q-toolbar class="header-toolbar">
+                <q-btn
+                    flat
+                    round
+                    icon="menu"
+                    @click="mobileMenuOpen = !mobileMenuOpen"
+                    class="mobile-menu-btn"
+                    aria-label="Open navigation menu"
+                />
                 <q-toolbar-title class="header-title">
                     <router-link to="/" class="app-title-link">
                         <q-icon name="sports_soccer" class="brand-icon" />FM-Dash
@@ -89,6 +97,66 @@
             </q-toolbar>
         </q-header>
 
+        <!-- Mobile navigation drawer (the inline nav links are hidden under 768px) -->
+        <q-drawer
+            v-model="mobileMenuOpen"
+            side="left"
+            overlay
+            behavior="mobile"
+            :width="260"
+            class="mobile-nav-drawer"
+        >
+            <q-list padding>
+                <q-item clickable v-ripple to="/" exact @click="mobileMenuOpen = false">
+                    <q-item-section avatar><q-icon name="home" /></q-item-section>
+                    <q-item-section>Home</q-item-section>
+                </q-item>
+                <q-item clickable v-ripple to="/upload" @click="mobileMenuOpen = false">
+                    <q-item-section avatar><q-icon name="upload" /></q-item-section>
+                    <q-item-section>Upload</q-item-section>
+                </q-item>
+                <q-item clickable v-ripple to="/docs" @click="mobileMenuOpen = false">
+                    <q-item-section avatar><q-icon name="menu_book" /></q-item-section>
+                    <q-item-section>Docs</q-item-section>
+                </q-item>
+                <template v-if="currentDatasetId">
+                    <q-separator spaced />
+                    <q-item clickable v-ripple :to="`/dataset/${currentDatasetId}`" @click="mobileMenuOpen = false">
+                        <q-item-section avatar><q-icon name="groups" /></q-item-section>
+                        <q-item-section>Players</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple to="/performance" @click="mobileMenuOpen = false">
+                        <q-item-section avatar><q-icon name="leaderboard" /></q-item-section>
+                        <q-item-section>Performance</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple to="/nations" @click="mobileMenuOpen = false">
+                        <q-item-section avatar><q-icon name="flag" /></q-item-section>
+                        <q-item-section>Nations</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple to="/teams" @click="mobileMenuOpen = false">
+                        <q-item-section avatar><q-icon name="shield" /></q-item-section>
+                        <q-item-section>Teams</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple to="/leagues" @click="mobileMenuOpen = false">
+                        <q-item-section avatar><q-icon name="emoji_events" /></q-item-section>
+                        <q-item-section>Leagues</q-item-section>
+                    </q-item>
+                    <q-item clickable v-ripple to="/wishlist" @click="mobileMenuOpen = false">
+                        <q-item-section avatar><q-icon name="favorite" /></q-item-section>
+                        <q-item-section>
+                            Wishlist
+                            <q-badge
+                                v-if="wishlistCount > 0"
+                                :label="wishlistCount"
+                                color="positive"
+                                class="q-ml-xs"
+                            />
+                        </q-item-section>
+                    </q-item>
+                </template>
+            </q-list>
+        </q-drawer>
+
         <q-page-container>
             <router-view />
         </q-page-container>
@@ -131,6 +199,9 @@ export default defineComponent({
     // Settings modal state
     const showSettingsModal = ref(false)
 
+    // Mobile navigation drawer state
+    const mobileMenuOpen = ref(false)
+
     // Tutorial modal state
     const showTutorialModal = computed({
       get: () => uiStore.showFirstTimeTutorial,
@@ -160,6 +231,7 @@ export default defineComponent({
       wishlistCount,
       showSettingsModal,
       showTutorialModal,
+      mobileMenuOpen,
     }
   },
 })
@@ -181,6 +253,12 @@ export default defineComponent({
 .header-toolbar {
     padding: 0 2rem;
     min-height: 60px;
+}
+
+// Hamburger only appears when the inline nav links are hidden (≤768px).
+.mobile-menu-btn {
+    display: none;
+    color: var(--text-secondary);
 }
 
 .header-title {
@@ -367,7 +445,12 @@ export default defineComponent({
     .nav-links {
         display: none;
     }
-    
+
+    .mobile-menu-btn {
+        display: inline-flex;
+        margin-right: 0.25rem;
+    }
+
     .search-container {
         margin-left: 1rem;
         margin-right: 0.5rem;
