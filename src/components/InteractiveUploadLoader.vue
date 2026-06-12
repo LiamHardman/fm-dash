@@ -512,7 +512,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
 @import '../quasar-variables.scss';
 
 .upload-loader-dialog {
@@ -602,7 +601,7 @@ export default {
       text-align: center;
 
       .body--dark & {
-        color: color.adjust($primary, $lightness: 15%);
+        color: rgba(255, 255, 255, 0.7);
       }
     }
   }
@@ -628,7 +627,7 @@ export default {
       justify-content: center;
 
       .body--dark & {
-        color: color.adjust($primary, $lightness: 15%);
+        color: rgba(255, 255, 255, 0.9);
       }
     }
 
@@ -645,7 +644,7 @@ export default {
       text-align: center;
 
       .body--dark & {
-        color: color.adjust($primary, $lightness: 15%);
+        color: rgba(255, 255, 255, 0.7);
       }
     }
   }
@@ -683,7 +682,7 @@ export default {
       min-height: 24px;
 
       .body--dark & {
-        color: color.adjust($primary, $lightness: 15%);
+        color: rgba(255, 255, 255, 0.9);
       }
     }
   }
