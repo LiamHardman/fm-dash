@@ -18,6 +18,7 @@ import (
 type ConfigStorage interface {
 	StoreConfig(name string, data []byte) error
 	RetrieveConfig(name string) ([]byte, error)
+	DeleteConfig(name string) error
 }
 
 var configStorage ConfigStorage
@@ -76,6 +77,17 @@ func (s *localConfigStorage) RetrieveConfig(name string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
+func (s *localConfigStorage) DeleteConfig(name string) error {
+	path := filepath.Join(s.dir, name)
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	err := os.Remove(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
 // ---- S3 backend ----
 
 type s3ConfigStorage struct {
@@ -113,4 +125,9 @@ func (s *s3ConfigStorage) RetrieveConfig(name string) ([]byte, error) {
 		}
 	}()
 	return io.ReadAll(obj)
+}
+
+func (s *s3ConfigStorage) DeleteConfig(name string) error {
+	ctx := context.Background()
+	return s.client.RemoveObject(ctx, s.bucketName, name, minio.RemoveObjectOptions{})
 }
