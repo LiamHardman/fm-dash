@@ -767,46 +767,46 @@ export default {
           ) {
             return false
           }
-          if (currentFilters.value.minPAC > 0 && (player.PAC || 0) < currentFilters.value.minPAC) {
+          if (currentFilters.value.minPAC > 0 && (player.pac || 0) < currentFilters.value.minPAC) {
             return false
           }
-          if (currentFilters.value.minSHO > 0 && (player.SHO || 0) < currentFilters.value.minSHO) {
+          if (currentFilters.value.minSHO > 0 && (player.sho || 0) < currentFilters.value.minSHO) {
             return false
           }
-          if (currentFilters.value.minPAS > 0 && (player.PAS || 0) < currentFilters.value.minPAS) {
+          if (currentFilters.value.minPAS > 0 && (player.pas || 0) < currentFilters.value.minPAS) {
             return false
           }
-          if (currentFilters.value.minDRI > 0 && (player.DRI || 0) < currentFilters.value.minDRI) {
+          if (currentFilters.value.minDRI > 0 && (player.dri || 0) < currentFilters.value.minDRI) {
             return false
           }
-          if (currentFilters.value.minDEF > 0 && (player.DEF || 0) < currentFilters.value.minDEF) {
+          if (currentFilters.value.minDEF > 0 && (player.def || 0) < currentFilters.value.minDEF) {
             return false
           }
-          if (currentFilters.value.minPHY > 0 && (player.PHY || 0) < currentFilters.value.minPHY) {
+          if (currentFilters.value.minPHY > 0 && (player.phy || 0) < currentFilters.value.minPHY) {
             return false
           }
-          if (currentFilters.value.minGK > 0 && (player.GK || 0) < currentFilters.value.minGK) {
+          if (currentFilters.value.minGK > 0 && (player.gk || 0) < currentFilters.value.minGK) {
             return false
           }
-          if (currentFilters.value.minDIV > 0 && (player.DIV || 0) < currentFilters.value.minDIV) {
+          if (currentFilters.value.minDIV > 0 && (player.div || 0) < currentFilters.value.minDIV) {
             return false
           }
-          if (currentFilters.value.minHAN > 0 && (player.HAN || 0) < currentFilters.value.minHAN) {
+          if (currentFilters.value.minHAN > 0 && (player.han || 0) < currentFilters.value.minHAN) {
             return false
           }
-          if (currentFilters.value.minREF > 0 && (player.REF || 0) < currentFilters.value.minREF) {
+          if (currentFilters.value.minREF > 0 && (player.ref || 0) < currentFilters.value.minREF) {
             return false
           }
-          if (currentFilters.value.minKIC > 0 && (player.KIC || 0) < currentFilters.value.minKIC) {
+          if (currentFilters.value.minKIC > 0 && (player.kic || 0) < currentFilters.value.minKIC) {
             return false
           }
-          if (currentFilters.value.minSPD > 0 && (player.SPD || 0) < currentFilters.value.minSPD) {
+          if (currentFilters.value.minSPD > 0 && (player.spd || 0) < currentFilters.value.minSPD) {
             return false
           }
-          if (currentFilters.value.minPOS > 0 && (player.POS || 0) < currentFilters.value.minPOS) {
+          if (currentFilters.value.minPOS > 0 && (player.pos || 0) < currentFilters.value.minPOS) {
             return false
           }
-          if (currentFilters.value.minMBR > 0 && (player.MBR || 0) < currentFilters.value.minMBR) {
+          if (currentFilters.value.minMBR > 0 && (player.mbr || 0) < currentFilters.value.minMBR) {
             return false
           }
 

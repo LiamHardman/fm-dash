@@ -8,20 +8,8 @@ import (
 	"time"
 )
 
-// BenchmarkPlayerCreation benchmarks player creation with and without object pooling
+// BenchmarkPlayerCreation benchmarks player creation
 func BenchmarkPlayerCreation(b *testing.B) {
-	b.Run("WithObjectPool", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			player := GetPlayer()
-			// Simulate some work
-			player.Name = "Test Player"
-			player.Position = "ST"
-			player.Club = "Test Club"
-			ReturnPlayer(player)
-		}
-	})
-
 	b.Run("WithoutObjectPool", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -71,13 +59,6 @@ func BenchmarkStringInterning(b *testing.B) {
 // BenchmarkPlayerDeepCopy benchmarks deep copy operations
 func BenchmarkPlayerDeepCopy(b *testing.B) {
 	players := createTestPlayers(1000)
-
-	b.Run("OptimizedDeepCopy", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = OptimizedDeepCopyPlayers(players)
-		}
-	})
 
 	b.Run("RegularDeepCopy", func(b *testing.B) {
 		b.ResetTimer()

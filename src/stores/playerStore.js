@@ -499,7 +499,6 @@ export const usePlayerStore = defineStore('player', () => {
 
         // Ensure arrays are properly initialized
         shortPositions: Array.isArray(p.shortPositions) ? p.shortPositions : [],
-        short_positions: Array.isArray(p.shortPositions) ? p.shortPositions : [], // Keep both for compatibility
         parsedPositions: Array.isArray(p.parsedPositions) ? p.parsedPositions : [],
         positionGroups: Array.isArray(p.positionGroups) ? p.positionGroups : [],
 
@@ -519,25 +518,6 @@ export const usePlayerStore = defineStore('player', () => {
         })(),
 
         // Ensure FIFA-style stats are numbers (backend sends lowercase keys since struct tag change)
-        PAC: Number(p.PAC) || Number(p.pac) || 0,
-        SHO: Number(p.SHO) || Number(p.sho) || 0,
-        PAS: Number(p.PAS) || Number(p.pas) || 0,
-        DRI: Number(p.DRI) || Number(p.dri) || 0,
-        DEF: Number(p.DEF) || Number(p.def) || 0,
-        PHY: Number(p.PHY) || Number(p.phy) || 0,
-        TotalStats: Number(p.TotalStats) || Number(p.totalStats) || Number(p.total_stats) || 0,
-        MBR: Number(p.MBR) || Number(p.mbr) || 0,
-
-        // Ensure goalkeeper stats are numbers (backend sends lowercase keys since struct tag change)
-        GK: Number.parseInt(p.GK, 10) || Number.parseInt(p.gk, 10) || 0,
-        DIV: Number.parseInt(p.DIV, 10) || Number.parseInt(p.div, 10) || 0,
-        HAN: Number.parseInt(p.HAN, 10) || Number.parseInt(p.han, 10) || 0,
-        REF: Number.parseInt(p.REF, 10) || Number.parseInt(p.ref, 10) || 0,
-        KIC: Number.parseInt(p.KIC, 10) || Number.parseInt(p.kic, 10) || 0,
-        SPD: Number.parseInt(p.SPD, 10) || Number.parseInt(p.spd, 10) || 0,
-        POS: Number.parseInt(p.POS, 10) || Number.parseInt(p.pos, 10) || 0,
-
-        // Ensure lowercase FIFA stats for frontend compatibility
         pac: Number(p.pac) || Number(p.PAC) || 0,
         sho: Number(p.sho) || Number(p.SHO) || 0,
         pas: Number(p.pas) || Number(p.PAS) || 0,
@@ -547,7 +527,16 @@ export const usePlayerStore = defineStore('player', () => {
         totalStats: Number(p.totalStats) || Number(p.TotalStats) || Number(p.total_stats) || 0,
         mbr: Number(p.mbr) || Number(p.MBR) || 0,
 
-        // Ensure overall is a number (handle both field names)
+        // Ensure goalkeeper stats are numbers (backend sends lowercase keys since struct tag change)
+        gk: Number.parseInt(p.gk, 10) || Number.parseInt(p.GK, 10) || 0,
+        div: Number.parseInt(p.div, 10) || Number.parseInt(p.DIV, 10) || 0,
+        han: Number.parseInt(p.han, 10) || Number.parseInt(p.HAN, 10) || 0,
+        ref: Number.parseInt(p.ref, 10) || Number.parseInt(p.REF, 10) || 0,
+        kic: Number.parseInt(p.kic, 10) || Number.parseInt(p.KIC, 10) || 0,
+        spd: Number.parseInt(p.spd, 10) || Number.parseInt(p.SPD, 10) || 0,
+        pos: Number.parseInt(p.pos, 10) || Number.parseInt(p.POS, 10) || 0,
+
+        // Ensure overall is a number (handle both field names; Overall is canonical — see consumers)
         Overall: Number.parseInt(p.Overall || p.overall, 10) || 0,
 
         // Ensure numeric attributes are properly formatted

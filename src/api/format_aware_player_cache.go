@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	pb "api/proto"
@@ -204,6 +207,25 @@ func optimizeCommonStrings(protoResponse *pb.PlayerDataResponse) {
 	// For now, this is a placeholder for the actual implementation
 }
 
+// computeWeakETag builds a weak ETag from the filter hash and cache generation time, so
+// identical filter/page combinations served from the same cache entry produce the same
+// ETag, letting clients revalidate with If-None-Match instead of re-downloading the body.
+func computeWeakETag(filterHash string, cacheTime time.Time) string {
+	sum := sha1.Sum([]byte(filterHash + "|" + strconv.FormatInt(cacheTime.UnixNano(), 10)))
+	return `W/"` + hex.EncodeToString(sum[:]) + `"`
+}
+
+// writeNotModifiedIfMatch checks If-None-Match against etag and, on a match, writes a 304
+// with no body. Returns true if it handled the response (caller must not write a body).
+func writeNotModifiedIfMatch(w http.ResponseWriter, r *http.Request, etag string) bool {
+	w.Header().Set("ETag", etag)
+	if match := r.Header.Get("If-None-Match"); match != "" && match == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	return false
+}
+
 // WritePlayerDataResponse writes the player data response using the appropriate format
 func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	cachedResponse *CachedPlayerDataResponse) error {
@@ -212,6 +234,7 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 	}
 
 	format := GetCacheFormatFromRequest(r)
+	etag := computeWeakETag(cachedResponse.FilterHash, cachedResponse.CacheTime)
 
 	// Fast path: pre-built bytes require no serialization work
 	if format == FormatTypeProtobuf && len(cachedResponse.ProtoBytes) > 0 {
@@ -219,6 +242,9 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 		w.Header().Set("X-Cache-Source", "memory")
 		w.Header().Set("X-Cache-Format", "protobuf")
 		w.Header().Set("Cache-Control", "private, max-age=300")
+		if writeNotModifiedIfMatch(w, r, etag) {
+			return nil
+		}
 		if _, err := w.Write(cachedResponse.ProtoBytes); err != nil {
 			logError(r.Context(), "Error writing protobuf response", "error", err)
 		}
@@ -233,6 +259,9 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 	w.Header().Set("X-Cache-Source", "memory")
 	w.Header().Set("X-Cache-Format", "json")
 	w.Header().Set("Cache-Control", "private, max-age=300")
+	if writeNotModifiedIfMatch(w, r, etag) {
+		return nil
+	}
 	return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
 }
 

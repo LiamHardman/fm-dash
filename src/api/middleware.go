@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	apperrors "api/errors"
@@ -339,6 +340,16 @@ func CORSMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// compressionWriterPool pools gzip.Writer instances (at BestSpeed) to avoid allocating a new
+// writer + its internal buffers on every compressed response. BestSpeed trades a little
+// compression ratio for materially less CPU/GC churn under concurrent large-payload requests.
+var compressionWriterPool = sync.Pool{
+	New: func() interface{} {
+		gw, _ := gzip.NewWriterLevel(io.Discard, gzip.BestSpeed)
+		return gw
+	},
+}
+
 // CompressionMiddleware provides gzip compression for HTTP responses
 func CompressionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -352,8 +363,9 @@ func CompressionMiddleware(next http.Handler) http.Handler {
 		ctx, span := StartSpan(r.Context(), "http.middleware.compression")
 		defer span.End()
 
-		// Wrap the response writer with gzip compression
-		gw := gzip.NewWriter(w)
+		// Wrap the response writer with a pooled gzip writer
+		gw := compressionWriterPool.Get().(*gzip.Writer)
+		gw.Reset(w)
 		defer func() {
 			if err := gw.Close(); err != nil {
 				span.RecordError(err)
@@ -361,6 +373,7 @@ func CompressionMiddleware(next http.Handler) http.Handler {
 					slog.WarnContext(ctx, "Failed to close gzip writer", "error", err)
 				}
 			}
+			compressionWriterPool.Put(gw)
 		}()
 
 		// Set compression headers

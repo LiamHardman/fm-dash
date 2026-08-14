@@ -5,8 +5,10 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	pb "api/proto"
@@ -364,9 +366,21 @@ func shouldGzipResponse(w http.ResponseWriter, r *http.Request, serializer Respo
 	return serializer.ShouldCompress() && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 }
 
+// gzipWriterPool pools gzip.Writer instances (at BestSpeed) for the inline compression path
+// used by WriteResponse/WriteErrorResponse, mirroring middleware.go's compressionWriterPool.
+var gzipWriterPool = sync.Pool{
+	New: func() interface{} {
+		gw, _ := gzip.NewWriterLevel(io.Discard, gzip.BestSpeed)
+		return gw
+	},
+}
+
 func gzipResponseData(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
+	gz := gzipWriterPool.Get().(*gzip.Writer)
+	gz.Reset(&buf)
+	defer gzipWriterPool.Put(gz)
+
 	if _, err := gz.Write(data); err != nil {
 		return nil, err
 	}

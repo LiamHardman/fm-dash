@@ -85,7 +85,7 @@
                                     <header class="concept-card__header">
                                         <div class="concept-card__rating-block">
                                             <div class="concept-card__rating">
-                                                {{ section.player.overall }}
+                                                {{ section.player.Overall }}
                                             </div>
                                             <div class="concept-card__position">
                                                 {{ section.player.position }}

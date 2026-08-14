@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	pb "api/proto"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -78,6 +80,8 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	divisionFilterStr := queryValues.Get("divisionFilter") // "all", "same", "top5"
 	targetDivision := queryValues.Get("targetDivision")
 	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
+	pageStr := queryValues.Get("page")
+	perPageStr := queryValues.Get("perPage")
 
 	logDebug(ctx, "Processing player data request",
 		"dataset_id", datasetID,
@@ -105,6 +109,8 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		"divisionFilter":   divisionFilterStr,
 		"targetDivision":   targetDivision,
 		"positionCompare":  positionCompare,
+		"page":             pageStr,
+		"perPage":          perPageStr,
 	}
 
 	// Generate cache key based on dataset ID and filters
@@ -213,34 +219,49 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "PERF ratings_recalc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", !shouldRecalc)
 	stageStart = time.Now()
 
-	// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-	playersCopy := FastDeepCopyPlayers(players)
-	logInfo(ctx, "PERF deep_copy", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "player_count", len(playersCopy))
-	stageStart = time.Now()
+	// Percentiles are computed relative to the whole population in scope, so we need to know
+	// up front (before any copying) whether this request will need to (re)compute them.
+	// Checked against the stored `players` slice directly (a field read, not a struct copy) —
+	// deep-copying never adds percentiles, so the answer is the same either way.
+	hasGlobalPercentiles := len(players) > 0 &&
+		players[0].PerformancePercentiles != nil &&
+		len(players[0].PerformancePercentiles["Global"]) > 0
+	needsPercentileCalc := !hasGlobalPercentiles || divisionFilter != DivisionFilterAll
 
-	// Calculate percentiles with appropriate filtering using optimized algorithm.
-	// Skip if the background goroutine already wrote percentiles into the stored data
-	// (which we just deep-copied above), detected by checking the first player.
-	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
-	hasGlobalPercentiles := len(playersCopy) > 0 &&
-		playersCopy[0].PerformancePercentiles != nil &&
-		len(playersCopy[0].PerformancePercentiles["Global"]) > 0
+	var filteredPlayers []Player
+	var stepSpan trace.Span
 
-	if !hasGlobalPercentiles || divisionFilter != DivisionFilterAll {
+	if needsPercentileCalc {
+		// Percentiles must be computed over the full (division-scoped) population before any
+		// position/role/age/etc. filter narrows the result, so we can't avoid copying
+		// everything up front in this branch. See docs/PERFORMANCE_FIXES_2026-07-08.md #3.
+		playersCopy := FastDeepCopyPlayers(players)
+		logInfo(ctx, "PERF deep_copy", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "player_count", len(playersCopy))
+		stageStart = time.Now()
+
+		ctx, stepSpan = StartSpan(ctx, "percentiles.calculate")
 		filteredPlayersForPercentiles := ApplyDivisionFilter(playersCopy, divisionFilter, targetDivision)
 		CalculatePlayerPerformancePercentiles(filteredPlayersForPercentiles)
-	} else {
-		logDebug(ctx, "Skipping percentile calculation; already present on stored data", "dataset_id", datasetID)
-	}
-	percentileSpan.End()
-	logInfo(ctx, "PERF percentile_calc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", hasGlobalPercentiles && divisionFilter == DivisionFilterAll)
-	stageStart = time.Now()
+		stepSpan.End()
+		logInfo(ctx, "PERF percentile_calc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", false)
+		stageStart = time.Now()
 
-	// Apply all filters to get the final result set
-	ctx, filterSpan := StartSpan(ctx, "filters.apply")
-	filteredPlayers := ApplyAllFilters(ctx, playersCopy, filterPosition, filterRole, minAgeStr, maxAgeStr,
-		minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilter, targetDivision, positionCompare)
-	filterSpan.End()
+		ctx, stepSpan = StartSpan(ctx, "filters.apply")
+		filteredPlayers = ApplyAllFilters(ctx, playersCopy, filterPosition, filterRole, minAgeStr, maxAgeStr,
+			minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilter, targetDivision, positionCompare)
+		stepSpan.End()
+	} else {
+		// Fast path: percentiles are already correct on the stored data and divisionFilter is
+		// "all" (a no-op), so filter the stored slice first and deep-copy only the survivors —
+		// avoids copying players that the response will discard anyway.
+		logDebug(ctx, "Skipping percentile calculation; already present on stored data", "dataset_id", datasetID)
+		logInfo(ctx, "PERF percentile_calc", "ms", 0, "total_ms", time.Since(startTime).Milliseconds(), "skipped", true)
+
+		ctx, stepSpan = StartSpan(ctx, "filters.apply_and_copy")
+		filteredPlayers = FastFilterAndCopyPlayers(players, filterPosition, filterRole, minAgeStr, maxAgeStr,
+			minTransferValueStr, maxTransferValueStr, maxSalaryStr)
+		stepSpan.End()
+	}
 	logInfo(ctx, "PERF filter_apply", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "filtered_count", len(filteredPlayers))
 	stageStart = time.Now()
 
@@ -252,13 +273,34 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate filter hash for cache key
 	filterHash := GenerateFilterHash(filters)
 
+	// Optional pagination: additive only. When page/perPage are absent (the default), the
+	// full filtered result set is returned exactly as before — every existing consumer that
+	// relies on getting everything back (wishlists, squad depth analyzer, CSV export,
+	// division comparisons) keeps working unchanged. See docs/PERFORMANCE_FIXES_2026-07-08.md #1.
+	totalFilteredCount := len(filteredPlayers)
+	responsePlayers := filteredPlayers
+	var paginationInfo *pb.PaginationInfo
+	if page, perPage, ok := parsePagination(pageStr, perPageStr); ok {
+		start := (page - 1) * perPage
+		end := start + perPage
+		if start > totalFilteredCount {
+			start = totalFilteredCount
+		}
+		if end > totalFilteredCount {
+			end = totalFilteredCount
+		}
+		responsePlayers = filteredPlayers[start:end]
+		paginationInfo = CreatePaginationInfo(int32(page), int32(perPage), safeInt32(totalFilteredCount))
+	}
+
 	// Build proto response once — reused for both the current response and the cache entry
 	protoPlayerResponse := &pb.PlayerDataResponse{
-		Players:        make([]*pb.Player, 0, len(filteredPlayers)),
+		Players:        make([]*pb.Player, 0, len(responsePlayers)),
 		CurrencySymbol: currencySymbol,
-		Metadata:       CreateResponseMetadata(requestID, safeInt32(len(filteredPlayers)), false),
+		Metadata:       CreateResponseMetadata(requestID, safeInt32(totalFilteredCount), false),
+		Pagination:     paginationInfo,
 	}
-	for _, player := range filteredPlayers {
+	for _, player := range responsePlayers {
 		protoPlayer, err := player.ToProto(ctx)
 		if err != nil {
 			logError(ctx, "Failed to convert player to protobuf",
@@ -280,7 +322,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	cachedResponse := &CachedPlayerDataResponse{
 		Format:         format,
-		JSONData:       filteredPlayers,
+		JSONData:       responsePlayers,
 		ProtoBytes:     protoBytes,
 		CurrencySymbol: currencySymbol,
 		CacheTime:      time.Now(),
@@ -298,5 +340,23 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "PERF response_write", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
 
 	// Cache asynchronously — don't block the response on JSON serialization
-	go CachePlayerData(context.Background(), cacheKey, filteredPlayers, currencySymbol, filterHash, protoBytes, 5*time.Minute)
+	go CachePlayerData(context.Background(), cacheKey, responsePlayers, currencySymbol, filterHash, protoBytes, 5*time.Minute)
+}
+
+// parsePagination parses page/perPage query params. Pagination only applies when both are
+// present and valid (page >= 1, 0 < perPage <= 1000); otherwise ok is false and callers should
+// return the full result set, preserving the pre-pagination default behavior.
+func parsePagination(pageStr, perPageStr string) (page, perPage int, ok bool) {
+	if pageStr == "" || perPageStr == "" {
+		return 0, 0, false
+	}
+	p, err := strconv.Atoi(pageStr)
+	if err != nil || p < 1 {
+		return 0, 0, false
+	}
+	pp, err := strconv.Atoi(perPageStr)
+	if err != nil || pp < 1 || pp > 1000 {
+		return 0, 0, false
+	}
+	return p, pp, true
 }

@@ -34,10 +34,9 @@ type MemorySnapshot struct {
 	NumGoroutines int       `json:"num_goroutines"`
 
 	// Application-specific metrics
-	DatasetCount   int              `json:"dataset_count"`
-	CacheItemCount int              `json:"cache_item_count"`
-	CacheSizeMB    float64          `json:"cache_size_mb"`
-	PoolStats      map[string]int64 `json:"pool_stats"`
+	DatasetCount   int     `json:"dataset_count"`
+	CacheItemCount int     `json:"cache_item_count"`
+	CacheSizeMB    float64 `json:"cache_size_mb"`
 }
 
 // MemoryAnalysis provides detailed memory usage analysis
@@ -120,7 +119,6 @@ func (mp *MemoryProfiler) TakeSnapshot() MemorySnapshot {
 		NumGC:         m.NumGC,
 		GCPauseMS:     float64(m.PauseNs[(m.NumGC+255)%256]) / 1000000,
 		NumGoroutines: runtime.NumGoroutine(),
-		PoolStats:     GetPlayerPoolStats(),
 	}
 
 	// Add application-specific metrics

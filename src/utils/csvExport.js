@@ -500,13 +500,13 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
       roleCount: samplePlayer.roleSpecificOveralls?.length || 0,
       overall: samplePlayer.Overall,
       fifaStats: {
-        PAC: samplePlayer.PAC,
-        SHO: samplePlayer.SHO,
-        PAS: samplePlayer.PAS,
-        DRI: samplePlayer.DRI,
-        DEF: samplePlayer.DEF,
-        PHY: samplePlayer.PHY,
-        GK: samplePlayer.GK,
+        PAC: samplePlayer.pac,
+        SHO: samplePlayer.sho,
+        PAS: samplePlayer.pas,
+        DRI: samplePlayer.dri,
+        DEF: samplePlayer.def,
+        PHY: samplePlayer.phy,
+        GK: samplePlayer.gk,
       },
     })
   }
@@ -535,7 +535,7 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
 
     if (options.fifahStats) {
       const fifaStats = {
-        Overall: player.overall,
+        Overall: player.Overall,
         Potential: player.Potential,
         PAC: player.pac,
         SHO: player.sho,

@@ -8,7 +8,7 @@ export function useFiltering(allPlayersData, filters) {
 
     return allPlayersData.value.filter((player) => {
       const minutesPlayed = filters.getNumericValue(player.numericAttributes?.Mins) || 0
-      const overall = player.overall || 0
+      const overall = player.Overall || 0
       const division = filters.getPlayerDivision(player)
 
       const matchesMinutes = minutesPlayed >= filters.selectedMinutes.value
@@ -21,7 +21,7 @@ export function useFiltering(allPlayersData, filters) {
       const matchesPosition =
         filters.selectedPositions.value.length === 0 ||
         filters.selectedPositions.value.some((selectedPos) => {
-          const playerPositions = player.short_positions || player.shortPositions || []
+          const playerPositions = player.shortPositions || []
           if (selectedPos === 'Goalkeeper') return playerPositions.includes('GK')
           if (selectedPos === 'Defender')
             return playerPositions.some((pos) => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))

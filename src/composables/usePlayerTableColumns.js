@@ -81,7 +81,7 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
     Overall: {
       name: 'Overall',
       label: 'Overall',
-      field: 'overall',
+      field: 'Overall',
       sortable: true,
       align: 'center',
       isOverallStat: true,

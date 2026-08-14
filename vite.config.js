@@ -3,6 +3,7 @@ import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import vue from '@vitejs/plugin-vue'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
+import viteCompression from 'vite-plugin-compression'
 
 // Custom plugin for chunk size analysis and warnings
 function chunkSizeAnalyzer() {
@@ -87,6 +88,15 @@ export default defineConfig({
     }),
     // Chunk size analyzer for build optimization
     chunkSizeAnalyzer(),
+    // Pre-compress build output to .br files so the server can skip on-the-fly compression.
+    // Only takes effect if the serving layer prefers a pre-built .br over compressing itself —
+    // see docs/PERFORMANCE_FIXES_2026-07-08.md #10 for the nginx follow-up check.
+    viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 1024,
+      deleteOriginFile: false,
+    }),
     // Bundle analyzer - only in development or when explicitly requested
     (process.env.ANALYZE === 'true' || process.env.NODE_ENV === 'development') &&
       visualizer({
