@@ -51,10 +51,18 @@ func RequestContextMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequestTimeoutMiddleware wraps handlers with configurable timeout
+// RequestTimeoutMiddleware wraps handlers with a fixed configurable timeout.
 func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
+	return RequestTimeoutMiddlewareFunc(func(_ *http.Request) time.Duration { return timeout })
+}
+
+// RequestTimeoutMiddlewareFunc wraps handlers with a per-request timeout, decided by
+// timeoutFor — e.g. giving a specific route more room than the app-wide default.
+func RequestTimeoutMiddlewareFunc(timeoutFor func(*http.Request) time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			timeout := timeoutFor(r)
+
 			// Create a span for timeout middleware
 			ctx, span := StartSpan(r.Context(), "http.middleware.timeout",
 				trace.WithAttributes(

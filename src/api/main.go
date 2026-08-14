@@ -213,7 +213,14 @@ func main() {
 	// 5. Logging (captures all request/response data)
 	// 6. Timeout (inner control)
 	var handler http.Handler = mux
-	handler = RequestTimeoutMiddleware(30 * time.Second)(handler) // 30 second request timeout
+	handler = RequestTimeoutMiddlewareFunc(func(r *http.Request) time.Duration {
+		// Who to Sign drives a multi-round LLM tool-calling loop against OpenAI, which
+		// legitimately takes longer than the app-wide default.
+		if strings.HasPrefix(r.URL.Path, "/api/who-to-sign/") {
+			return 120 * time.Second
+		}
+		return 30 * time.Second
+	})(handler) // request timeout, per-route
 	handler = LoggingMiddleware(handler)
 	handler = CompressionMiddleware(handler) // Add compression middleware
 	handler = CORSMiddleware(handler)
