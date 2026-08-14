@@ -237,6 +237,7 @@ func main() {
 	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))
 	mux.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
+	mux.Handle("/api/who-to-sign/", wrapHandler(http.HandlerFunc(whoToSignHandler), "who-to-sign"))
 
 	// API endpoint for serving player face images
 	mux.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))

@@ -22,6 +22,9 @@ export const useUiStore = defineStore('ui', () => {
   // Tutorial state
   const showFirstTimeTutorial = ref(false) // Control tutorial modal visibility
 
+  // User's own OpenAI API key for the "Who to Sign" scouting feature (bring-your-own-key)
+  const openaiApiKey = ref('')
+
   // Function to toggle dark mode
   function toggleDarkMode() {
     // Directly toggle the current state
@@ -245,6 +248,24 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {}
   }
 
+  // Function to set the user's OpenAI API key directly
+  function setOpenaiApiKey(key) {
+    openaiApiKey.value = key
+    try {
+      localStorage.setItem('openaiApiKey', key || '')
+    } catch (_e) {}
+  }
+
+  // Initialize OpenAI API key from localStorage
+  function initOpenaiApiKey() {
+    try {
+      const storedKey = localStorage.getItem('openaiApiKey')
+      if (storedKey !== null) {
+        openaiApiKey.value = storedKey
+      }
+    } catch (_e) {}
+  }
+
   // Initialize all settings
   function initSettings() {
     initDarkMode()
@@ -255,6 +276,7 @@ export const useUiStore = defineStore('ui', () => {
     initLogoCorrections()
     initAttributeMasksDisplay()
     initCADisplay()
+    initOpenaiApiKey()
   }
 
   // Tutorial functions
@@ -297,6 +319,9 @@ export const useUiStore = defineStore('ui', () => {
     toggleCA,
     setCADisplay,
     initCADisplay,
+    openaiApiKey,
+    setOpenaiApiKey,
+    initOpenaiApiKey,
     showFirstTimeTutorial,
     showTutorial,
     hideTutorial,

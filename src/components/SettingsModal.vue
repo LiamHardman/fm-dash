@@ -372,6 +372,42 @@
 
                     <q-expansion-item
                         expand-separator
+                        icon="person_search"
+                        label="AI Scouting (Who to Sign)"
+                        caption="Bring your own OpenAI API key to use the Who to Sign scouting assistant"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        :default-opened="false"
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="section-description">
+                                    The "Who to Sign" scouting assistant calls OpenAI's API directly using your
+                                    own key — it is never sent anywhere except OpenAI, and this app does not
+                                    provide a shared key. Your key is stored only in this browser.
+                                </div>
+                                <q-input
+                                    filled
+                                    v-model="openaiApiKey"
+                                    type="password"
+                                    label="OpenAI API key"
+                                    placeholder="sk-..."
+                                    class="q-mt-md"
+                                    autocomplete="off"
+                                >
+                                    <template v-slot:prepend>
+                                        <q-icon name="vpn_key" />
+                                    </template>
+                                </q-input>
+                                <p class="text-caption q-mt-sm">
+                                    The setting is saved automatically and will persist across browser sessions.
+                                </p>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
+                    <q-expansion-item
+                        expand-separator
                         icon="filter_alt"
                         label="Default Filters"
                         caption="Set default age ranges, positions, and other filter preferences"
@@ -482,6 +518,11 @@ export default defineComponent({
       set: (value) => uiStore.setLogoCorrections(value),
     })
 
+    const openaiApiKey = computed({
+      get: () => uiStore.openaiApiKey,
+      set: (value) => uiStore.setOpenaiApiKey(value),
+    })
+
     const showAttributeMasks = computed({
       get: () => uiStore.showAttributeMasks,
       set: (_value) => uiStore.toggleAttributeMasks(),
@@ -590,6 +631,7 @@ export default defineComponent({
       showLogoCorrections,
       showAttributeMasks,
       showCA,
+      openaiApiKey,
       isLoading,
       activeTab,
       showTutorial,

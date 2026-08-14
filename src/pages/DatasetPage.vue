@@ -67,6 +67,17 @@
                     <q-btn
                         unelevated
                         dense
+                        icon="person_search"
+                        label="Who to Sign"
+                        color="purple"
+                        @click="showWhoToSign = true"
+                        :disable="allPlayersData.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    />
+                    <q-btn
+                        unelevated
+                        dense
                         icon="download"
                         label="Export"
                         color="accent"
@@ -225,6 +236,13 @@
             :currency-symbol="detectedCurrencySymbol"
             :dataset-id="currentDatasetId"
         />
+        <WhoToSignDialog
+            :show="showWhoToSign"
+            :teams="uniqueClubs"
+            @close="showWhoToSign = false"
+            :currency-symbol="detectedCurrencySymbol"
+            :dataset-id="currentDatasetId"
+        />
         <FreeAgentsDialog
             :show="showFreeAgents"
             :players="allPlayersData"
@@ -267,6 +285,7 @@ import PlayerComparisonTray from '../components/PlayerComparisonTray.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
+import WhoToSignDialog from '../components/WhoToSignDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { useComparisonStore } from '../stores/comparisonStore'
@@ -346,6 +365,7 @@ export default {
     UpgradeFinderDialog,
     WonderkidsDialog,
     BargainHunterDialog,
+    WhoToSignDialog,
     FreeAgentsDialog,
     ExportOptionsDialog,
     PlayerComparisonTray,
@@ -368,6 +388,7 @@ export default {
     const showUpgradeFinder = ref(false)
     const showWonderkids = ref(false)
     const showBargainHunter = ref(false)
+    const showWhoToSign = ref(false)
     const showFreeAgents = ref(false)
     const showExportOptions = ref(false)
     const showComparisonDialog = ref(false)
@@ -1271,6 +1292,7 @@ export default {
       showUpgradeFinder,
       showWonderkids,
       showBargainHunter,
+      showWhoToSign,
       showFreeAgents,
       showExportOptions,
       showComparisonDialog,

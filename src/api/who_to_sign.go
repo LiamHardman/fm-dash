@@ -1,0 +1,618 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/responses"
+)
+
+// Who to Sign — LLM scouting assistant. Implements the spec charted in
+// .scratch/who-to-sign/ (Wayfinder map "Who to Sign — LLM Scouting Assistant").
+
+const (
+	whoToSignModel         = "gpt-5.6-luna"
+	whoToSignMaxToolRounds = 5
+	whoToSignFindPlayersN  = 15
+)
+
+// whoToSignAttributeShortCodes maps the long attribute names shown in the frontend's
+// dropdown (ticket 04) to the short codes actually used as Player.NumericAttributes
+// keys (see player_processing.go's isNumericTechnicalAttribute switch).
+var whoToSignAttributeShortCodes = map[string]string{
+	"Acceleration": "Acc", "Pace": "Pac", "Strength": "Str", "Stamina": "Sta",
+	"Natural Fitness": "Nat", "Balance": "Bal", "Jumping Reach": "Jum", "Agility": "Agi",
+	"Aggression": "Agg", "Anticipation": "Ant", "Bravery": "Bra", "Composure": "Cmp",
+	"Concentration": "Cnt", "Decisions": "Dec", "Determination": "Det", "Flair": "Fla",
+	"Leadership": "Ldr", "Off The Ball": "OtB", "Positioning": "Pos", "Team Work": "Tea",
+	"Vision": "Vis", "Work Rate": "Wor",
+	"Corners": "Cor", "Crossing": "Cro", "Dribbling": "Dri", "Finishing": "Fin",
+	"First Touch": "Fir", "Free Kick Taking": "Fre", "Heading": "Hea", "Long Shots": "Lon",
+	"Long Throws": "L Th", "Marking": "Mar", "Passing": "Pas", "Penalty Taking": "Pen",
+	"Tackling": "Tck", "Technique": "Tec",
+	"Aerial Reach": "Aer", "Command Of Area": "Cmd", "Communication": "Com",
+	"Eccentricity": "Ecc", "Handling": "Han", "Kicking": "Kic", "One On Ones": "1v1",
+	"Reflexes": "Ref", "Rushing Out (Tendency)": "TRO", "Throwing": "Thr", "Punching": "Pun",
+}
+
+// --- Request contract (ticket 04) ---
+
+type WhoToSignPositionRequest struct {
+	Position   string   `json:"position"`
+	Attributes []string `json:"attributes"`
+}
+
+type WhoToSignRequest struct {
+	Team              string                     `json:"team"`
+	MaxTransferBudget int64                      `json:"maxTransferBudget"`
+	MaxWageBudget     int64                      `json:"maxWageBudget"`
+	SquadStatus       string                     `json:"squadStatus"`
+	Positions         []WhoToSignPositionRequest `json:"positions"`
+	PlayerProfile     string                     `json:"playerProfile"`
+	FreeText          string                     `json:"freeText"`
+}
+
+var whoToSignSquadStatusLabels = map[string]string{
+	"star":            "Star player",
+	"regular_starter": "Regular starter",
+	"rotation":        "Rotation option",
+}
+
+// --- find_players tool + squad summary shape (ticket 02, ticket 07) ---
+
+// ScoutPlayerSummary is the trimmed player shape used both for find_players tool
+// results and for squad players sent to the model — same serializer for both, so
+// the model compares "what I have" against "what's available" on identical fields.
+type ScoutPlayerSummary struct {
+	UID                 int64          `json:"uid"`
+	Name                string         `json:"name"`
+	Club                string         `json:"club"`
+	Age                 string         `json:"age"`
+	ShortPositions      []string       `json:"shortPositions"`
+	Overall             int            `json:"overall"`
+	CA                  int            `json:"ca"`
+	MBR                 int            `json:"mbr"`
+	BestRoleOverall     string         `json:"bestRoleOverall"`
+	TransferValueAmount int64          `json:"transferValueAmount"`
+	WageAmount          int64          `json:"wageAmount"`
+	Nationality         string         `json:"nationality"`
+	Attributes          map[string]int `json:"attributes"`
+}
+
+func buildScoutPlayerSummary(player Player, attributeLongNames []string) ScoutPlayerSummary {
+	attrs := make(map[string]int, len(attributeLongNames))
+	for _, longName := range attributeLongNames {
+		if code, ok := whoToSignAttributeShortCodes[longName]; ok {
+			attrs[longName] = player.NumericAttributes[code]
+		}
+	}
+	return ScoutPlayerSummary{
+		UID:                 player.UID,
+		Name:                player.Name,
+		Club:                player.Club,
+		Age:                 player.Age,
+		ShortPositions:      player.ShortPositions,
+		Overall:             player.Overall,
+		CA:                  player.CA,
+		MBR:                 player.MBR,
+		BestRoleOverall:     player.BestRoleOverall,
+		TransferValueAmount: player.TransferValueAmount,
+		WageAmount:          player.WageAmount,
+		Nationality:         player.Nationality,
+		Attributes:          attrs,
+	}
+}
+
+// whoToSignFindPlayersArgs is the argument shape find_players is declared with (ticket 02).
+type whoToSignFindPlayersArgs struct {
+	ShortPosition string   `json:"shortPosition"`
+	MaxBudget     int64    `json:"maxBudget"`
+	MaxSalary     int64    `json:"maxSalary"`
+	MinAge        int      `json:"minAge"`
+	MaxAge        int      `json:"maxAge"`
+	MinOverall    int      `json:"minOverall"`
+	Attributes    []string `json:"attributes"`
+	FreeText      string   `json:"freeText"`
+}
+
+var findPlayersToolSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"shortPosition": map[string]any{
+			"type":        "string",
+			"description": "The short position code to search for, e.g. \"ST\", \"CB\", \"GK\".",
+		},
+		"maxBudget":  map[string]any{"type": "number", "description": "Maximum transfer fee, in the dataset's currency units. 0 or omitted means no cap."},
+		"maxSalary":  map[string]any{"type": "number", "description": "Maximum weekly wage. 0 or omitted means no cap."},
+		"minAge":     map[string]any{"type": "number", "description": "Minimum age. 0 or omitted means no minimum."},
+		"maxAge":     map[string]any{"type": "number", "description": "Maximum age. 0 or omitted means no maximum."},
+		"minOverall": map[string]any{"type": "number", "description": "Minimum overall rating. 0 or omitted means no minimum."},
+		"attributes": map[string]any{
+			"type":        "array",
+			"items":       map[string]any{"type": "string"},
+			"description": "Up to 5 attribute names (long form, e.g. \"Finishing\", \"Pace\") to include in each result's attribute values.",
+		},
+		"freeText": map[string]any{"type": "string", "description": "Any free-text player-profile preference to keep in mind, for your own reasoning — not applied as a filter."},
+	},
+	"required": []string{"shortPosition"},
+}
+
+// findPlayersForScout is the find_players tool, executed in-process (no HTTP self-hop).
+func findPlayersForScout(datasetID string, args whoToSignFindPlayersArgs) []ScoutPlayerSummary {
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		return []ScoutPlayerSummary{}
+	}
+	players = RecalculateAllPlayersRatings(players)
+
+	matches := make([]Player, 0, 32)
+	for i := range players {
+		player := players[i]
+
+		if args.ShortPosition != "" {
+			hasPosition := false
+			for _, pos := range player.ShortPositions {
+				if strings.EqualFold(pos, args.ShortPosition) {
+					hasPosition = true
+					break
+				}
+			}
+			if !hasPosition {
+				continue
+			}
+		}
+		if args.MaxBudget > 0 && player.TransferValueAmount > args.MaxBudget {
+			continue
+		}
+		if args.MaxSalary > 0 && player.WageAmount > args.MaxSalary {
+			continue
+		}
+		if args.MinAge > 0 || args.MaxAge > 0 {
+			playerAge, ageErr := strconv.Atoi(player.Age)
+			if ageErr != nil {
+				continue
+			}
+			if args.MinAge > 0 && playerAge < args.MinAge {
+				continue
+			}
+			if args.MaxAge > 0 && playerAge > args.MaxAge {
+				continue
+			}
+		}
+		if args.MinOverall > 0 && player.Overall < args.MinOverall {
+			continue
+		}
+		matches = append(matches, player)
+	}
+
+	sort.Slice(matches, func(i, j int) bool { return matches[i].MBR > matches[j].MBR })
+	if len(matches) > whoToSignFindPlayersN {
+		matches = matches[:whoToSignFindPlayersN]
+	}
+
+	summaries := make([]ScoutPlayerSummary, len(matches))
+	for i, player := range matches {
+		summaries[i] = buildScoutPlayerSummary(player, args.Attributes)
+	}
+	return summaries
+}
+
+// --- Squad lookup (ticket 07) ---
+
+// getSquadForTeam mirrors teamDataHandler's Club-based filter.
+func getSquadForTeam(datasetID, team string) ([]Player, bool) {
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		return nil, false
+	}
+	squad := make([]Player, 0)
+	for _, player := range players {
+		if player.Club == team {
+			squad = append(squad, player)
+		}
+	}
+	return squad, true
+}
+
+func buildSquadSummaries(squad []Player, req WhoToSignRequest) []ScoutPlayerSummary {
+	if len(req.Positions) == 0 {
+		summaries := make([]ScoutPlayerSummary, len(squad))
+		for i, player := range squad {
+			summaries[i] = buildScoutPlayerSummary(player, nil)
+		}
+		return summaries
+	}
+
+	positionAttrs := make(map[string][]string, len(req.Positions))
+	requestedPositions := make(map[string]bool, len(req.Positions))
+	for _, pos := range req.Positions {
+		requestedPositions[strings.ToUpper(pos.Position)] = true
+		positionAttrs[strings.ToUpper(pos.Position)] = pos.Attributes
+	}
+
+	summaries := make([]ScoutPlayerSummary, 0, len(squad))
+	for _, player := range squad {
+		var attrs []string
+		matched := false
+		for _, shortPos := range player.ShortPositions {
+			if requestedPositions[strings.ToUpper(shortPos)] {
+				matched = true
+				attrs = positionAttrs[strings.ToUpper(shortPos)]
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		summaries = append(summaries, buildScoutPlayerSummary(player, attrs))
+	}
+	return summaries
+}
+
+// --- Response schema (ticket 03) ---
+
+// ScoutPlayerRecommendation is the shape used for mainPick/runnersUp in the final
+// structured response — ScoutPlayerSummary's fields minus attributes, plus reasoning.
+// (Kept as its own flat struct, not embedding ScoutPlayerSummary, so the strict-mode
+// JSON schema below and the Go struct tags stay in lockstep.)
+type ScoutPlayerRecommendation struct {
+	UID                 int64    `json:"uid"`
+	Name                string   `json:"name"`
+	Club                string   `json:"club"`
+	Age                 string   `json:"age"`
+	ShortPositions      []string `json:"shortPositions"`
+	Overall             int      `json:"overall"`
+	CA                  int      `json:"ca"`
+	MBR                 int      `json:"mbr"`
+	BestRoleOverall     string   `json:"bestRoleOverall"`
+	TransferValueAmount int64    `json:"transferValueAmount"`
+	WageAmount          int64    `json:"wageAmount"`
+	Nationality         string   `json:"nationality"`
+	Reasoning           []string `json:"reasoning"`
+}
+
+type WhoToSignPositionRecommendation struct {
+	Position          string                      `json:"position"`
+	PositionRationale string                      `json:"positionRationale"`
+	MainPick          ScoutPlayerRecommendation   `json:"mainPick"`
+	RunnersUp         []ScoutPlayerRecommendation `json:"runnersUp"`
+}
+
+type WhoToSignResponse struct {
+	Recommendations []WhoToSignPositionRecommendation `json:"recommendations"`
+}
+
+var scoutPlayerRecommendationSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"uid":                 map[string]any{"type": "integer"},
+		"name":                map[string]any{"type": "string"},
+		"club":                map[string]any{"type": "string"},
+		"age":                 map[string]any{"type": "string"},
+		"shortPositions":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"overall":             map[string]any{"type": "integer"},
+		"ca":                  map[string]any{"type": "integer"},
+		"mbr":                 map[string]any{"type": "integer"},
+		"bestRoleOverall":     map[string]any{"type": "string"},
+		"transferValueAmount": map[string]any{"type": "integer"},
+		"wageAmount":          map[string]any{"type": "integer"},
+		"nationality":         map[string]any{"type": "string"},
+		"reasoning":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+	},
+	"required": []string{
+		"uid", "name", "club", "age", "shortPositions", "overall", "ca", "mbr",
+		"bestRoleOverall", "transferValueAmount", "wageAmount", "nationality", "reasoning",
+	},
+	"additionalProperties": false,
+}
+
+var whoToSignResponseSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"recommendations": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"position":          map[string]any{"type": "string"},
+					"positionRationale": map[string]any{"type": "string"},
+					"mainPick":          scoutPlayerRecommendationSchema,
+					"runnersUp": map[string]any{
+						"type":     "array",
+						"maxItems": 3,
+						"items":    scoutPlayerRecommendationSchema,
+					},
+				},
+				"required":             []string{"position", "positionRationale", "mainPick", "runnersUp"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"recommendations"},
+	"additionalProperties": false,
+}
+
+// --- System prompt (ticket 05) ---
+
+func buildWhoToSignSystemPrompt(req WhoToSignRequest, squadSummaries []ScoutPlayerSummary) string {
+	positionsText := `none specified — review the squad below and identify 1 to 3 positions most in need of improvement before scouting`
+	if len(req.Positions) > 0 {
+		var parts []string
+		for _, pos := range req.Positions {
+			if len(pos.Attributes) > 0 {
+				parts = append(parts, pos.Position+" (key attributes: "+strings.Join(pos.Attributes, ", ")+")")
+			} else {
+				parts = append(parts, pos.Position)
+			}
+		}
+		positionsText = strings.Join(parts, "; ")
+	}
+
+	playerProfileText := "no specific preference stated"
+	if req.PlayerProfile != "" {
+		playerProfileText = req.PlayerProfile
+	}
+	freeTextText := "none provided"
+	if req.FreeText != "" {
+		freeTextText = req.FreeText
+	}
+	squadStatusText := whoToSignSquadStatusLabels[req.SquadStatus]
+	if squadStatusText == "" {
+		squadStatusText = req.SquadStatus
+	}
+
+	squadJSON, _ := json.Marshal(squadSummaries)
+
+	var b strings.Builder
+	b.WriteString("You are an Association Football Manager's head scout, currently employed at ")
+	b.WriteString(req.Team)
+	b.WriteString(". Your goal is to assist the manager in signing the player(s) most aligned to the manager's requirements below.\n\n")
+	b.WriteString("Requirements:\n")
+	b.WriteString("- Squad status target for any signing: " + squadStatusText + "\n")
+	b.WriteString("- Maximum transfer budget: " + strconv.FormatInt(req.MaxTransferBudget, 10) + "\n")
+	b.WriteString("- Maximum wage budget: " + strconv.FormatInt(req.MaxWageBudget, 10) + "\n")
+	b.WriteString("- Positions requested: " + positionsText + "\n")
+	b.WriteString("- Preferred player profile: " + playerProfileText + "\n")
+	b.WriteString("- Manager's own notes: " + freeTextText + "\n\n")
+	b.WriteString("Current squad:\n")
+	b.Write(squadJSON)
+	b.WriteString("\n\n")
+	b.WriteString("Instructions:\n")
+	b.WriteString("- If positions were specified above, scout for exactly those positions. If none were specified, first identify 1-3 positions from the current squad most in need of strengthening, and scout for those instead.\n")
+	b.WriteString("- Use the find_players tool to search the transfer market. You may call it multiple times — once per position, and again with loosened criteria (wider budget/age range, fewer attribute filters) if a search returns few or no suitable options. Only if truly nothing suitable exists after widening the search should you name the closest available player as your pick and say so honestly in your reasoning.\n")
+	b.WriteString("- Never state a player's stats, attributes, or attribute-derived claims that didn't come from a find_players result — do not invent numbers.\n")
+	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary.\n")
+	b.WriteString("- For each position scouted, make a conclusive decision on a single player to sign, with concise, specific reasoning bullet points that reference concrete data points, not vague praise. Highlight 1 to 3 other good options as runners-up.\n")
+	b.WriteString("- Respond only in the structured format provided.\n")
+	return b.String()
+}
+
+// --- Request validation + error taxonomy (ticket 10) ---
+
+type whoToSignError struct {
+	status  int
+	message string
+}
+
+func (e *whoToSignError) Error() string { return e.message }
+
+func writeWhoToSignError(w http.ResponseWriter, r *http.Request, err *whoToSignError) {
+	setCORSHeaders(w, r)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(err.status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.message})
+}
+
+// --- Handler ---
+
+func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/who-to-sign/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	var req WhoToSignRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Team == "" || req.MaxTransferBudget <= 0 || req.MaxWageBudget <= 0 || req.SquadStatus == "" {
+		writeWhoToSignError(w, r, &whoToSignError{http.StatusBadRequest, "team, maxTransferBudget, maxWageBudget, and squadStatus are all required"})
+		return
+	}
+
+	apiKey := r.Header.Get("X-OpenAI-Api-Key")
+	if apiKey == "" {
+		apiKey = whoToSignEnvAPIKey()
+	}
+	if apiKey == "" {
+		writeWhoToSignError(w, r, &whoToSignError{http.StatusBadRequest, "no API key provided — add one in Settings"})
+		return
+	}
+
+	squad, found := getSquadForTeam(datasetID, req.Team)
+	if !found {
+		writeWhoToSignError(w, r, &whoToSignError{http.StatusNotFound, "dataset not found"})
+		return
+	}
+	if len(squad) == 0 {
+		writeWhoToSignError(w, r, &whoToSignError{http.StatusBadRequest, "no players found for that team — check the team name"})
+		return
+	}
+
+	logInfo(ctx, "Processing who-to-sign request", "dataset_id", datasetID, "team", req.Team)
+
+	squadSummaries := buildSquadSummaries(squad, req)
+	systemPrompt := buildWhoToSignSystemPrompt(req, squadSummaries)
+
+	client := openai.NewClient(option.WithAPIKey(apiKey))
+	result, scoutErr := runWhoToSignLoop(ctx, &client, datasetID, systemPrompt)
+	if scoutErr != nil {
+		logWarn(ctx, "who-to-sign request failed", "dataset_id", datasetID, "status", scoutErr.status, "error", scoutErr.message)
+		writeWhoToSignError(w, r, scoutErr)
+		return
+	}
+
+	setCORSHeaders(w, r)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		logError(ctx, "Error encoding JSON response for who-to-sign", "dataset_id", datasetID, "error", err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// whoToSignEnvAPIKey is the optional self-hoster fallback (ticket 06) — never set by
+// this app's own deployment configs; the header from the user's own Settings wins
+// whenever present.
+func whoToSignEnvAPIKey() string {
+	return os.Getenv("OPENAI_API_KEY")
+}
+
+// runWhoToSignLoop drives the Responses API tool-calling loop: declares find_players,
+// executes it in-process on each function_call, and returns once the model produces
+// a final structured answer — capped at whoToSignMaxToolRounds rounds (ticket 08),
+// with one retry on transient OpenAI errors (ticket 10).
+func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, *whoToSignError) {
+	params := responses.ResponseNewParams{
+		Model: whoToSignModel,
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String(systemPrompt),
+		},
+		Tools: []responses.ToolUnionParam{{
+			OfFunction: &responses.FunctionToolParam{
+				Name:        "find_players",
+				Description: openai.String("Search the transfer market for players matching the given position and filters."),
+				Parameters:  findPlayersToolSchema,
+			},
+		}},
+		Text: responses.ResponseTextConfigParam{
+			Format: func() responses.ResponseFormatTextConfigUnionParam {
+				schema := responses.ResponseFormatTextJSONSchemaConfigParam{
+					Name:   "who_to_sign_response",
+					Schema: whoToSignResponseSchema,
+					Strict: openai.Bool(true),
+				}
+				return responses.ResponseFormatTextConfigUnionParam{OfJSONSchema: &schema}
+			}(),
+		},
+	}
+
+	resp, apiErr := callResponsesWithRetry(ctx, client, params)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	// round counts response round-trips; the response is checked for a final answer
+	// both before the first tool call and after every subsequent one, so a legitimate
+	// answer on the Nth round is never missed. The model may batch several find_players
+	// calls into a single round (parallel tool calls are on by default) — every one of
+	// them must get a matching function_call_output in the same follow-up request, or
+	// OpenAI rejects the next call with "No tool output found for function call ...".
+	for round := 0; ; round++ {
+		var toolCalls []responses.ResponseFunctionToolCall
+		for i := range resp.Output {
+			if resp.Output[i].Type == "function_call" {
+				toolCalls = append(toolCalls, resp.Output[i].AsFunctionCall())
+			}
+		}
+		if len(toolCalls) == 0 {
+			// No more tool calls — this should be the final structured answer.
+			var result WhoToSignResponse
+			if err := json.Unmarshal([]byte(resp.OutputText()), &result); err != nil {
+				return nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
+			}
+			return &result, nil
+		}
+		if round >= whoToSignMaxToolRounds {
+			break
+		}
+
+		outputItems := make([]responses.ResponseInputItemUnionParam, len(toolCalls))
+		for i, toolCall := range toolCalls {
+			var args whoToSignFindPlayersArgs
+			_ = json.Unmarshal([]byte(toolCall.Arguments), &args)
+			toolResults := findPlayersForScout(datasetID, args)
+			toolResultsJSON, _ := json.Marshal(toolResults)
+
+			outputItems[i] = responses.ResponseInputItemUnionParam{
+				OfFunctionCallOutput: &responses.ResponseInputItemFunctionCallOutputParam{
+					CallID: toolCall.CallID,
+					Output: responses.ResponseInputItemFunctionCallOutputOutputUnionParam{
+						OfString: openai.String(string(toolResultsJSON)),
+					},
+				},
+			}
+		}
+
+		nextParams := responses.ResponseNewParams{
+			Model:              whoToSignModel,
+			PreviousResponseID: openai.String(resp.ID),
+			Input: responses.ResponseNewParamsInputUnion{
+				OfInputItemList: outputItems,
+			},
+		}
+		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
+		if apiErr != nil {
+			return nil, apiErr
+		}
+	}
+
+	return nil, &whoToSignError{
+		http.StatusGatewayTimeout,
+		"the AI scout couldn't settle on recommendations within the allowed search attempts — try narrowing your request (fewer positions, or a specific position) and try again.",
+	}
+}
+
+// callResponsesWithRetry makes one Responses API call, retrying once on transient
+// failures (429/5xx/network), per ticket 10.
+func callResponsesWithRetry(ctx context.Context, client *openai.Client, params responses.ResponseNewParams) (*responses.Response, *whoToSignError) {
+	resp, err := client.Responses.New(ctx, params)
+	if err == nil {
+		return resp, nil
+	}
+
+	var apiErr *openai.Error
+	if errors.As(err, &apiErr) {
+		logWarn(ctx, "who-to-sign OpenAI call failed", "status_code", apiErr.StatusCode, "code", apiErr.Code, "type", apiErr.Type, "message", apiErr.Message)
+		if apiErr.StatusCode == http.StatusUnauthorized {
+			return nil, &whoToSignError{http.StatusBadGateway, "OpenAI rejected the provided API key — check it's valid in Settings"}
+		}
+		if apiErr.StatusCode != http.StatusTooManyRequests && apiErr.StatusCode < 500 {
+			return nil, &whoToSignError{http.StatusBadGateway, "OpenAI rejected the request: " + apiErr.Message}
+		}
+	} else {
+		logWarn(ctx, "who-to-sign OpenAI call failed (non-API error)", "error", err.Error())
+	}
+
+	// Transient (429/5xx/network) — one retry after a short backoff.
+	time.Sleep(500 * time.Millisecond)
+	resp, err = client.Responses.New(ctx, params)
+	if err != nil {
+		var retryAPIErr *openai.Error
+		if errors.As(err, &retryAPIErr) {
+			logWarn(ctx, "who-to-sign OpenAI retry also failed", "status_code", retryAPIErr.StatusCode, "code", retryAPIErr.Code, "type", retryAPIErr.Type, "message", retryAPIErr.Message)
+			return nil, &whoToSignError{http.StatusBadGateway, "OpenAI rejected the request: " + retryAPIErr.Message}
+		}
+		logWarn(ctx, "who-to-sign OpenAI retry also failed (non-API error)", "error", err.Error())
+		return nil, &whoToSignError{http.StatusBadGateway, "the AI scouting service is temporarily unavailable, try again shortly"}
+	}
+	return resp, nil
+}
