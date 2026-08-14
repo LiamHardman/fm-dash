@@ -491,28 +491,35 @@ func whoToSignEnvAPIKey() string {
 // a final structured answer — capped at whoToSignMaxToolRounds rounds (ticket 08),
 // with one retry on transient OpenAI errors (ticket 10).
 func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, *whoToSignError) {
+	tools := []responses.ToolUnionParam{{
+		OfFunction: &responses.FunctionToolParam{
+			Name:        "find_players",
+			Description: openai.String("Search the transfer market for players matching the given position and filters."),
+			Parameters:  findPlayersToolSchema,
+		},
+	}}
+	textFormat := responses.ResponseTextConfigParam{
+		Format: func() responses.ResponseFormatTextConfigUnionParam {
+			schema := responses.ResponseFormatTextJSONSchemaConfigParam{
+				Name:   "who_to_sign_response",
+				Schema: whoToSignResponseSchema,
+				Strict: openai.Bool(true),
+			}
+			return responses.ResponseFormatTextConfigUnionParam{OfJSONSchema: &schema}
+		}(),
+	}
+
+	// Tools and Text.Format must be repeated on every request in the loop, including
+	// follow-ups chained via PreviousResponseID — they are not carried over automatically,
+	// so omitting them on a follow-up leaves the model free to answer in prose instead of
+	// the required JSON schema.
 	params := responses.ResponseNewParams{
 		Model: whoToSignModel,
 		Input: responses.ResponseNewParamsInputUnion{
 			OfString: openai.String(systemPrompt),
 		},
-		Tools: []responses.ToolUnionParam{{
-			OfFunction: &responses.FunctionToolParam{
-				Name:        "find_players",
-				Description: openai.String("Search the transfer market for players matching the given position and filters."),
-				Parameters:  findPlayersToolSchema,
-			},
-		}},
-		Text: responses.ResponseTextConfigParam{
-			Format: func() responses.ResponseFormatTextConfigUnionParam {
-				schema := responses.ResponseFormatTextJSONSchemaConfigParam{
-					Name:   "who_to_sign_response",
-					Schema: whoToSignResponseSchema,
-					Strict: openai.Bool(true),
-				}
-				return responses.ResponseFormatTextConfigUnionParam{OfJSONSchema: &schema}
-			}(),
-		},
+		Tools: tools,
+		Text:  textFormat,
 	}
 
 	resp, apiErr := callResponsesWithRetry(ctx, client, params)
@@ -536,7 +543,15 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 		if len(toolCalls) == 0 {
 			// No more tool calls — this should be the final structured answer.
 			var result WhoToSignResponse
-			if err := json.Unmarshal([]byte(resp.OutputText()), &result); err != nil {
+			outputText := resp.OutputText()
+			if err := json.Unmarshal([]byte(outputText), &result); err != nil {
+				logWarn(ctx, "who-to-sign final response could not be parsed",
+					"error", err.Error(),
+					"status", resp.Status,
+					"incomplete_reason", resp.IncompleteDetails.Reason,
+					"output_text_len", len(outputText),
+					"output_text", outputText,
+				)
 				return nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
 			}
 			return &result, nil
@@ -565,6 +580,8 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 		nextParams := responses.ResponseNewParams{
 			Model:              whoToSignModel,
 			PreviousResponseID: openai.String(resp.ID),
+			Tools:              tools,
+			Text:               textFormat,
 			Input: responses.ResponseNewParamsInputUnion{
 				OfInputItemList: outputItems,
 			},
