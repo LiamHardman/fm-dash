@@ -72,6 +72,11 @@ var whoToSignSquadStatusLabels = map[string]string{
 // ScoutPlayerSummary is the trimmed player shape used both for find_players tool
 // results and for squad players sent to the model — same serializer for both, so
 // the model compares "what I have" against "what's available" on identical fields.
+// ScoutPlayerSummary is the shape actually fed to the model (tool results + squad data).
+// MBR is deliberately excluded — it's an internal composite rating that isn't capped at
+// 100 despite reading like a percentage, and the model was citing raw MBR values in its
+// prose in a way that read as a broken/impossible number to users. MBR is still used
+// server-side for sorting (via the raw Player struct), just never serialized to the model.
 type ScoutPlayerSummary struct {
 	UID                 int64          `json:"uid"`
 	Name                string         `json:"name"`
@@ -80,7 +85,6 @@ type ScoutPlayerSummary struct {
 	ShortPositions      []string       `json:"shortPositions"`
 	Overall             int            `json:"overall"`
 	CA                  int            `json:"ca"`
-	MBR                 int            `json:"mbr"`
 	BestRoleOverall     string         `json:"bestRoleOverall"`
 	TransferValueAmount int64          `json:"transferValueAmount"`
 	WageAmount          int64          `json:"wageAmount"`
@@ -103,7 +107,6 @@ func buildScoutPlayerSummary(player Player, attributeLongNames []string) ScoutPl
 		ShortPositions:      player.ShortPositions,
 		Overall:             player.Overall,
 		CA:                  player.CA,
-		MBR:                 player.MBR,
 		BestRoleOverall:     player.BestRoleOverall,
 		TransferValueAmount: player.TransferValueAmount,
 		WageAmount:          player.WageAmount,
@@ -258,9 +261,28 @@ func buildSquadSummaries(squad []Player, req WhoToSignRequest) []ScoutPlayerSumm
 	return summaries
 }
 
-// findClosestSquadPlayer returns the current squad's best player (by MBR) at the given
-// uppercased short position, for the frontend's "compare against what you already have"
-// view. Returns nil if no squad player plays that position.
+// findSquadPlayerByUID looks up a specific squad player by UID — used for the model's own
+// choice of who's most relevant to compare mainPick against (ticket: "why did we compare
+// against [a reserve]?" — the model already reasons about the whole squad, so trust its
+// pick over a disconnected server-side heuristic). Returns nil if the UID isn't an actual
+// squad member (defensive against a hallucinated UID) or is the "none" sentinel (0).
+func findSquadPlayerByUID(squad []Player, uid int64, attributes []string) *ScoutPlayerSummary {
+	if uid == 0 {
+		return nil
+	}
+	for i := range squad {
+		if squad[i].UID == uid {
+			summary := buildScoutPlayerSummary(squad[i], attributes)
+			return &summary
+		}
+	}
+	return nil
+}
+
+// findClosestSquadPlayer returns the current squad's best player (by Overall) at the given
+// uppercased short position — a defensive fallback for when the model's own
+// currentSquadComparisonUid doesn't resolve to an actual squad member. Returns nil if no
+// squad player plays that position.
 func findClosestSquadPlayer(squad []Player, upperShortPosition string, attributes []string) *ScoutPlayerSummary {
 	var best *Player
 	for i := range squad {
@@ -275,7 +297,7 @@ func findClosestSquadPlayer(squad []Player, upperShortPosition string, attribute
 		if !hasPosition {
 			continue
 		}
-		if best == nil || player.MBR > best.MBR {
+		if best == nil || player.Overall > best.Overall {
 			best = &player
 		}
 	}
@@ -300,7 +322,6 @@ type ScoutPlayerRecommendation struct {
 	ShortPositions      []string `json:"shortPositions"`
 	Overall             int      `json:"overall"`
 	CA                  int      `json:"ca"`
-	MBR                 int      `json:"mbr"`
 	BestRoleOverall     string   `json:"bestRoleOverall"`
 	TransferValueAmount int64    `json:"transferValueAmount"`
 	WageAmount          int64    `json:"wageAmount"`
@@ -319,6 +340,13 @@ type WhoToSignPositionRecommendation struct {
 	PositionRationale string                      `json:"positionRationale"`
 	MainPick          ScoutPlayerRecommendation   `json:"mainPick"`
 	RunnersUp         []ScoutPlayerRecommendation `json:"runnersUp"`
+	// CurrentSquadComparisonUID is the model's own pick of which current squad player
+	// (from the squad list it was given) is most relevant to compare mainPick against —
+	// typically whoever mainPick would be competing with for starts. 0 means "no relevant
+	// current squad player". The model reasons about the squad as a whole anyway, so this
+	// keeps the comparison consistent with whatever it says in positionRationale/watchOuts,
+	// rather than a disconnected server-side heuristic picking someone else entirely.
+	CurrentSquadComparisonUID int64 `json:"currentSquadComparisonUid"`
 
 	// Populated server-side after the model's structured answer is parsed — not part
 	// of the strict-mode schema the model is constrained to, just bookkeeping this
@@ -341,19 +369,21 @@ var scoutPlayerRecommendationSchema = map[string]any{
 		"shortPositions":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 		"overall":             map[string]any{"type": "integer"},
 		"ca":                  map[string]any{"type": "integer"},
-		"mbr":                 map[string]any{"type": "integer"},
 		"bestRoleOverall":     map[string]any{"type": "string"},
 		"transferValueAmount": map[string]any{"type": "integer"},
 		"wageAmount":          map[string]any{"type": "integer"},
 		"nationality":         map[string]any{"type": "string"},
 		"grade": map[string]any{
-			"type":        "string",
-			"enum":        []string{"D", "C", "B", "A", "A*"},
-			"description": "Your own holistic signing-quality grade for this player against the manager's stated requirements — not a restatement of their Overall/CA rating.",
+			"type": "string",
+			"enum": []string{"D", "C", "B", "A", "A*"},
+			"description": "Your own holistic SCOUT VERDICT grade for this player as a signing against the manager's stated requirements — not a restatement of their Overall/CA rating. " +
+				"Anchor it: A/A* = a clear, immediate, undisputed upgrade at good value, no material caveats. B = a good signing with some caveats (age, minor fit gap, slight overpay) but a clear net positive. " +
+				"C = a fallback or development pick — the market didn't offer a strong option, or this is a bet on potential rather than a proven upgrade. D = a weak signing or last resort. " +
+				"If your own strengths/watchOuts/positionRationale describe this player as a 'fallback', 'value-led development signing', 'not a guaranteed upgrade', or similar hedge, the grade must be C or lower — never grade a hedged pick A or A*.",
 		},
 		"signingScore": map[string]any{
 			"type":        "integer",
-			"description": "0-100 holistic signing-quality score: how good a SIGNING this player would be for these specific requirements (position need, budget fit, value, role fit) — not their Overall or CA rating.",
+			"description": "0-100 holistic SCOUT VERDICT score matching the grade band above: how good a SIGNING this player would be for these specific requirements (position need, budget fit, value, role fit) — not their Overall or CA rating. Must be consistent with the grade (e.g. a C grade should score roughly 45-64, not 80+).",
 		},
 		"strengths": map[string]any{
 			"type":        "array",
@@ -367,7 +397,7 @@ var scoutPlayerRecommendationSchema = map[string]any{
 		},
 	},
 	"required": []string{
-		"uid", "name", "club", "age", "shortPositions", "overall", "ca", "mbr",
+		"uid", "name", "club", "age", "shortPositions", "overall", "ca",
 		"bestRoleOverall", "transferValueAmount", "wageAmount", "nationality",
 		"grade", "signingScore", "strengths", "watchOuts",
 	},
@@ -390,8 +420,12 @@ var whoToSignResponseSchema = map[string]any{
 						"maxItems": 3,
 						"items":    scoutPlayerRecommendationSchema,
 					},
+					"currentSquadComparisonUid": map[string]any{
+						"type":        "integer",
+						"description": "The uid (from the current squad list you were given) of whichever squad player is most relevant to compare mainPick against — usually whoever mainPick would be competing with for starts, not necessarily the highest-rated squad player at this position. Use 0 if no current squad player is a relevant comparison.",
+					},
 				},
-				"required":             []string{"position", "positionRationale", "mainPick", "runnersUp"},
+				"required":             []string{"position", "positionRationale", "mainPick", "runnersUp", "currentSquadComparisonUid"},
 				"additionalProperties": false,
 			},
 		},
@@ -451,7 +485,8 @@ func buildWhoToSignSystemPrompt(req WhoToSignRequest, squadSummaries []ScoutPlay
 	b.WriteString("- Never state a player's stats, attributes, or attribute-derived claims that didn't come from a find_players result — do not invent numbers.\n")
 	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary. When you discuss a player's attributes, only ever reference real Football Manager attribute names (e.g. Finishing, Composure, Tackling, Pace, Work Rate) — never reference FIFA-style aggregate ratings such as PAC, SHO, PAS, DRI, DEF, or PHY; those are not attributes and must not appear in your reasoning.\n")
 	b.WriteString("- For each position scouted, make a conclusive decision on a single player to sign, and highlight 1 to 3 other good options as runners-up.\n")
-	b.WriteString("- For every player you name (main pick and each runner-up), give: a grade (D, C, B, A, or A*) and a signingScore (0-100) that are YOUR OWN holistic judgement of how good a SIGNING they would be for these specific requirements — weighing position need, fit, value for the stated budget, and role suitability. This is not the same as their Overall/CA/MBR rating: a modest player who is an excellent, efficient fit for the need should grade higher than a superior player who is a poor fit or bad value. Also give strengths (concise bullets on why they suit the requirements, referencing concrete data points) and watchOuts (concise, honest bullets on their weaknesses or risks as a signing) — every player has trade-offs, so watchOuts must never be empty, even for your top pick.\n")
+	b.WriteString("- For every player you name (main pick and each runner-up), give: a grade (D, C, B, A, or A*) and a signingScore (0-100) that are YOUR OWN holistic judgement of how good a SIGNING they would be for these specific requirements — weighing position need, fit, value for the stated budget, and role suitability. This is not the same as their Overall/CA rating: a modest player who is an excellent, efficient fit for the need should grade higher than a superior player who is a poor fit or bad value, and a hedged pick (a fallback, a development bet, 'not a guaranteed upgrade') must never be graded A or A* — grade it C or lower instead, consistent with what you actually say in your reasoning. Also give strengths (concise bullets on why they suit the requirements, referencing concrete data points) and watchOuts (concise, honest bullets on their weaknesses or risks as a signing) — every player has trade-offs, so watchOuts must never be empty, even for your top pick.\n")
+	b.WriteString("- For each position, also set currentSquadComparisonUid to the uid of whichever player already in the squad (from the squad list above) is most relevant to compare your main pick against — usually whoever they'd be competing with for starts. This should be consistent with who you actually discuss in positionRationale/watchOuts, not just whoever happens to have the highest rating. Use 0 if no current squad player is a relevant comparison.\n")
 	b.WriteString("- Respond only in the structured format provided.\n")
 	return b.String()
 }
@@ -540,7 +575,15 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 	for i := range result.Recommendations {
 		posKey := strings.ToUpper(result.Recommendations[i].Position)
 		result.Recommendations[i].PlayersConsidered = considered[posKey]
-		result.Recommendations[i].ClosestSquadPlayer = findClosestSquadPlayer(squad, posKey, positionAttrs[posKey])
+
+		// Prefer the model's own pick of who's most relevant to compare against — it
+		// already reasoned about the whole squad. Only fall back to the by-Overall
+		// heuristic if the model's UID doesn't resolve to an actual squad member.
+		closest := findSquadPlayerByUID(squad, result.Recommendations[i].CurrentSquadComparisonUID, positionAttrs[posKey])
+		if closest == nil {
+			closest = findClosestSquadPlayer(squad, posKey, positionAttrs[posKey])
+		}
+		result.Recommendations[i].ClosestSquadPlayer = closest
 	}
 
 	setCORSHeaders(w, r)

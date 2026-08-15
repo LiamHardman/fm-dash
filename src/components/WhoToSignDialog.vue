@@ -152,8 +152,15 @@
                             <div class="verdict-row">
                                 <div class="verdict-head">Sign <span class="who">{{ rec.mainPick.name }}</span></div>
                                 <div class="grade-chip" :class="'grade-' + gradeSlug(rec.mainPick.grade)">
-                                    <div class="num">{{ rec.mainPick.grade }}</div>
-                                    <div class="lbl">Score<br />{{ rec.mainPick.signingScore }}/100</div>
+                                    <div class="lbl-top">Scout Verdict</div>
+                                    <div class="row items-baseline no-wrap">
+                                        <div class="num">{{ rec.mainPick.grade }}</div>
+                                        <div class="lbl">{{ rec.mainPick.signingScore }}/100</div>
+                                    </div>
+                                    <q-tooltip anchor="top middle" self="bottom middle">
+                                        Your scout's own judgement of how good a signing this is for your specific
+                                        requirements and budget — not the player's Overall rating.
+                                    </q-tooltip>
                                 </div>
                             </div>
 
@@ -237,6 +244,9 @@
                                     </div>
                                     <div class="grade-chip small" :class="'grade-' + gradeSlug(p.grade)">
                                         <div class="num">{{ p.grade }}</div>
+                                        <q-tooltip anchor="top middle" self="bottom middle">
+                                            Scout verdict: {{ p.signingScore }}/100 — how good a signing this would be for your requirements, not their Overall rating.
+                                        </q-tooltip>
                                     </div>
                                     <div class="runner-val">{{ formatCurrency(p.transferValueAmount, currencySymbol) }}</div>
                                 </div>
@@ -639,20 +649,28 @@ export default {
 .verdict-head .who { color: var(--d-accent); }
 
 .grade-chip {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
     background: var(--d-panel-2);
     border: 1px solid var(--d-border);
     border-radius: 10px;
-    padding: 7px 12px;
+    padding: 6px 12px 7px;
     white-space: nowrap;
+    cursor: help;
 }
-.grade-chip.small { padding: 4px 9px; gap: 6px; }
+.grade-chip .lbl-top {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--d-text-dim);
+}
+.grade-chip.small { flex-direction: row; align-items: center; padding: 4px 9px; gap: 6px; }
 .grade-chip .num {
     font-size: 20px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    margin-right: 6px;
 }
-.grade-chip.small .num { font-size: 15px; }
+.grade-chip.small .num { margin-right: 0; font-size: 15px; }
 .grade-chip .lbl { font-size: 10.5px; color: var(--d-text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
 .grade-chip.grade-aplus .num, .grade-chip.grade-a .num { color: var(--d-accent); }
 .grade-chip.grade-b .num { color: var(--d-blue); }
