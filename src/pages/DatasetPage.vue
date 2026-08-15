@@ -239,6 +239,7 @@
         <WhoToSignDialog
             :show="showWhoToSign"
             :teams="uniqueClubs"
+            :players="allPlayersData"
             @close="showWhoToSign = false"
             :currency-symbol="detectedCurrencySymbol"
             :dataset-id="currentDatasetId"

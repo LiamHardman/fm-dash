@@ -258,6 +258,34 @@ func buildSquadSummaries(squad []Player, req WhoToSignRequest) []ScoutPlayerSumm
 	return summaries
 }
 
+// findClosestSquadPlayer returns the current squad's best player (by MBR) at the given
+// uppercased short position, for the frontend's "compare against what you already have"
+// view. Returns nil if no squad player plays that position.
+func findClosestSquadPlayer(squad []Player, upperShortPosition string, attributes []string) *ScoutPlayerSummary {
+	var best *Player
+	for i := range squad {
+		player := squad[i]
+		hasPosition := false
+		for _, pos := range player.ShortPositions {
+			if strings.EqualFold(pos, upperShortPosition) {
+				hasPosition = true
+				break
+			}
+		}
+		if !hasPosition {
+			continue
+		}
+		if best == nil || player.MBR > best.MBR {
+			best = &player
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	summary := buildScoutPlayerSummary(*best, attributes)
+	return &summary
+}
+
 // --- Response schema (ticket 03) ---
 
 // ScoutPlayerRecommendation is the shape used for mainPick/runnersUp in the final
@@ -285,6 +313,12 @@ type WhoToSignPositionRecommendation struct {
 	PositionRationale string                      `json:"positionRationale"`
 	MainPick          ScoutPlayerRecommendation   `json:"mainPick"`
 	RunnersUp         []ScoutPlayerRecommendation `json:"runnersUp"`
+
+	// Populated server-side after the model's structured answer is parsed — not part
+	// of the strict-mode schema the model is constrained to, just bookkeeping this
+	// backend already has on hand from running find_players and reading the squad.
+	PlayersConsidered  []ScoutPlayerSummary `json:"playersConsidered"`
+	ClosestSquadPlayer *ScoutPlayerSummary  `json:"closestSquadPlayer,omitempty"`
 }
 
 type WhoToSignResponse struct {
@@ -464,11 +498,23 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 	systemPrompt := buildWhoToSignSystemPrompt(req, squadSummaries)
 
 	client := openai.NewClient(option.WithAPIKey(apiKey))
-	result, scoutErr := runWhoToSignLoop(ctx, &client, datasetID, systemPrompt)
+	result, considered, scoutErr := runWhoToSignLoop(ctx, &client, datasetID, systemPrompt)
 	if scoutErr != nil {
 		logWarn(ctx, "who-to-sign request failed", "dataset_id", datasetID, "status", scoutErr.status, "error", scoutErr.message)
 		writeWhoToSignError(w, r, scoutErr)
 		return
+	}
+
+	// Attach the candidate pool and closest current-squad player per position — server
+	// bookkeeping the model never needs to produce itself.
+	positionAttrs := make(map[string][]string, len(req.Positions))
+	for _, pos := range req.Positions {
+		positionAttrs[strings.ToUpper(pos.Position)] = pos.Attributes
+	}
+	for i := range result.Recommendations {
+		posKey := strings.ToUpper(result.Recommendations[i].Position)
+		result.Recommendations[i].PlayersConsidered = considered[posKey]
+		result.Recommendations[i].ClosestSquadPlayer = findClosestSquadPlayer(squad, posKey, positionAttrs[posKey])
 	}
 
 	setCORSHeaders(w, r)
@@ -490,7 +536,27 @@ func whoToSignEnvAPIKey() string {
 // executes it in-process on each function_call, and returns once the model produces
 // a final structured answer — capped at whoToSignMaxToolRounds rounds (ticket 08),
 // with one retry on transient OpenAI errors (ticket 10).
-func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, *whoToSignError) {
+func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, map[string][]ScoutPlayerSummary, *whoToSignError) {
+	// considered accumulates every find_players result across the whole loop, keyed by
+	// the uppercased shortPosition searched, deduped by UID and capped at 10 per
+	// position — purely server-side bookkeeping for the frontend's "other players
+	// considered" table, not something the model needs to know about.
+	considered := make(map[string][]ScoutPlayerSummary)
+	consideredSeen := make(map[string]map[int64]bool)
+	recordConsidered := func(shortPosition string, results []ScoutPlayerSummary) {
+		key := strings.ToUpper(shortPosition)
+		if consideredSeen[key] == nil {
+			consideredSeen[key] = make(map[int64]bool)
+		}
+		for _, p := range results {
+			if len(considered[key]) >= 10 || consideredSeen[key][p.UID] {
+				continue
+			}
+			consideredSeen[key][p.UID] = true
+			considered[key] = append(considered[key], p)
+		}
+	}
+
 	tools := []responses.ToolUnionParam{{
 		OfFunction: &responses.FunctionToolParam{
 			Name:        "find_players",
@@ -524,7 +590,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 
 	resp, apiErr := callResponsesWithRetry(ctx, client, params)
 	if apiErr != nil {
-		return nil, apiErr
+		return nil, nil, apiErr
 	}
 
 	// round counts response round-trips; the response is checked for a final answer
@@ -552,9 +618,9 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 					"output_text_len", len(outputText),
 					"output_text", outputText,
 				)
-				return nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
+				return nil, nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
 			}
-			return &result, nil
+			return &result, considered, nil
 		}
 		if round >= whoToSignMaxToolRounds {
 			break
@@ -565,6 +631,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 			var args whoToSignFindPlayersArgs
 			_ = json.Unmarshal([]byte(toolCall.Arguments), &args)
 			toolResults := findPlayersForScout(datasetID, args)
+			recordConsidered(args.ShortPosition, toolResults)
 			toolResultsJSON, _ := json.Marshal(toolResults)
 
 			outputItems[i] = responses.ResponseInputItemUnionParam{
@@ -588,11 +655,11 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 		}
 		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
 		if apiErr != nil {
-			return nil, apiErr
+			return nil, nil, apiErr
 		}
 	}
 
-	return nil, &whoToSignError{
+	return nil, nil, &whoToSignError{
 		http.StatusGatewayTimeout,
 		"the AI scout couldn't settle on recommendations within the allowed search attempts — try narrowing your request (fewer positions, or a specific position) and try again.",
 	}
