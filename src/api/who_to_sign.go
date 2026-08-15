@@ -305,7 +305,13 @@ type ScoutPlayerRecommendation struct {
 	TransferValueAmount int64    `json:"transferValueAmount"`
 	WageAmount          int64    `json:"wageAmount"`
 	Nationality         string   `json:"nationality"`
-	Reasoning           []string `json:"reasoning"`
+	// Grade/SigningScore are the model's own holistic judgement of how good a SIGNING
+	// this player would be against the manager's stated requirements — not a restatement
+	// of Overall/CA/MBR (ticket: "we should have the LLM choosing their own grade").
+	Grade        string   `json:"grade"`
+	SigningScore int      `json:"signingScore"`
+	Strengths    []string `json:"strengths"`
+	WatchOuts    []string `json:"watchOuts"`
 }
 
 type WhoToSignPositionRecommendation struct {
@@ -340,11 +346,30 @@ var scoutPlayerRecommendationSchema = map[string]any{
 		"transferValueAmount": map[string]any{"type": "integer"},
 		"wageAmount":          map[string]any{"type": "integer"},
 		"nationality":         map[string]any{"type": "string"},
-		"reasoning":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"grade": map[string]any{
+			"type":        "string",
+			"enum":        []string{"D", "C", "B", "A", "A*"},
+			"description": "Your own holistic signing-quality grade for this player against the manager's stated requirements — not a restatement of their Overall/CA rating.",
+		},
+		"signingScore": map[string]any{
+			"type":        "integer",
+			"description": "0-100 holistic signing-quality score: how good a SIGNING this player would be for these specific requirements (position need, budget fit, value, role fit) — not their Overall or CA rating.",
+		},
+		"strengths": map[string]any{
+			"type":        "array",
+			"items":       map[string]any{"type": "string"},
+			"description": "Concise bullet points on why this player suits the requirements.",
+		},
+		"watchOuts": map[string]any{
+			"type":        "array",
+			"items":       map[string]any{"type": "string"},
+			"description": "Concise, honest bullet points on this player's weaknesses or risks as a signing. Never leave this empty — every player has trade-offs.",
+		},
 	},
 	"required": []string{
 		"uid", "name", "club", "age", "shortPositions", "overall", "ca", "mbr",
-		"bestRoleOverall", "transferValueAmount", "wageAmount", "nationality", "reasoning",
+		"bestRoleOverall", "transferValueAmount", "wageAmount", "nationality",
+		"grade", "signingScore", "strengths", "watchOuts",
 	},
 	"additionalProperties": false,
 }
@@ -424,8 +449,9 @@ func buildWhoToSignSystemPrompt(req WhoToSignRequest, squadSummaries []ScoutPlay
 	b.WriteString("- If positions were specified above, scout for exactly those positions. If none were specified, first identify 1-3 positions from the current squad most in need of strengthening, and scout for those instead.\n")
 	b.WriteString("- Use the find_players tool to search the transfer market. You may call it multiple times — once per position, and again with loosened criteria (wider budget/age range, fewer attribute filters) if a search returns few or no suitable options. Only if truly nothing suitable exists after widening the search should you name the closest available player as your pick and say so honestly in your reasoning.\n")
 	b.WriteString("- Never state a player's stats, attributes, or attribute-derived claims that didn't come from a find_players result — do not invent numbers.\n")
-	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary.\n")
-	b.WriteString("- For each position scouted, make a conclusive decision on a single player to sign, with concise, specific reasoning bullet points that reference concrete data points, not vague praise. Highlight 1 to 3 other good options as runners-up.\n")
+	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary. When you discuss a player's attributes, only ever reference real Football Manager attribute names (e.g. Finishing, Composure, Tackling, Pace, Work Rate) — never reference FIFA-style aggregate ratings such as PAC, SHO, PAS, DRI, DEF, or PHY; those are not attributes and must not appear in your reasoning.\n")
+	b.WriteString("- For each position scouted, make a conclusive decision on a single player to sign, and highlight 1 to 3 other good options as runners-up.\n")
+	b.WriteString("- For every player you name (main pick and each runner-up), give: a grade (D, C, B, A, or A*) and a signingScore (0-100) that are YOUR OWN holistic judgement of how good a SIGNING they would be for these specific requirements — weighing position need, fit, value for the stated budget, and role suitability. This is not the same as their Overall/CA/MBR rating: a modest player who is an excellent, efficient fit for the need should grade higher than a superior player who is a poor fit or bad value. Also give strengths (concise bullets on why they suit the requirements, referencing concrete data points) and watchOuts (concise, honest bullets on their weaknesses or risks as a signing) — every player has trade-offs, so watchOuts must never be empty, even for your top pick.\n")
 	b.WriteString("- Respond only in the structured format provided.\n")
 	return b.String()
 }
