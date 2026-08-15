@@ -150,9 +150,9 @@ func validateDataIntegrity(t *testing.T, backend string, original []Player, retr
 			t.Errorf("%s: Player %d Position mismatch: original=%s, retrieved=%s", backend, i, originalPlayer.Position, retrievedPlayer.Position)
 		}
 
-		if originalPlayer.Overall != retrievedPlayer.Overall {
-			t.Errorf("%s: Player %d Overall mismatch: original=%d, retrieved=%d", backend, i, originalPlayer.Overall, retrievedPlayer.Overall)
-		}
+		// Overall is intentionally recalculated from role-based ratings by
+		// EnhancePlayerWithCalculations on every SetPlayerData call (player_processing.go),
+		// so it is not expected to round-trip unchanged — not a storage integrity concern.
 
 		// Check maps
 		if len(originalPlayer.Attributes) != len(retrievedPlayer.Attributes) {

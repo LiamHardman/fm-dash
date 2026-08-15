@@ -61,10 +61,12 @@ type localConfigStorage struct {
 }
 
 func (s *localConfigStorage) StoreConfig(name string, data []byte) error {
-	if err := os.MkdirAll(s.dir, 0o750); err != nil {
+	path := filepath.Join(s.dir, name)
+	// name may contain a "/" (e.g. the "wishlists/" key prefix), placing the file in
+	// a subdirectory of s.dir that hasn't been created yet.
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
-	path := filepath.Join(s.dir, name)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return os.WriteFile(path, data, 0o644)

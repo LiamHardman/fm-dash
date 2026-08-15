@@ -131,7 +131,7 @@ func (amo *AdvancedMemoryOptimizer) ConvertToOptimizedAdvanced(player *Player) *
 	opt := &OptimizedPlayer{
 		TransferValueAmount: player.TransferValueAmount,
 		WageAmount:          player.WageAmount,
-		Overall:             int32(clampInt32(player.Overall)),
+		Overall:             clampInt32(player.Overall),
 		UID:                 player.UID,
 		Name:                player.Name, // Keep name as-is (unique)
 
@@ -145,23 +145,23 @@ func (amo *AdvancedMemoryOptimizer) ConvertToOptimizedAdvanced(player *Player) *
 		BestRoleOverall:     amo.positionPool.Intern(player.BestRoleOverall),
 
 		// FIFA stats as int16
-		PAC:        int16(clampInt16(player.PAC)),
-		SHO:        int16(clampInt16(player.SHO)),
-		PAS:        int16(clampInt16(player.PAS)),
-		DRI:        int16(clampInt16(player.DRI)),
-		DEF:        int16(clampInt16(player.DEF)),
-		PHY:        int16(clampInt16(player.PHY)),
-		TotalStats: int16(clampInt16(player.TotalStats)),
-		MBR:        int16(clampInt16(player.MBR)),
+		PAC:        clampInt16(player.PAC),
+		SHO:        clampInt16(player.SHO),
+		PAS:        clampInt16(player.PAS),
+		DRI:        clampInt16(player.DRI),
+		DEF:        clampInt16(player.DEF),
+		PHY:        clampInt16(player.PHY),
+		TotalStats: clampInt16(player.TotalStats),
+		MBR:        clampInt16(player.MBR),
 
 		// GK stats
-		GK:  int16(clampInt16(player.GK)),
-		DIV: int16(clampInt16(player.DIV)),
-		HAN: int16(clampInt16(player.HAN)),
-		REF: int16(clampInt16(player.REF)),
-		KIC: int16(clampInt16(player.KIC)),
-		SPD: int16(clampInt16(player.SPD)),
-		POS: int16(clampInt16(player.POS)),
+		GK:  clampInt16(player.GK),
+		DIV: clampInt16(player.DIV),
+		HAN: clampInt16(player.HAN),
+		REF: clampInt16(player.REF),
+		KIC: clampInt16(player.KIC),
+		SPD: clampInt16(player.SPD),
+		POS: clampInt16(player.POS),
 
 		AttributeMasked:      player.AttributeMasked,
 		RoleSpecificOveralls: player.RoleSpecificOveralls,
@@ -169,7 +169,7 @@ func (amo *AdvancedMemoryOptimizer) ConvertToOptimizedAdvanced(player *Player) *
 
 	// Parse age safely
 	if age, err := safeParseInt(player.Age); err == nil {
-		opt.Age = int32(clampInt32(age))
+		opt.Age = clampInt32(age)
 	}
 
 	// Pack FM attributes into compact arrays
@@ -200,7 +200,7 @@ func (amo *AdvancedMemoryOptimizer) packAttributes(player *Player, opt *Optimize
 	for i, attr := range technicalAttrs {
 		if i < len(opt.TechnicalAttributes) {
 			if val, exists := player.NumericAttributes[attr]; exists {
-				opt.TechnicalAttributes[i] = int8(clampInt8(val))
+				opt.TechnicalAttributes[i] = clampInt8(val)
 			}
 		}
 	}
@@ -210,7 +210,7 @@ func (amo *AdvancedMemoryOptimizer) packAttributes(player *Player, opt *Optimize
 	for i, attr := range mentalAttrs {
 		if i < len(opt.MentalAttributes) {
 			if val, exists := player.NumericAttributes[attr]; exists {
-				opt.MentalAttributes[i] = int8(clampInt8(val))
+				opt.MentalAttributes[i] = clampInt8(val)
 			}
 		}
 	}
@@ -220,7 +220,7 @@ func (amo *AdvancedMemoryOptimizer) packAttributes(player *Player, opt *Optimize
 	for i, attr := range physicalAttrs {
 		if i < len(opt.PhysicalAttributes) {
 			if val, exists := player.NumericAttributes[attr]; exists {
-				opt.PhysicalAttributes[i] = int8(clampInt8(val))
+				opt.PhysicalAttributes[i] = clampInt8(val)
 			}
 		}
 	}
@@ -230,7 +230,7 @@ func (amo *AdvancedMemoryOptimizer) packAttributes(player *Player, opt *Optimize
 	for i, attr := range gkAttrs {
 		if i < len(opt.GoalkeeperAttributes) {
 			if val, exists := player.NumericAttributes[attr]; exists {
-				opt.GoalkeeperAttributes[i] = int8(clampInt8(val))
+				opt.GoalkeeperAttributes[i] = clampInt8(val)
 			}
 		}
 	}

@@ -31,31 +31,6 @@ func BenchmarkPlayerCreation(b *testing.B) {
 	})
 }
 
-// BenchmarkStringInterning benchmarks string interning performance
-func BenchmarkStringInterning(b *testing.B) {
-	players := createTestPlayers(1000)
-
-	b.Run("WithStringInterning", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ctx := context.Background()
-			applyStringInterning(ctx, players)
-		}
-	})
-
-	b.Run("WithoutStringInterning", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			// Just copy strings without interning
-			for j := range players {
-				_ = players[j].Club + ""
-				_ = players[j].Position + ""
-				_ = players[j].Nationality + ""
-			}
-		}
-	})
-}
-
 // BenchmarkPlayerDeepCopy benchmarks deep copy operations
 func BenchmarkPlayerDeepCopy(b *testing.B) {
 	players := createTestPlayers(1000)
@@ -63,30 +38,6 @@ func BenchmarkPlayerDeepCopy(b *testing.B) {
 	b.Run("RegularDeepCopy", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = deepCopyPlayers(players)
-		}
-	})
-}
-
-// BenchmarkMemoryOptimizations benchmarks the full optimization pipeline
-func BenchmarkMemoryOptimizations(b *testing.B) {
-	players := createTestPlayers(5000)
-
-	b.Run("FullOptimizationPipeline", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ctx := context.Background()
-			_, err := OptimizePlayerData(ctx, players)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	b.Run("NoOptimizations", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			// Just deep copy without optimizations
 			_ = deepCopyPlayers(players)
 		}
 	})
@@ -175,37 +126,6 @@ func BenchmarkProtobufSerialization(b *testing.B) {
 	})
 }
 
-// BenchmarkMemoryPressure benchmarks performance under memory pressure
-func BenchmarkMemoryPressure(b *testing.B) {
-	// Create memory pressure by allocating large datasets
-	largePlayers := createTestPlayers(50000)
-
-	b.Run("UnderMemoryPressure", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ctx := context.Background()
-			_, err := OptimizePlayerData(ctx, largePlayers)
-			if err != nil {
-				b.Fatal(err)
-			}
-			// Force GC to simulate memory pressure
-			runtime.GC()
-		}
-	})
-
-	b.Run("NormalMemoryConditions", func(b *testing.B) {
-		smallPlayers := createTestPlayers(1000)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ctx := context.Background()
-			_, err := OptimizePlayerData(ctx, smallPlayers)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-}
-
 // Helper functions for benchmarks
 
 func createTestPlayers(count int) []Player {
@@ -272,97 +192,3 @@ func createTestPlayer() Player {
 	}
 }
 
-// MemoryBenchmarkResult holds the results of a memory benchmark
-type MemoryBenchmarkResult struct {
-	TestName         string
-	AllocsBefore     uint64
-	AllocsAfter      uint64
-	AllocDiff        uint64
-	MemoryBefore     uint64
-	MemoryAfter      uint64
-	MemoryDiff       uint64
-	Duration         time.Duration
-	ObjectsProcessed int
-	MemoryPerObject  float64
-}
-
-// RunMemoryBenchmark runs a comprehensive memory benchmark
-func RunMemoryBenchmark(testName string, objectCount int, testFunc func()) MemoryBenchmarkResult {
-	var m1, m2 runtime.MemStats
-
-	// Clean up before measuring
-	runtime.GC()
-	runtime.GC()
-	runtime.ReadMemStats(&m1)
-
-	start := time.Now()
-	testFunc()
-	duration := time.Since(start)
-
-	runtime.GC()
-	runtime.GC()
-	runtime.ReadMemStats(&m2)
-
-	return MemoryBenchmarkResult{
-		TestName:         testName,
-		AllocsBefore:     m1.TotalAlloc,
-		AllocsAfter:      m2.TotalAlloc,
-		AllocDiff:        m2.TotalAlloc - m1.TotalAlloc,
-		MemoryBefore:     m1.Alloc,
-		MemoryAfter:      m2.Alloc,
-		MemoryDiff:       m2.Alloc - m1.Alloc,
-		Duration:         duration,
-		ObjectsProcessed: objectCount,
-		MemoryPerObject:  float64(m2.TotalAlloc-m1.TotalAlloc) / float64(objectCount),
-	}
-}
-
-// BenchmarkWithMemoryTracking provides detailed memory usage tracking
-func BenchmarkWithMemoryTracking(b *testing.B) {
-	tests := []struct {
-		name        string
-		playerCount int
-		testFunc    func([]Player)
-	}{
-		{
-			name:        "SmallDataset_1K",
-			playerCount: 1000,
-			testFunc: func(players []Player) {
-				ctx := context.Background()
-				OptimizePlayerData(ctx, players)
-			},
-		},
-		{
-			name:        "MediumDataset_10K",
-			playerCount: 10000,
-			testFunc: func(players []Player) {
-				ctx := context.Background()
-				OptimizePlayerData(ctx, players)
-			},
-		},
-		{
-			name:        "LargeDataset_50K",
-			playerCount: 50000,
-			testFunc: func(players []Player) {
-				ctx := context.Background()
-				OptimizePlayerData(ctx, players)
-			},
-		},
-	}
-
-	for _, test := range tests {
-		b.Run(test.name, func(b *testing.B) {
-			players := createTestPlayers(test.playerCount)
-
-			result := RunMemoryBenchmark(test.name, test.playerCount, func() {
-				for i := 0; i < b.N; i++ {
-					test.testFunc(players)
-				}
-			})
-
-			b.ReportMetric(result.MemoryPerObject, "bytes/player")
-			b.ReportMetric(float64(result.Duration.Microseconds()), "μs/op")
-			b.ReportMetric(float64(result.AllocDiff), "total-allocs")
-		})
-	}
-}

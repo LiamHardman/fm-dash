@@ -355,10 +355,9 @@ func validateE2EDataIntegrity(t *testing.T, players []Player, backendName string
 			t.Errorf("Player %d has empty club with %s backend", i, backendName)
 		}
 
-		// Check maps are initialized
-		if player.Attributes == nil {
-			t.Errorf("Player %d has nil Attributes map with %s backend", i, backendName)
-		}
+		// Check maps are initialized. Attributes is intentionally excluded from the JSON API
+		// response (`json:"-"` in types.go) — NumericAttributes is the public representation —
+		// so it is always nil after a real upload/retrieve round trip through the HTTP API.
 		if player.NumericAttributes == nil {
 			t.Errorf("Player %d has nil NumericAttributes map with %s backend", i, backendName)
 		}

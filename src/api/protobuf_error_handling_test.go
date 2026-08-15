@@ -482,7 +482,7 @@ func TestProtobufErrorHandlerMetrics(t *testing.T) {
 	// Simulate various errors
 	handler.HandleSerializationError(ctx, w, req, nil, fmt.Errorf("test error"), "dataset1")
 	handler.HandleProtobufConversionError(ctx, w, req, nil, fmt.Errorf("test error"), "dataset2", "to_protobuf")
-	handler.HandleProtobufCompressionError(ctx, w, req, nil, fmt.Errorf("test error"), "dataset3", "compress")
+	handler.HandleProtobufCompressionError(ctx, w, req, &pb.PlayerDataResponse{}, fmt.Errorf("test error"), "dataset3", "compress")
 	handler.HandleClientCompatibilityError(ctx, w, req, nil, "IE11", "dataset4")
 	
 	// Get the metrics

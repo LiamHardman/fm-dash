@@ -153,8 +153,8 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 					t.Errorf("Expected 2 players, got %v", players)
 				}
 
-				if currency, ok := data["currency_symbol"].(string); !ok || currency != testCurrency {
-					t.Errorf("Expected currency symbol %s, got %v", testCurrency, data["currency_symbol"])
+				if currency, ok := data["currencySymbol"].(string); !ok || currency != testCurrency {
+					t.Errorf("Expected currency symbol %s, got %v", testCurrency, data["currencySymbol"])
 				}
 			},
 		},
@@ -1306,9 +1306,7 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 			req.Header.Set("Accept", tc.acceptHeader)
 
 			// Create a client with retry capability
-			client := &http.Client{
-				Timeout: 5 * time.Second,
-			}
+			client := CreateHTTPClient(5*time.Second, DefaultRetryConfig)
 
 			// Send the request
 			resp, err := client.Do(req)

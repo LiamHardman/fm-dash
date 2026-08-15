@@ -101,40 +101,6 @@ export function useDynamicComponents() {
     }
   )
 
-  // Player detail components
-  const DynamicPlayerAttributesCard = createAsyncComponent(
-    () => import('@/components/player-details/PlayerAttributesCard.vue'),
-    {
-      loadingComponent: LoadingSpinner,
-      errorComponent: ErrorBoundary,
-      delay: 100,
-      timeout: 30000,
-      retryAttempts: 3,
-    }
-  )
-
-  const DynamicPlayerProfileCard = createAsyncComponent(
-    () => import('@/components/player-details/PlayerProfileCard.vue'),
-    {
-      loadingComponent: LoadingSpinner,
-      errorComponent: ErrorBoundary,
-      delay: 100,
-      timeout: 30000,
-      retryAttempts: 3,
-    }
-  )
-
-  const DynamicPerformanceAnalysisCard = createAsyncComponent(
-    () => import('@/components/player-details/PerformanceAnalysisCard.vue'),
-    {
-      loadingComponent: LoadingSpinner,
-      errorComponent: ErrorBoundary,
-      delay: 150,
-      timeout: 30000,
-      retryAttempts: 3,
-    }
-  )
-
   // Preload strategy for critical components
   const preloadStrategy = {
     // High priority - components likely to be used immediately
@@ -251,27 +217,9 @@ export function useDynamicComponents() {
     DynamicPerformanceMonitor,
     DynamicInteractiveUploadLoader,
     DynamicPlayerFilters,
-    DynamicPlayerAttributesCard,
-    DynamicPlayerProfileCard,
-    DynamicPerformanceAnalysisCard,
 
     // Preloading utilities
     initializePreloading,
     preloadStrategy,
   }
-}
-
-// Export individual components for direct use
-export const DynamicComponents = {
-  PlayerDetailDialog: () => import('@/components/PlayerDetailDialog.vue'),
-  ExportOptionsDialog: () => import('@/components/ExportOptionsDialog.vue'),
-  ScatterPlotCard: () => import('@/components/ScatterPlotCard.vue'),
-  PlayerDataTable: () => import('@/components/PlayerDataTable.vue'),
-  PitchDisplay: () => import('@/components/PitchDisplay.vue'),
-  PerformanceMonitor: () => import('@/components/PerformanceMonitor.vue'),
-  InteractiveUploadLoader: () => import('@/components/InteractiveUploadLoader.vue'),
-  PlayerFilters: () => import('@/components/filters/PlayerFilters.vue'),
-  PlayerAttributesCard: () => import('@/components/player-details/PlayerAttributesCard.vue'),
-  PlayerProfileCard: () => import('@/components/player-details/PlayerProfileCard.vue'),
-  PerformanceAnalysisCard: () => import('@/components/player-details/PerformanceAnalysisCard.vue'),
 }

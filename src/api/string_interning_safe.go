@@ -107,21 +107,6 @@ func (si *SafeStringInterning) cleanupIfNeeded() {
 	}
 }
 
-// SafeOptimizePlayerStrings safely optimizes player strings without modifying during concurrent access
-func SafeOptimizePlayerStrings(player *Player) {
-	// Only intern if we're sure it's safe
-	if player == nil {
-		return
-	}
-
-	// Create a temporary copy for interning - don't modify original during serialization
-	player.Club = safeClubInterning.SafeIntern(player.Club)
-	player.Position = safePositionInterning.SafeIntern(player.Position)
-	player.Nationality = safeNationalityInterning.SafeIntern(player.Nationality)
-	player.Division = safeDivisionInterning.SafeIntern(player.Division)
-	player.Personality = safePersonalityInterning.SafeIntern(player.Personality)
-}
-
 // GetSafeStringInterningStats returns statistics for all safe interning pools
 func GetSafeStringInterningStats() map[string]map[string]int64 {
 	return map[string]map[string]int64{

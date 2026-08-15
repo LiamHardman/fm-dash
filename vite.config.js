@@ -169,11 +169,7 @@ export default defineConfig({
             // Other smaller vendor libraries
             if (id.includes('node_modules')) {
               // Group small utilities together
-              if (
-                id.includes('unique-slug') ||
-                id.includes('fs-minipass') ||
-                id.includes('biome')
-              ) {
+              if (id.includes('biome')) {
                 return 'vendor-utils-small'
               }
               return 'vendor-misc'

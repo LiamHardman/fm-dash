@@ -394,11 +394,11 @@ func TestNumericAttributesPopulation(t *testing.T) {
 		Position: "ST",
 		Attributes: map[string]string{
 			"Pac": "15",
-			"Sho": "18",
+			"Fin": "18",
 			"Pas": "12",
 			"Dri": "16",
-			"Def": "8",
-			"Phy": "14",
+			"Tck": "8",
+			"Str": "14",
 		},
 		NumericAttributes: make(map[string]int), // Empty initially
 	}
@@ -430,7 +430,7 @@ func TestNumericAttributesPopulation(t *testing.T) {
 	}
 
 	// Verify specific attributes were populated
-	expectedAttributes := []string{"Pac", "Sho", "Pas", "Dri", "Def", "Phy"}
+	expectedAttributes := []string{"Pac", "Fin", "Pas", "Dri", "Tck", "Str"}
 	for _, attr := range expectedAttributes {
 		if value, exists := retrievedPlayer.NumericAttributes[attr]; !exists {
 			t.Errorf("Expected attribute %s to be populated", attr)
@@ -451,11 +451,11 @@ func TestSetPlayerDataAsyncNumericAttributes(t *testing.T) {
 		Position: "CM",
 		Attributes: map[string]string{
 			"Pac": "12",
-			"Sho": "14",
+			"Fin": "14",
 			"Pas": "18",
 			"Dri": "15",
-			"Def": "16",
-			"Phy": "13",
+			"Tck": "16",
+			"Str": "13",
 		},
 		NumericAttributes: make(map[string]int), // Empty initially
 	}
@@ -490,7 +490,7 @@ func TestSetPlayerDataAsyncNumericAttributes(t *testing.T) {
 	}
 
 	// Verify specific attributes were populated
-	expectedAttributes := []string{"Pac", "Sho", "Pas", "Dri", "Def", "Phy"}
+	expectedAttributes := []string{"Pac", "Fin", "Pas", "Dri", "Tck", "Str"}
 	for _, attr := range expectedAttributes {
 		if value, exists := retrievedPlayer.NumericAttributes[attr]; !exists {
 			t.Errorf("Expected attribute %s to be populated", attr)

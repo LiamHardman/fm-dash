@@ -179,6 +179,12 @@ func DeleteDataset(datasetID string) error {
 		return err
 	}
 
+	// Also purge the legacy in-memory store, which GetPlayerData checks first —
+	// otherwise a deleted dataset keeps being served stale until server restart.
+	storeMutex.Lock()
+	delete(playerDataStore, datasetID)
+	storeMutex.Unlock()
+
 	// Remove the duplicate mapping after successful deletion
 	removeDuplicateMapping(datasetID)
 

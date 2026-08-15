@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bytes"
@@ -1165,10 +1165,13 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", serializer.ContentType())
 					w.Header().Set("X-Cache-Source", "memory")
 					w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-					if serializer.ShouldCompress() {
-						w.Header().Set("Content-Encoding", "gzip")
-					}
 
+					if shouldGzipResponse(w, r, serializer) {
+						if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+							responseBytes = compressed
+							w.Header().Set("Content-Encoding", "gzip")
+						}
+					}
 					if _, writeErr := w.Write(responseBytes); writeErr != nil {
 						logError(ctx, "Error writing protobuf response", "error", writeErr)
 					}
@@ -1242,10 +1245,13 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", serializer.ContentType())
 			w.Header().Set("X-Cache-Source", "computed")
 			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-			if serializer.ShouldCompress() {
-				w.Header().Set("Content-Encoding", "gzip")
-			}
 
+			if shouldGzipResponse(w, r, serializer) {
+				if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+					responseBytes = compressed
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+			}
 			if _, writeErr := w.Write(responseBytes); writeErr != nil {
 				logError(ctx, "Error writing protobuf response", "error", writeErr)
 			}
@@ -1353,10 +1359,13 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", serializer.ContentType())
 					w.Header().Set("X-Cache-Source", "memory")
 					w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-					if serializer.ShouldCompress() {
-						w.Header().Set("Content-Encoding", "gzip")
-					}
 
+					if shouldGzipResponse(w, r, serializer) {
+						if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+							responseBytes = compressed
+							w.Header().Set("Content-Encoding", "gzip")
+						}
+					}
 					if _, writeErr := w.Write(responseBytes); writeErr != nil {
 						logError(ctx, "Error writing protobuf response", "error", writeErr)
 					}
@@ -1404,9 +1413,54 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	// Cache the result for 5 minutes
 	setInMemCache(cacheKey, teamsData, 5*time.Minute)
 
+	setCORSHeaders(w, r)
+
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, safeInt32(len(teamsData)), false)
+
+	if supportsProtobuf {
+		// Create protobuf response
+		protoTeams := make([]string, len(teamsData))
+		for i, team := range teamsData {
+			protoTeams[i] = team.Name
+		}
+
+		protoResponse := &pb.TeamsResponse{
+			Teams:    protoTeams,
+			Metadata: metadata,
+		}
+
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			w.Header().Set("X-Cache-Source", "computed")
+
+			if shouldGzipResponse(w, r, serializer) {
+				if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+					responseBytes = compressed
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+			}
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+
+			logDebug(ctx, "Teams served as protobuf",
+				"team_count", len(teamsData),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for teams, falling back to JSON", "error", err)
+	}
+
+	// Fallback to JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Source", "computed")
-	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 		logError(ctx, "Error encoding JSON response for teams", "dataset_id", sanitizeForLogging(datasetID), "division", sanitizeForLogging(division), "error", err)
@@ -1562,7 +1616,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try to load from cache
 	if cachedPercentiles, found := loadPercentilesFromCache(ctx, cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
-		logDebug(ctx, "🎯 CACHE HIT - Returning cached percentiles",
+		logDebug(ctx, "ðŸŽ¯ CACHE HIT - Returning cached percentiles",
 			"dataset_id", datasetID,
 			"player_name", req.PlayerName,
 			"division_filter", req.DivisionFilter,
@@ -1580,7 +1634,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache miss - perform optimized calculation
-	logDebug(ctx, "💫 CACHE MISS - calculating percentiles",
+	logDebug(ctx, "ðŸ’« CACHE MISS - calculating percentiles",
 		"dataset_id", datasetID,
 		"player_name", req.PlayerName,
 		"division_filter", req.DivisionFilter,
@@ -1712,9 +1766,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	case "same":
 		divisionFilter = DivisionFilterSame
 		// For 'same', we need to get the target player's division
-		if targetPlayer != nil {
-			targetDivision = targetPlayer.Division
-		}
+		targetDivision = targetPlayer.Division
 	case "top5":
 		divisionFilter = DivisionFilterTop5
 	case "all", "":
@@ -1738,7 +1790,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try to load from cache
 	if cachedPercentiles, found := loadPlayerPercentilesFromCache(ctx, cacheKey, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players); found {
-		logDebug(ctx, "🎯 CACHE HIT - Returning cached player percentiles",
+		logDebug(ctx, "ðŸŽ¯ CACHE HIT - Returning cached player percentiles",
 			"dataset_id", datasetID,
 			"player_uid", req.PlayerUID,
 			"compare_division", req.CompareDivision,
@@ -1756,7 +1808,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache miss - perform optimized calculation
-	logDebug(ctx, "💫 CACHE MISS - calculating player percentiles",
+	logDebug(ctx, "ðŸ’« CACHE MISS - calculating player percentiles",
 		"dataset_id", datasetID,
 		"player_uid", req.PlayerUID,
 		"compare_division", req.CompareDivision,
@@ -2428,10 +2480,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				// Protobuf serialization successful
 				w.Header().Set("Content-Type", serializer.ContentType())
-				if serializer.ShouldCompress() {
-					w.Header().Set("Content-Encoding", "gzip")
-				}
 
+				if shouldGzipResponse(w, r, serializer) {
+					if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+						responseBytes = compressed
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+				}
 				if _, writeErr := w.Write(responseBytes); writeErr != nil {
 					logError(ctx, "Error writing protobuf response", "error", writeErr)
 				}
@@ -2520,10 +2575,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 				// Protobuf serialization successful
 				w.Header().Set("Content-Type", serializer.ContentType())
 				w.Header().Set("X-Cache-Status", "HIT")
-				if serializer.ShouldCompress() {
-					w.Header().Set("Content-Encoding", "gzip")
-				}
 
+				if shouldGzipResponse(w, r, serializer) {
+					if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+						responseBytes = compressed
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+				}
 				if _, writeErr := w.Write(responseBytes); writeErr != nil {
 					logError(ctx, "Error writing protobuf response", "error", writeErr)
 				}
@@ -2610,10 +2668,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			// Protobuf serialization successful
 			w.Header().Set("Content-Type", serializer.ContentType())
 			w.Header().Set("X-Cache-Status", "MISS")
-			if serializer.ShouldCompress() {
-				w.Header().Set("Content-Encoding", "gzip")
-			}
 
+			if shouldGzipResponse(w, r, serializer) {
+				if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+					responseBytes = compressed
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+			}
 			if _, writeErr := w.Write(responseBytes); writeErr != nil {
 				logError(ctx, "Error writing protobuf response", "error", writeErr)
 			}
@@ -2913,19 +2974,19 @@ func getExpectedValuePerRating(overall float64) float64 {
 	// Higher rated players typically cost more per rating point due to scarcity
 	switch {
 	case overall >= 85:
-		return 1.2 // Elite players: ~£1.2m per overall point
+		return 1.2 // Elite players: ~Â£1.2m per overall point
 	case overall >= 80:
-		return 0.8 // World class players: ~£0.8m per overall point
+		return 0.8 // World class players: ~Â£0.8m per overall point
 	case overall >= 75:
-		return 0.5 // Quality players: ~£0.5m per overall point
+		return 0.5 // Quality players: ~Â£0.5m per overall point
 	case overall >= 70:
-		return 0.3 // Good players: ~£0.3m per overall point
+		return 0.3 // Good players: ~Â£0.3m per overall point
 	case overall >= 65:
-		return 0.2 // Decent players: ~£0.2m per overall point
+		return 0.2 // Decent players: ~Â£0.2m per overall point
 	case overall >= 60:
-		return 0.15 // Average players: ~£0.15m per overall point
+		return 0.15 // Average players: ~Â£0.15m per overall point
 	default:
-		return 0.1 // Below average players: ~£0.1m per overall point
+		return 0.1 // Below average players: ~Â£0.1m per overall point
 	}
 }
 
@@ -2992,7 +3053,7 @@ func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge
 		valuePerRating := transferValueMillions / overall
 
 		// Use logarithmic scaling to reduce the penalty for expensive but valuable players
-		// This helps ensure that an 85-rated £50m player can compete with a 75-rated £5m player
+		// This helps ensure that an 85-rated Â£50m player can compete with a 75-rated Â£5m player
 		logValuePerRating := math.Log10(valuePerRating + 1) // +1 to avoid log(0)
 
 		// Base efficiency score: higher overall rating and lower value-per-rating is better
@@ -3394,9 +3455,9 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // clubLogoOverridesHandler manages user-confirmed and user-rejected club logo overrides.
-// GET  /api/club-logo/overrides          → returns the full overrides map
-// POST /api/club-logo/overrides          → body {"name":"LOSC","teamId":"858"} confirms; {"name":"LOSC","teamId":""} rejects
-// DELETE /api/club-logo/overrides?name=X → removes an override
+// GET  /api/club-logo/overrides          â†’ returns the full overrides map
+// POST /api/club-logo/overrides          â†’ body {"name":"LOSC","teamId":"858"} confirms; {"name":"LOSC","teamId":""} rejects
+// DELETE /api/club-logo/overrides?name=X â†’ removes an override
 func clubLogoOverridesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	setCORSHeaders(w, r)
@@ -5496,61 +5557,6 @@ func processBasicPlayerData(players []Player) []Player {
 	return processedPlayers
 }
 
-// CalculatePlayerPercentilesAsync calculates percentiles for a dataset asynchronously
-func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, players []Player, currencySymbol string) error {
-	ctx, span := StartSpan(ctx, "percentile_calculation_async")
-	defer span.End()
-
-	SetSpanAttributes(ctx,
-		attribute.String("dataset.id", datasetID),
-		attribute.Int("player_count", len(players)),
-	)
-
-	logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
-	startTime := time.Now()
-
-	// Get a fresh copy of the data from the store to avoid race conditions
-	// This ensures we're working with the most up-to-date data and not a reference
-	// that might be modified by other goroutines
-	storeMutex.RLock()
-	storedData, exists := playerDataStore[datasetID]
-	storeMutex.RUnlock()
-
-	if !exists {
-		logError(ctx, "Dataset %s not found in store for percentile calculation", datasetID)
-		return WrapErrorf(ErrDatasetNotFound, "dataset: %s", datasetID)
-	}
-
-	// Use the existing OptimizedDeepCopyPlayers function which is designed to handle this safely
-	// CRITICAL: Use safe deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
-	playersCopy := deepCopyPlayers(storedData.Players)
-
-	// Calculate percentiles for all division filters to ensure stability
-	CalculatePlayerPerformancePercentiles(playersCopy)
-
-	// Log top 25 MBR players after calculations are complete
-	logTop25OverallPlayers(playersCopy)
-
-	// Update the stored data with calculated percentiles
-	SetPlayerData(datasetID, playersCopy, storedData.CurrencySymbol)
-
-	calculationTime := time.Since(startTime)
-	logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
-
-	SetSpanAttributes(ctx,
-		attribute.Int64("calculation_time_ms", calculationTime.Milliseconds()),
-		attribute.String("calculation.status", "success"),
-	)
-
-	RecordBusinessOperation(ctx, "percentile_calculation_completed", true, map[string]interface{}{
-		"dataset_id":       datasetID,
-		"player_count":     len(players),
-		"calculation_time": calculationTime.Milliseconds(),
-	})
-
-	return nil
-}
-
 // --- END: Struct Definitions ---
 
 // UpgradeFinderRequest represents the request parameters for finding player upgrades
@@ -5929,10 +5935,13 @@ func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
 						w.Header().Set("Content-Type", serializer.ContentType())
 						w.Header().Set("X-Cache-Source", "memory")
 						w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-						if serializer.ShouldCompress() {
-							w.Header().Set("Content-Encoding", "gzip")
-						}
 
+						if shouldGzipResponse(w, r, serializer) {
+							if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+								responseBytes = compressed
+								w.Header().Set("Content-Encoding", "gzip")
+							}
+						}
 						if _, writeErr := w.Write(responseBytes); writeErr != nil {
 							logError(ctx, "Error writing protobuf response", "error", writeErr)
 						}
@@ -6002,10 +6011,13 @@ func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", serializer.ContentType())
 				w.Header().Set("X-Cache-Source", "computed")
 				w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-				if serializer.ShouldCompress() {
-					w.Header().Set("Content-Encoding", "gzip")
-				}
 
+				if shouldGzipResponse(w, r, serializer) {
+					if compressed, cErr := gzipResponseData(responseBytes); cErr == nil {
+						responseBytes = compressed
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+				}
 				if _, writeErr := w.Write(responseBytes); writeErr != nil {
 					logError(ctx, "Error writing protobuf response", "error", writeErr)
 				}
@@ -6383,7 +6395,7 @@ func logTop25OverallPlayers(players []Player) {
 			i+1, player.Name, ageInt, player.Overall, player.Club, player.MBR)
 		LogInfo("  Breakdown: Base=%d, Age=%d, Mentality=%d, ValueScore=%.2f (contribution=%d), TransferValuePenalty=%d, SalaryPenalty=%d",
 			baseRating, ageModifier, mentalityModifier, calculatedValueScore, valueScoreContribution, transferValuePenalty, salaryPenalty)
-		LogInfo("  Transfer Value: %s (£%d), Wage: £%d/week", player.TransferValue, player.TransferValueAmount, player.WageAmount)
+		LogInfo("  Transfer Value: %s (Â£%d), Wage: Â£%d/week", player.TransferValue, player.TransferValueAmount, player.WageAmount)
 	}
 	LogInfo("=== END TOP 25 OVERALL RATING PLAYERS ===")
 }

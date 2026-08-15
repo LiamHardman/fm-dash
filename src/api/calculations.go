@@ -410,7 +410,7 @@ func CalculateTotalStats(playerNumericAttributes map[string]int) int {
 }
 
 // CalculateMoneyballRating calculates the Moneyball Rating (MBR) based on overall, age, mentality, and value score
-func CalculateMoneyballRating(player *Player, valueScore float64) int {
+func CalculateMoneyballRating(player *Player) int {
 	// Base rating is the player's overall divided by 3 (reduced from 2)
 	baseRating := player.Overall / 3
 

@@ -153,8 +153,9 @@ func main() {
 	// Initialize memory optimizations
 	InitializeMemoryOptimizations()
 
-	// Initialize advanced memory optimizer
-	LogInfo("Advanced memory optimizer initialized")
+	// Initialize advanced memory optimizer (starts periodic profiler snapshots
+	// consumed by the /api/memory-profile debug endpoints)
+	InitializeMemoryProfiler()
 
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
