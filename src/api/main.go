@@ -292,6 +292,9 @@ func main() {
 	// API endpoint for persisting per-dataset wishlists
 	mux.Handle("/api/wishlists/", wrapHandler(http.HandlerFunc(wishlistHandler), "wishlists"))
 
+	// API endpoint for multi-snapshot player progression analysis
+	mux.Handle("/api/progression/analyze", wrapHandler(http.HandlerFunc(progressionAnalyzeHandler), "progression-analyze"))
+
 	// Register memory profiling and pprof endpoints
 	RegisterMemoryProfileEndpoints(mux)
 

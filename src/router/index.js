@@ -11,6 +11,7 @@ const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
 const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
+const ProgressionPage = () => import('../pages/ProgressionPage.vue')
 
 const routes = [
   {
@@ -98,6 +99,11 @@ const routes = [
     path: '/cards',
     name: 'cards',
     component: CardDesignsPage,
+  },
+  {
+    path: '/progression',
+    name: 'progression',
+    component: ProgressionPage,
   },
 ]
 

@@ -59,6 +59,27 @@
                 </q-btn>
             </div>
 
+            <!-- Snapshot Navigation (only present when the caller passes 2+ snapshots, e.g. Progression) -->
+            <div v-if="snapshotTabs.length > 1" class="snapshot-tab-navigation">
+                <q-tabs
+                    :model-value="activeSnapshotIndex"
+                    @update:model-value="(v) => $emit('update:activeSnapshotIndex', v)"
+                    dense
+                    class="snapshot-tabs"
+                    :class="isDarkMode ? 'tabs-dark' : 'tabs-light'"
+                    active-color="primary"
+                    indicator-color="primary"
+                    align="left"
+                >
+                    <q-tab
+                        v-for="(tab, i) in snapshotTabs"
+                        :key="i"
+                        :name="i"
+                        :label="tab.label"
+                    />
+                </q-tabs>
+            </div>
+
             <!-- Tab Navigation -->
             <div class="tab-navigation">
                 <q-tabs
@@ -76,7 +97,8 @@
             </div>
 
             <!-- Player data not available -->
-            <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section">
+            <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section"
+                :class="{ 'has-snapshot-tabs': snapshotTabs.length > 1 }">
                 <div class="text-center q-pa-lg">
                     <q-icon name="person_off" size="4em" class="text-grey-4 q-mb-md" />
                     <div class="text-h6 text-grey-6">Player data not available</div>
@@ -84,7 +106,8 @@
                 </div>
             </q-card-section>
 
-            <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section">
+            <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section"
+                :class="{ 'has-snapshot-tabs': snapshotTabs.length > 1 }">
                 <!-- Progressive loading indicator -->
                 <div v-if="isLoadingDetailedData" class="loading-indicator q-mb-md">
                     <div class="text-center">
@@ -1479,8 +1502,16 @@ export default defineComponent({
     show: { type: Boolean, default: false },
     currencySymbol: { type: String, default: '$' },
     datasetId: { type: String, default: null },
+    // Optional: when the caller has more than one snapshot of the same player (e.g. the
+    // Progression page comparing saves over time), pass one entry per snapshot here and the
+    // dialog renders a tab strip to switch between them. The caller owns which snapshot is
+    // active and is responsible for swapping `player`/`datasetId` in response to
+    // `update:activeSnapshotIndex` — the dialog itself has no notion of "snapshots", it just
+    // reacts to whichever player/datasetId it's given, same as it always has.
+    snapshotTabs: { type: Array, default: () => [] }, // [{ label }]
+    activeSnapshotIndex: { type: Number, default: 0 },
   },
-  emits: ['close'],
+  emits: ['close', 'update:activeSnapshotIndex'],
   setup(props) {
     const qInstance = useQuasar()
     const uiStore = useUiStore()
@@ -1665,6 +1696,13 @@ export default defineComponent({
       return _logoComposable
     }
 
+    // After rejection, show alternatives from the resolution so the user can pick the right one
+    const showingAlternatives = ref(false)
+
+    // Manual search for when automatic alternatives are all wrong
+    const logoSearchQuery = ref('')
+    const logoSearchResults = ref([])
+
     watch(
       () => [props.show, props.player?.club],
       async ([isShowing, club]) => {
@@ -1693,9 +1731,6 @@ export default defineComponent({
       },
       { immediate: true }
     )
-
-    // After rejection, show alternatives from the resolution so the user can pick the right one
-    const showingAlternatives = ref(false)
 
     // Incremented after a confirmation to force TeamLogo / PlayerCards to remount and re-fetch
     const logoKey = ref(0)
@@ -1738,9 +1773,6 @@ export default defineComponent({
       return alts.filter((a) => a.id !== rejectedId && a.logoAvailable)
     })
 
-    // Manual search for when automatic alternatives are all wrong
-    const logoSearchQuery = ref('')
-    const logoSearchResults = ref([])
     const isSearchingLogo = ref(false)
 
     const searchLogoAlternatives = async () => {
@@ -1806,7 +1838,6 @@ export default defineComponent({
       performanceStatsCache.clear()
       performanceComparisonOptionsCache.clear()
       currencyCache.clear()
-      attributeDisplayCache.clear()
     }
 
     // Optimize cache size management using more efficient data structures
@@ -1862,6 +1893,55 @@ export default defineComponent({
     const getTargetDivision = () => {
       if (!props.player?.division) return null
       return props.player.division
+    }
+
+    const deriveShortPositions = (player) => {
+      const positions = new Set()
+      if (player.position) {
+        for (const p of deriveShortPositionsFromPositionString(player.position)) {
+          positions.add(p)
+        }
+      }
+      if (player.roleSpecificOveralls) {
+        for (const role of player.roleSpecificOveralls) {
+          const shortPos = role.roleName.split(' - ')[0]
+          if (shortPos) positions.add(shortPos)
+        }
+      }
+      return Array.from(positions)
+    }
+
+    const derivePositionGroups = (player) => {
+      const shortPositions = deriveShortPositions(player)
+      const groups = []
+
+      // Map short positions to broad groups
+      const positionToGroupMap = {
+        GK: 'Goalkeepers',
+        SW: 'Defenders',
+        DR: 'Defenders',
+        DL: 'Defenders',
+        DC: 'Defenders',
+        WBR: 'Defenders',
+        WBL: 'Defenders',
+        DM: 'Midfielders',
+        MC: 'Midfielders',
+        MR: 'Midfielders',
+        ML: 'Midfielders',
+        AMC: 'Midfielders',
+        AMR: 'Midfielders',
+        AML: 'Midfielders',
+        ST: 'Attackers',
+      }
+
+      for (const pos of shortPositions) {
+        const group = positionToGroupMap[pos]
+        if (group && !groups.includes(group)) {
+          groups.push(group)
+        }
+      }
+
+      return groups
     }
 
     const isGoalkeeper = computed(() => {
@@ -2227,9 +2307,6 @@ export default defineComponent({
     // Get showAttributeMasks from the uiStore
     const { showAttributeMasks } = storeToRefs(uiStore)
 
-    // Optimized attribute display with memoization
-    const attributeDisplayCache = new Map()
-
     const getDisplayAttribute = (attrKey) => {
       // Show loading state if detailed data is still loading
       if (isLoadingDetailedData.value) {
@@ -2238,32 +2315,18 @@ export default defineComponent({
 
       if (!displayPlayer.value) return '-'
 
-      const cacheKey = `${attrKey}-${displayPlayer.value.UID || displayPlayer.value.uid}-${showAttributeMasks.value}`
-      if (attributeDisplayCache.has(cacheKey)) {
-        return attributeDisplayCache.get(cacheKey)
-      }
-
       const rawValue = displayPlayer.value.attributes?.[attrKey]
       if (rawValue === undefined) return '-'
 
-      let displayValue
       if (rawValue === '-') {
-        displayValue = '?'
-      } else if (showAttributeMasks.value && String(rawValue).includes('-')) {
-        displayValue = rawValue
-      } else {
-        // Use numericAttributes if available, otherwise use the raw value
-        const numericValue = displayPlayer.value.numericAttributes?.[attrKey]
-        displayValue = numericValue !== undefined ? numericValue : rawValue
+        return '?'
       }
-
-      // Cache management
-      if (attributeDisplayCache.size > 200) {
-        attributeDisplayCache.clear()
+      if (showAttributeMasks.value && String(rawValue).includes('-')) {
+        return rawValue
       }
-
-      attributeDisplayCache.set(cacheKey, displayValue)
-      return displayValue
+      // Use numericAttributes if available, otherwise use the raw value
+      const numericValue = displayPlayer.value.numericAttributes?.[attrKey]
+      return numericValue !== undefined ? numericValue : rawValue
     }
 
     // Force recomputation when player changes
@@ -2939,55 +3002,6 @@ export default defineComponent({
     )
 
     // Helper functions to derive position information from available data
-    const deriveShortPositions = (player) => {
-      const positions = new Set()
-      if (player.position) {
-        for (const p of deriveShortPositionsFromPositionString(player.position)) {
-          positions.add(p)
-        }
-      }
-      if (player.roleSpecificOveralls) {
-        for (const role of player.roleSpecificOveralls) {
-          const shortPos = role.roleName.split(' - ')[0]
-          if (shortPos) positions.add(shortPos)
-        }
-      }
-      return Array.from(positions)
-    }
-
-    const derivePositionGroups = (player) => {
-      const shortPositions = deriveShortPositions(player)
-      const groups = []
-
-      // Map short positions to broad groups
-      const positionToGroupMap = {
-        GK: 'Goalkeepers',
-        SW: 'Defenders',
-        DR: 'Defenders',
-        DL: 'Defenders',
-        DC: 'Defenders',
-        WBR: 'Defenders',
-        WBL: 'Defenders',
-        DM: 'Midfielders',
-        MC: 'Midfielders',
-        MR: 'Midfielders',
-        ML: 'Midfielders',
-        AMC: 'Midfielders',
-        AMR: 'Midfielders',
-        AML: 'Midfielders',
-        ST: 'Attackers',
-      }
-
-      for (const pos of shortPositions) {
-        const group = positionToGroupMap[pos]
-        if (group && !groups.includes(group)) {
-          groups.push(group)
-        }
-      }
-
-      return groups
-    }
-
     // Memoized performance comparison options with better caching - moved after displayPlayer definition
     const performanceComparisonOptionsCache = new Map()
 
@@ -3384,6 +3398,10 @@ $breakpoint-xs-max: 599px !default;
     
     &.no-header-section {
         padding-top: 55px; // More room since tabs are positioned higher
+
+        &.has-snapshot-tabs {
+            padding-top: 95px; // Extra room for the snapshot tab row underneath
+        }
     }
 }
 
@@ -4447,12 +4465,22 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 768px) {
     .main-content-section {
         padding: 16px;
-        
+
         &.no-header-section {
             padding-top: 45px; // More room since tabs are positioned higher
+
+            &.has-snapshot-tabs {
+                padding-top: 80px;
+            }
         }
     }
-    
+
+    .snapshot-tab-navigation {
+        top: 44px;
+        left: 12px;
+        right: 12px;
+    }
+
     .tab-navigation {
         top: 6px;
         left: 12px;
@@ -4517,12 +4545,22 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 480px) {
     .main-content-section {
         padding: 12px;
-        
+
         &.no-header-section {
             padding-top: 40px; // More room since tabs are positioned higher
+
+            &.has-snapshot-tabs {
+                padding-top: 74px;
+            }
         }
     }
-    
+
+    .snapshot-tab-navigation {
+        top: 38px;
+        left: 8px;
+        right: 8px;
+    }
+
     .tab-navigation {
         top: 4px;
         left: 8px;
@@ -4568,6 +4606,34 @@ $breakpoint-xs-max: 599px !default;
     .modern-attribute-value {
         font-size: 0.75rem;
         padding: 3px 6px;
+    }
+}
+
+// Snapshot Navigation - a second row beneath the Simple/Advanced pill toggle, only present
+// when the caller (Progression) passes 2+ snapshots.
+.snapshot-tab-navigation {
+    position: absolute;
+    top: 52px;
+    left: 16px;
+    right: 16px;
+    z-index: 9;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 10px;
+    padding: 0 4px;
+
+    .body--dark & {
+        background: rgba(30, 41, 59, 0.85);
+    }
+}
+
+.snapshot-tabs {
+    min-height: 32px;
+
+    :deep(.q-tab) {
+        min-height: 32px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: none;
     }
 }
 

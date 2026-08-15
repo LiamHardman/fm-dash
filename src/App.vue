@@ -20,8 +20,9 @@
                 </q-toolbar-title>
                 
                 <div class="nav-links">
-                    <!-- Always show Upload and Docs -->
+                    <!-- Always show Upload, Progression, and Docs -->
                     <router-link to="/upload" class="nav-link">Upload</router-link>
+                    <router-link to="/progression" class="nav-link">Progression</router-link>
                     <router-link to="/docs" class="nav-link">Docs</router-link>
                     
                     <!-- Only show these links when data is uploaded -->
@@ -114,6 +115,10 @@
                 <q-item clickable v-ripple to="/upload" @click="mobileMenuOpen = false">
                     <q-item-section avatar><q-icon name="upload" /></q-item-section>
                     <q-item-section>Upload</q-item-section>
+                </q-item>
+                <q-item clickable v-ripple to="/progression" @click="mobileMenuOpen = false">
+                    <q-item-section avatar><q-icon name="trending_up" /></q-item-section>
+                    <q-item-section>Progression</q-item-section>
                 </q-item>
                 <q-item clickable v-ripple to="/docs" @click="mobileMenuOpen = false">
                     <q-item-section avatar><q-icon name="menu_book" /></q-item-section>
