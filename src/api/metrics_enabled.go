@@ -12,9 +12,6 @@ import (
 )
 
 var (
-	// General OTEL meter
-	meter metric.Meter
-
 	// Application-specific metrics
 	// activeUploads   metric.Int64UpDownCounter
 	// datasetCount    metric.Int64UpDownCounter
@@ -46,9 +43,6 @@ var durationBuckets = []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5,
 
 // initMetrics initializes all metrics
 func initMetrics() {
-	// Initialize meter
-	meter = otel.GetMeterProvider().Meter("fm24-api")
-
 	LogInfo("OpenTelemetry metrics initialized successfully")
 }
 
