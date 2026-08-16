@@ -12,6 +12,7 @@ const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
 const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
 const ProgressionPage = () => import('../pages/ProgressionPage.vue')
+const SaveImportPage = () => import('../pages/SaveImportPage.vue')
 
 const routes = [
   {
@@ -104,6 +105,11 @@ const routes = [
     path: '/progression',
     name: 'progression',
     component: ProgressionPage,
+  },
+  {
+    path: '/save-import',
+    name: 'save-import',
+    component: SaveImportPage,
   },
 ]
 

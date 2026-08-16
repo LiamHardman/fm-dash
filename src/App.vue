@@ -23,6 +23,7 @@
                     <!-- Always show Upload, Progression, and Docs -->
                     <router-link to="/upload" class="nav-link">Upload</router-link>
                     <router-link to="/progression" class="nav-link">Progression</router-link>
+                    <router-link to="/save-import" class="nav-link">Save Import</router-link>
                     <router-link to="/docs" class="nav-link">Docs</router-link>
                     
                     <!-- Only show these links when data is uploaded -->
@@ -119,6 +120,10 @@
                 <q-item clickable v-ripple to="/progression" @click="mobileMenuOpen = false">
                     <q-item-section avatar><q-icon name="trending_up" /></q-item-section>
                     <q-item-section>Progression</q-item-section>
+                </q-item>
+                <q-item clickable v-ripple to="/save-import" @click="mobileMenuOpen = false">
+                    <q-item-section avatar><q-icon name="science" /></q-item-section>
+                    <q-item-section>Save Import</q-item-section>
                 </q-item>
                 <q-item clickable v-ripple to="/docs" @click="mobileMenuOpen = false">
                     <q-item-section avatar><q-icon name="menu_book" /></q-item-section>

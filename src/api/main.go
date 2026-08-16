@@ -246,6 +246,7 @@ func main() {
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))
 	mux.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
 	mux.Handle("/api/who-to-sign/", wrapHandler(http.HandlerFunc(whoToSignHandler), "who-to-sign"))
+	mux.Handle("/api/fm-save-import", wrapHandler(http.HandlerFunc(fmSaveImportHandler), "fm-save-import"))
 
 	// API endpoint for serving player face images
 	mux.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
@@ -299,21 +300,30 @@ func main() {
 	// Register memory profiling and pprof endpoints
 	RegisterMemoryProfileEndpoints(mux)
 
-	// Create server with proper timeouts
+	// Create server with proper timeouts.
+	//
+	// WriteTimeout is a raw connection-level deadline enforced by net/http itself — it
+	// starts when request headers finish being read and covers the entire handler
+	// execution plus response write, independent of any per-request context.Context
+	// deadline set by RequestTimeoutMiddlewareFunc above. It must therefore be at least
+	// as large as the longest per-route budget that middleware hands out (currently 120s
+	// for /api/who-to-sign/), or net/http will kill the connection out from under a
+	// still-running handler well before its context deadline fires — which surfaced as
+	// intermittent 502s on who-to-sign requests that legitimately ran past 30s.
 	server := &http.Server{
 		Addr:              ":" + port,
 		Handler:           handler,
-		ReadTimeout:       15 * time.Second, // Time to read request
-		WriteTimeout:      30 * time.Second, // Time to write response
-		IdleTimeout:       60 * time.Second, // Time to keep connection open
-		ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
+		ReadTimeout:       15 * time.Second,  // Time to read request
+		WriteTimeout:      130 * time.Second, // Time to write response — must exceed the largest per-route timeout above
+		IdleTimeout:       60 * time.Second,  // Time to keep connection open
+		ReadHeaderTimeout: 5 * time.Second,   // Time to read request headers
 	}
 
 	slog.Debug("Server starting",
 		"port", port,
 		"url", "http://localhost:"+port,
 		"read_timeout", "15s",
-		"write_timeout", "30s",
+		"write_timeout", "130s",
 		"idle_timeout", "60s")
 
 	if err := server.ListenAndServe(); err != nil {
