@@ -373,7 +373,12 @@ const ALL_FIELDS = [
     accessor: (p) => p.wageAmount,
     format: (v) => formatCurrency(v, progressionStore.currencySymbol),
   },
-  { key: 'Age', label: 'Age', accessor: (p) => Number.parseInt(p.age, 10) || 0, format: (v) => `${v}` },
+  {
+    key: 'Age',
+    label: 'Age',
+    accessor: (p) => Number.parseInt(p.age, 10) || 0,
+    format: (v) => `${v}`,
+  },
 ]
 
 const overallField = ALL_FIELDS[0]
@@ -497,7 +502,12 @@ async function onFileSelected(event) {
   if (!file) return
 
   const slotId = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  progressionStore.addSlot({ id: slotId, filename: file.name, status: 'uploading', datasetId: null })
+  progressionStore.addSlot({
+    id: slotId,
+    filename: file.name,
+    status: 'uploading',
+    datasetId: null,
+  })
 
   try {
     const formData = new FormData()
