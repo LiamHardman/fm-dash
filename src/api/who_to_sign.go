@@ -261,6 +261,75 @@ func buildSquadSummaries(squad []Player, req WhoToSignRequest) []ScoutPlayerSumm
 	return summaries
 }
 
+// whoToSignTableColumns are the fixed leading columns of renderPlayerTable's output, in
+// order. Any attribute names present on the given players are appended as extra trailing
+// columns (union across all rows, so a mixed-position batch stays one flat table).
+var whoToSignTableColumns = []string{"uid", "name", "club", "age", "pos", "ovr", "ca", "role", "value", "wage", "nat"}
+
+// tableFieldSafe strips characters that would corrupt the pipe-delimited table's row/column
+// structure. Real FM player/club names don't contain these, but the model is not a trusted
+// input source for round-tripped strings, so this is defensive rather than load-bearing.
+func tableFieldSafe(s string) string {
+	s = strings.ReplaceAll(s, "|", "/")
+	s = strings.ReplaceAll(s, "\n", " ")
+	return s
+}
+
+// renderPlayerTable encodes player summaries as a compact pipe-delimited table (header row
+// first) instead of JSON. Measured on real squad/find_players payloads, this cuts tokens
+// roughly in half versus JSON for the same data: JSON repeats every field name (e.g.
+// "transferValueAmount", "bestRoleOverall") on every single row, which dominates payload
+// size for a uniform list of objects like this one. A table pays for each column name once.
+func renderPlayerTable(players []ScoutPlayerSummary) string {
+	if len(players) == 0 {
+		return "(none)"
+	}
+
+	var attrNames []string
+	seenAttr := make(map[string]bool)
+	for _, p := range players {
+		for name := range p.Attributes {
+			if !seenAttr[name] {
+				seenAttr[name] = true
+				attrNames = append(attrNames, name)
+			}
+		}
+	}
+	sort.Strings(attrNames)
+
+	cols := make([]string, 0, len(whoToSignTableColumns)+len(attrNames))
+	cols = append(cols, whoToSignTableColumns...)
+	cols = append(cols, attrNames...)
+
+	var b strings.Builder
+	b.WriteString(strings.Join(cols, "|"))
+	for _, p := range players {
+		row := []string{
+			strconv.FormatInt(p.UID, 10),
+			tableFieldSafe(p.Name),
+			tableFieldSafe(p.Club),
+			p.Age,
+			strings.Join(p.ShortPositions, ","),
+			strconv.Itoa(p.Overall),
+			strconv.Itoa(p.CA),
+			tableFieldSafe(p.BestRoleOverall),
+			strconv.FormatInt(p.TransferValueAmount, 10),
+			strconv.FormatInt(p.WageAmount, 10),
+			tableFieldSafe(p.Nationality),
+		}
+		for _, name := range attrNames {
+			if v, ok := p.Attributes[name]; ok {
+				row = append(row, strconv.Itoa(v))
+			} else {
+				row = append(row, "")
+			}
+		}
+		b.WriteByte('\n')
+		b.WriteString(strings.Join(row, "|"))
+	}
+	return b.String()
+}
+
 // findSquadPlayerByUID looks up a specific squad player by UID — used for the model's own
 // choice of who's most relevant to compare mainPick against (ticket: "why did we compare
 // against [a reserve]?" — the model already reasons about the whole squad, so trust its
@@ -463,7 +532,7 @@ func buildWhoToSignSystemPrompt(req WhoToSignRequest, squadSummaries []ScoutPlay
 		squadStatusText = req.SquadStatus
 	}
 
-	squadJSON, _ := json.Marshal(squadSummaries)
+	squadTable := renderPlayerTable(squadSummaries)
 
 	var b strings.Builder
 	b.WriteString("You are an Association Football Manager's head scout, currently employed at ")
@@ -476,12 +545,12 @@ func buildWhoToSignSystemPrompt(req WhoToSignRequest, squadSummaries []ScoutPlay
 	b.WriteString("- Positions requested: " + positionsText + "\n")
 	b.WriteString("- Preferred player profile: " + playerProfileText + "\n")
 	b.WriteString("- Manager's own notes: " + freeTextText + "\n\n")
-	b.WriteString("Current squad:\n")
-	b.Write(squadJSON)
+	b.WriteString("Current squad (pipe-delimited table, header row first; pos is a comma-separated list of short position codes):\n")
+	b.WriteString(squadTable)
 	b.WriteString("\n\n")
 	b.WriteString("Instructions:\n")
 	b.WriteString("- If positions were specified above, scout for exactly those positions. If none were specified, first identify 1-3 positions from the current squad most in need of strengthening, and scout for those instead.\n")
-	b.WriteString("- Use the find_players tool to search the transfer market. You may call it multiple times — once per position, and again with loosened criteria (wider budget/age range, fewer attribute filters) if a search returns few or no suitable options. Only if truly nothing suitable exists after widening the search should you name the closest available player as your pick and say so honestly in your reasoning.\n")
+	b.WriteString("- Use the find_players tool to search the transfer market. It also returns a pipe-delimited table in the same column format as the squad above. You may call it multiple times — once per position, and again with loosened criteria (wider budget/age range, fewer attribute filters) if a search returns few or no suitable options. Only if truly nothing suitable exists after widening the search should you name the closest available player as your pick and say so honestly in your reasoning.\n")
 	b.WriteString("- Never state a player's stats, attributes, or attribute-derived claims that didn't come from a find_players result — do not invent numbers.\n")
 	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary. When you discuss a player's attributes, only ever reference real Football Manager attribute names (e.g. Finishing, Composure, Tackling, Pace, Work Rate) — never reference FIFA-style aggregate ratings such as PAC, SHO, PAS, DRI, DEF, or PHY; those are not attributes and must not appear in your reasoning.\n")
 	b.WriteString("- For each position scouted, make a conclusive decision on a single player to sign, and highlight 1 to 3 other good options as runners-up.\n")
@@ -629,7 +698,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 	tools := []responses.ToolUnionParam{{
 		OfFunction: &responses.FunctionToolParam{
 			Name:        "find_players",
-			Description: openai.String("Search the transfer market for players matching the given position and filters."),
+			Description: openai.String("Search the transfer market for players matching the given position and filters. Returns a pipe-delimited table (header row first): uid|name|club|age|pos|ovr|ca|role|value|wage|nat, plus one column per requested attribute."),
 			Parameters:  findPlayersToolSchema,
 		},
 	}}
@@ -701,13 +770,13 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 			_ = json.Unmarshal([]byte(toolCall.Arguments), &args)
 			toolResults := findPlayersForScout(datasetID, args)
 			recordConsidered(args.ShortPosition, toolResults)
-			toolResultsJSON, _ := json.Marshal(toolResults)
+			toolResultsTable := renderPlayerTable(toolResults)
 
 			outputItems[i] = responses.ResponseInputItemUnionParam{
 				OfFunctionCallOutput: &responses.ResponseInputItemFunctionCallOutputParam{
 					CallID: toolCall.CallID,
 					Output: responses.ResponseInputItemFunctionCallOutputOutputUnionParam{
-						OfString: openai.String(string(toolResultsJSON)),
+						OfString: openai.String(toolResultsTable),
 					},
 				},
 			}
