@@ -428,6 +428,40 @@ type WhoToSignResponse struct {
 	Recommendations []WhoToSignPositionRecommendation `json:"recommendations"`
 }
 
+// applyAuthoritativePlayerFields overwrites rec's factual fields (name, club, age,
+// positions, overall, ca, role, value, wage, nationality) with the authoritative record
+// for rec.UID, checked first against this request's find_players candidate pool and then
+// the current squad. If the uid can't be resolved against either (a hallucinated uid, or a
+// real player never actually surfaced this request), rec is left exactly as the model
+// reported it — this only ever tightens known-good data, never invents a replacement.
+// The model's own subjective judgement (grade, signingScore, strengths, watchOuts) is
+// never touched here.
+func applyAuthoritativePlayerFields(rec *ScoutPlayerRecommendation, squad []Player, candidates map[int64]ScoutPlayerSummary) {
+	if summary, ok := candidates[rec.UID]; ok {
+		overwriteRecommendationFields(rec, summary)
+		return
+	}
+	for i := range squad {
+		if squad[i].UID == rec.UID {
+			overwriteRecommendationFields(rec, buildScoutPlayerSummary(squad[i], nil))
+			return
+		}
+	}
+}
+
+func overwriteRecommendationFields(rec *ScoutPlayerRecommendation, s ScoutPlayerSummary) {
+	rec.Name = s.Name
+	rec.Club = s.Club
+	rec.Age = s.Age
+	rec.ShortPositions = s.ShortPositions
+	rec.Overall = s.Overall
+	rec.CA = s.CA
+	rec.BestRoleOverall = s.BestRoleOverall
+	rec.TransferValueAmount = s.TransferValueAmount
+	rec.WageAmount = s.WageAmount
+	rec.Nationality = s.Nationality
+}
+
 var scoutPlayerRecommendationSchema = map[string]any{
 	"type": "object",
 	"properties": map[string]any{
@@ -628,7 +662,7 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 	systemPrompt := buildWhoToSignSystemPrompt(req, squadSummaries)
 
 	client := openai.NewClient(option.WithAPIKey(apiKey))
-	result, considered, scoutErr := runWhoToSignLoop(ctx, &client, datasetID, systemPrompt)
+	result, considered, candidates, scoutErr := runWhoToSignLoop(ctx, &client, datasetID, systemPrompt)
 	if scoutErr != nil {
 		logWarn(ctx, "who-to-sign request failed", "dataset_id", datasetID, "status", scoutErr.status, "error", scoutErr.message)
 		writeWhoToSignError(w, r, scoutErr)
@@ -644,6 +678,17 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 	for i := range result.Recommendations {
 		posKey := strings.ToUpper(result.Recommendations[i].Position)
 		result.Recommendations[i].PlayersConsidered = considered[posKey]
+
+		// Overwrite the model's factual fields (name, club, value, wage, ...) with the
+		// authoritative record for that uid, wherever one can be resolved — the model's own
+		// subjective judgement (grade, signingScore, strengths, watchOuts, positionRationale)
+		// is left untouched. This closes off large-number hallucination on mainPick/runnersUp
+		// the same way currentSquadComparisonUid already trusts the model's uid choice but
+		// not its prose.
+		applyAuthoritativePlayerFields(&result.Recommendations[i].MainPick, squad, candidates)
+		for j := range result.Recommendations[i].RunnersUp {
+			applyAuthoritativePlayerFields(&result.Recommendations[i].RunnersUp[j], squad, candidates)
+		}
 
 		// Prefer the model's own pick of who's most relevant to compare against — it
 		// already reasoned about the whole squad. Only fall back to the by-Overall
@@ -674,7 +719,7 @@ func whoToSignEnvAPIKey() string {
 // executes it in-process on each function_call, and returns once the model produces
 // a final structured answer — capped at whoToSignMaxToolRounds rounds (ticket 08),
 // with one retry on transient OpenAI errors (ticket 10).
-func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, map[string][]ScoutPlayerSummary, *whoToSignError) {
+func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, map[string][]ScoutPlayerSummary, map[int64]ScoutPlayerSummary, *whoToSignError) {
 	// considered accumulates every find_players result across the whole loop, keyed by
 	// the uppercased shortPosition searched, deduped by UID and capped at 10 per
 	// position — purely server-side bookkeeping for the frontend's "other players
@@ -692,6 +737,18 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 			}
 			consideredSeen[key][p.UID] = true
 			considered[key] = append(considered[key], p)
+		}
+	}
+
+	// candidates is every find_players result ever returned this request, uncapped and
+	// keyed by UID — the authoritative source used after the model answers to overwrite
+	// its factual fields (see applyAuthoritativePlayerFields), so it must hold every player
+	// the model could plausibly have picked, not just the capped-at-10 "considered" list
+	// kept for the frontend's UI.
+	candidates := make(map[int64]ScoutPlayerSummary)
+	recordCandidates := func(results []ScoutPlayerSummary) {
+		for _, p := range results {
+			candidates[p.UID] = p
 		}
 	}
 
@@ -728,7 +785,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 
 	resp, apiErr := callResponsesWithRetry(ctx, client, params)
 	if apiErr != nil {
-		return nil, nil, apiErr
+		return nil, nil, nil, apiErr
 	}
 
 	// round counts response round-trips; the response is checked for a final answer
@@ -756,9 +813,9 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 					"output_text_len", len(outputText),
 					"output_text", outputText,
 				)
-				return nil, nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
+				return nil, nil, nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
 			}
-			return &result, considered, nil
+			return &result, considered, candidates, nil
 		}
 		if round >= whoToSignMaxToolRounds {
 			break
@@ -770,6 +827,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 			_ = json.Unmarshal([]byte(toolCall.Arguments), &args)
 			toolResults := findPlayersForScout(datasetID, args)
 			recordConsidered(args.ShortPosition, toolResults)
+			recordCandidates(toolResults)
 			toolResultsTable := renderPlayerTable(toolResults)
 
 			outputItems[i] = responses.ResponseInputItemUnionParam{
@@ -793,11 +851,11 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 		}
 		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
 		if apiErr != nil {
-			return nil, nil, apiErr
+			return nil, nil, nil, apiErr
 		}
 	}
 
-	return nil, nil, &whoToSignError{
+	return nil, nil, nil, &whoToSignError{
 		http.StatusGatewayTimeout,
 		"the AI scout couldn't settle on recommendations within the allowed search attempts — try narrowing your request (fewer positions, or a specific position) and try again.",
 	}
