@@ -95,7 +95,7 @@
                         </thead>
                         <tbody>
                             <tr v-for="p in report.comparablePlayers" :key="p.uid">
-                                <td class="name-cell">{{ p.name }}</td>
+                                <td class="name-cell name-cell-link" @click="openComparablePlayer(p.uid)">{{ p.name }}</td>
                                 <td>{{ p.club }}</td>
                                 <td>{{ p.age }}</td>
                                 <td>{{ formatCurrency(p.transferValueAmount, currencySymbol) }}</td>
@@ -109,14 +109,29 @@
                 </div>
             </template>
         </div>
+
+        <!-- Own independent PlayerDetailDialog instance for drilling into a comparable player,
+             mirroring UniversalSearch.vue / ChatWidget.vue's pattern rather than mutating the
+             dialog this tab is already nested inside. Opens on a fresh instance, which defaults
+             to the Simple tab, so drilling in never auto-fires another scout report request. -->
+        <PlayerDetailDialog
+            v-if="comparablePlayerForDetailView"
+            :player="comparablePlayerForDetailView"
+            :show="showComparablePlayerDialog"
+            :currency-symbol="currencySymbol"
+            :dataset-id="datasetId"
+            @close="showComparablePlayerDialog = false"
+        />
     </div>
 </template>
 
 <script>
 import { computed, defineComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import { usePlayerStore } from '../stores/playerStore'
 import { useScoutReportStore } from '../stores/scoutReportStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 import StarRating from './StarRating.vue'
 
 const FUNNY_LOADING_MESSAGES = [
@@ -141,7 +156,7 @@ const GRADE_COLORS = {
 
 export default defineComponent({
   name: 'ScoutReportTab',
-  components: { StarRating },
+  components: { StarRating, PlayerDetailDialog },
   props: {
     player: { type: Object, required: true },
     datasetId: { type: String, required: true },
@@ -150,6 +165,7 @@ export default defineComponent({
   setup(props) {
     const uiStore = useUiStore()
     const scoutReportStore = useScoutReportStore()
+    const playerStore = usePlayerStore()
 
     const playerUid = computed(() => props.player.uid ?? props.player.UID)
     const positionOptions = computed(() => {
@@ -179,6 +195,17 @@ export default defineComponent({
 
     function gradeColor(grade) {
       return GRADE_COLORS[grade] || '#64748b'
+    }
+
+    const comparablePlayerForDetailView = ref(null)
+    const showComparablePlayerDialog = ref(false)
+
+    function openComparablePlayer(uid) {
+      const target = String(uid)
+      const found = (playerStore.allPlayers || []).find((p) => String(p.uid ?? p.UID) === target)
+      if (!found) return
+      comparablePlayerForDetailView.value = found
+      showComparablePlayerDialog.value = true
     }
 
     function startLoadingMessages() {
@@ -289,6 +316,9 @@ export default defineComponent({
       generateReport,
       onPositionChange,
       formatCurrency,
+      comparablePlayerForDetailView,
+      showComparablePlayerDialog,
+      openComparablePlayer,
     }
   },
 })
@@ -426,6 +456,13 @@ export default defineComponent({
 .name-cell {
     color: var(--text-primary, #1e293b);
     font-weight: 600;
+}
+.name-cell-link {
+    cursor: pointer;
+}
+.name-cell-link:hover {
+    text-decoration: underline;
+    color: var(--q-primary, #1976d2);
 }
 .grade-badge {
     display: inline-flex !important;
