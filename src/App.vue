@@ -176,12 +176,16 @@
         
         <!-- First Time Tutorial Modal -->
         <FirstTimeTutorialModal v-model="showTutorialModal" />
+
+        <!-- FM-Dash Chatbot — dataset-scoped, only mounted once a dataset is loaded -->
+        <ChatWidget v-if="currentDatasetId" />
     </q-layout>
 </template>
 
 <script>
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref } from 'vue'
+import ChatWidget from './components/ChatWidget.vue'
 import FirstTimeTutorialModal from './components/FirstTimeTutorialModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
@@ -196,6 +200,7 @@ export default defineComponent({
     UniversalSearch,
     SettingsModal,
     FirstTimeTutorialModal,
+    ChatWidget,
   },
   setup() {
     const $q = useQuasar()

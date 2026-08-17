@@ -289,6 +289,15 @@ func (rw *responseWriter) Size() int {
 	return rw.responseSize
 }
 
+// Flush passes through to the underlying ResponseWriter when it supports flushing —
+// required for the chatbot's SSE endpoint (chatbot.go) to push staged status events as
+// they happen rather than buffering until the handler returns.
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // Status returns the status code
 func (rw *responseWriter) Status() int {
 	return rw.statusCode
@@ -363,6 +372,14 @@ func CompressionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if client accepts gzip encoding
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// The chatbot endpoint streams Server-Sent Events and needs each status/done
+		// event flushed to the client as it's written. gzip.Writer buffers internally
+		// and gzipResponseWriter below doesn't implement http.Flusher, so compressing
+		// this route would silently defeat the staged-status streaming entirely.
+		if strings.HasPrefix(r.URL.Path, "/api/chatbot/") {
 			next.ServeHTTP(w, r)
 			return
 		}
