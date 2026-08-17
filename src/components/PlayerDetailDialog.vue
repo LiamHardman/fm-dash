@@ -93,6 +93,7 @@
                 >
                     <q-tab name="simple" label="Simple" icon="style" />
                     <q-tab name="advanced" label="Advanced" icon="analytics" />
+                    <q-tab name="scoutReport" label="AI Scout Report" icon="travel_explore" />
                 </q-tabs>
             </div>
 
@@ -129,7 +130,7 @@
                     </q-banner>
                 </div>
 
-                <div class="row q-col-gutter-lg">
+                <div class="row q-col-gutter-lg" v-if="activeTab !== 'scoutReport'">
                     <div class="col-12 col-md-4">
                         <!-- Simple Tab Content - Player Cards -->
                         <div v-if="activeTab === 'simple'" class="simple-view">
@@ -1113,6 +1114,19 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- AI Scout Report Tab Content — its own sibling block, not nested in the row
+                     above. That row's right column (attribute-columns-container) renders
+                     unconditionally regardless of activeTab, so nesting inside it would leave
+                     leftover FM-attribute panels bleeding in above this tab's content. -->
+                <div v-if="activeTab === 'scoutReport'">
+                    <ScoutReportTab
+                        v-if="player"
+                        :player="displayPlayer"
+                        :dataset-id="datasetId"
+                        :currency-symbol="currencySymbol"
+                    />
+                </div>
             </q-card-section>
 
             <q-card-section v-else class="loading-section">
@@ -1157,6 +1171,9 @@ const PlayerCards = defineAsyncComponent(() => import('../components/PlayerCards
 
 // Lazy load ProsCons component for the simple view
 const ProsCons = defineAsyncComponent(() => import('../components/ProsCons.vue'))
+
+// Lazy load ScoutReportTab component for the AI Scout Report view
+const ScoutReportTab = defineAsyncComponent(() => import('../components/ScoutReportTab.vue'))
 
 const attributeFullNameMap = {
   Cor: 'Corners',
@@ -1496,6 +1513,7 @@ export default defineComponent({
     TeamLogo,
     PlayerCards,
     ProsCons,
+    ScoutReportTab,
   },
   props: {
     player: { type: Object, default: () => null },

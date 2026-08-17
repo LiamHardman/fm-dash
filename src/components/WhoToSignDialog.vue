@@ -450,11 +450,26 @@ export default {
 
     watch(
       () => props.show,
-      (visible) => {
+      async (visible) => {
         if (visible) {
           phase.value = 'form'
           step.value = 1
           Object.assign(form, defaultForm())
+
+          // Pre-fill from the dataset's persisted managed team, if set — still fully
+          // editable/overridable per-request, just removes redundant re-typing now that
+          // one persisted source of truth exists (Scout Report map ticket 01).
+          if (props.datasetId) {
+            try {
+              const res = await fetch(`/api/managed-team/${props.datasetId}`)
+              if (res.ok) {
+                const managedTeam = await res.json()
+                if (managedTeam?.club) form.team = managedTeam.club
+              }
+            } catch (e) {
+              console.error('[WhoToSign] failed to pre-fill managed team', e)
+            }
+          }
         }
       }
     )

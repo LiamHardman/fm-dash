@@ -150,57 +150,18 @@ var findPlayersToolSchema = map[string]any{
 }
 
 // findPlayersForScout is the find_players tool, executed in-process (no HTTP self-hop).
+// Filtering/sorting/trimming itself lives in the shared searchPlayers (scout_search.go, ticket
+// 02 of the Scout Report map) so Scout Report's find_comparable_players tool doesn't duplicate
+// this logic — only the argument translation and attribute-shaped serialization stay here.
 func findPlayersForScout(datasetID string, args whoToSignFindPlayersArgs) []ScoutPlayerSummary {
-	players, _, found := GetPlayerData(datasetID)
-	if !found {
-		return []ScoutPlayerSummary{}
-	}
-	players = RecalculateAllPlayersRatings(players)
-
-	matches := make([]Player, 0, 32)
-	for i := range players {
-		player := players[i]
-
-		if args.ShortPosition != "" {
-			hasPosition := false
-			for _, pos := range player.ShortPositions {
-				if strings.EqualFold(pos, args.ShortPosition) {
-					hasPosition = true
-					break
-				}
-			}
-			if !hasPosition {
-				continue
-			}
-		}
-		if args.MaxBudget > 0 && player.TransferValueAmount > args.MaxBudget {
-			continue
-		}
-		if args.MaxSalary > 0 && player.WageAmount > args.MaxSalary {
-			continue
-		}
-		if args.MinAge > 0 || args.MaxAge > 0 {
-			playerAge, ageErr := strconv.Atoi(player.Age)
-			if ageErr != nil {
-				continue
-			}
-			if args.MinAge > 0 && playerAge < args.MinAge {
-				continue
-			}
-			if args.MaxAge > 0 && playerAge > args.MaxAge {
-				continue
-			}
-		}
-		if args.MinOverall > 0 && player.Overall < args.MinOverall {
-			continue
-		}
-		matches = append(matches, player)
-	}
-
-	sort.Slice(matches, func(i, j int) bool { return matches[i].MBR > matches[j].MBR })
-	if len(matches) > whoToSignFindPlayersN {
-		matches = matches[:whoToSignFindPlayersN]
-	}
+	matches := searchPlayers(datasetID, PlayerSearchCriteria{
+		ShortPosition: args.ShortPosition,
+		MaxBudget:     args.MaxBudget,
+		MaxSalary:     args.MaxSalary,
+		MinAge:        args.MinAge,
+		MaxAge:        args.MaxAge,
+		MinOverall:    args.MinOverall,
+	}, whoToSignFindPlayersN)
 
 	summaries := make([]ScoutPlayerSummary, len(matches))
 	for i, player := range matches {

@@ -220,6 +220,10 @@ func main() {
 		if strings.HasPrefix(r.URL.Path, "/api/who-to-sign/") {
 			return 120 * time.Second
 		}
+		// Scout Report drives the same shape of multi-round LLM tool-calling loop.
+		if strings.HasPrefix(r.URL.Path, "/api/scout-report/") {
+			return 120 * time.Second
+		}
 		return 30 * time.Second
 	})(handler) // request timeout, per-route
 	handler = LoggingMiddleware(handler)
@@ -246,6 +250,9 @@ func main() {
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))
 	mux.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
 	mux.Handle("/api/who-to-sign/", wrapHandler(http.HandlerFunc(whoToSignHandler), "who-to-sign"))
+	mux.Handle("/api/managed-team/", wrapHandler(http.HandlerFunc(managedTeamHandler), "managed-team"))
+	mux.Handle("/api/scout-report-stars/", wrapHandler(http.HandlerFunc(scoutReportStarsHandler), "scout-report-stars"))
+	mux.Handle("/api/scout-report/", wrapHandler(http.HandlerFunc(scoutReportHandler), "scout-report"))
 	mux.Handle("/api/fm-save-import", wrapHandler(http.HandlerFunc(fmSaveImportHandler), "fm-save-import"))
 
 	// API endpoint for serving player face images

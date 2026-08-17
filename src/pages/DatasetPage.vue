@@ -16,6 +16,12 @@
                         <span class="stat-separator">•</span>
                         <span class="stat-item">{{ formatNumber(uniqueNationalities.length) }} Nations</span>
                     </div>
+                    <div class="managed-team-affordance" @click="openManagedTeamDialog">
+                        <q-icon name="shield" size="0.9rem" class="q-mr-xs" />
+                        <span v-if="managedTeam">Managed: {{ managedTeam.club }} ({{ managedTeam.division }})</span>
+                        <span v-else>Set managed team</span>
+                        <span class="change-link">change</span>
+                    </div>
                 </div>
 
                 <!-- Center section: Quick Actions -->
@@ -244,6 +250,17 @@
             :currency-symbol="detectedCurrencySymbol"
             :dataset-id="currentDatasetId"
         />
+        <ManagedTeamDialog
+            :show="showManagedTeamDialog"
+            :dataset-id="currentDatasetId"
+            :clubs="uniqueClubs"
+            :players="allPlayersData"
+            :initial-club="managedTeam ? managedTeam.club : ''"
+            :initial-division="managedTeam ? managedTeam.division : ''"
+            @close="showManagedTeamDialog = false"
+            @skip="skipManagedTeamDialog"
+            @saved="onManagedTeamSaved"
+        />
         <FreeAgentsDialog
             :show="showFreeAgents"
             :players="allPlayersData"
@@ -280,6 +297,7 @@ import { useRoute, useRouter } from 'vue-router'
 import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import FreeAgentsDialog from '../components/FreeAgentsDialog.vue'
+import ManagedTeamDialog from '../components/ManagedTeamDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
 import PlayerComparisonDialog from '../components/PlayerComparisonDialog.vue'
 import PlayerComparisonTray from '../components/PlayerComparisonTray.vue'
@@ -367,6 +385,7 @@ export default {
     WonderkidsDialog,
     BargainHunterDialog,
     WhoToSignDialog,
+    ManagedTeamDialog,
     FreeAgentsDialog,
     ExportOptionsDialog,
     PlayerComparisonTray,
@@ -390,6 +409,49 @@ export default {
     const showWonderkids = ref(false)
     const showBargainHunter = ref(false)
     const showWhoToSign = ref(false)
+    const showManagedTeamDialog = ref(false)
+    const managedTeam = ref(null) // { club, division } | null
+
+    function managedTeamSkipKey(datasetId) {
+      return `scoutReport:managedTeamSkipped:${datasetId}`
+    }
+
+    async function checkManagedTeam(datasetId) {
+      if (!datasetId) return
+      try {
+        const res = await fetch(`/api/managed-team/${datasetId}`)
+        if (res.ok) {
+          managedTeam.value = await res.json()
+          showManagedTeamDialog.value = false
+          localStorage.removeItem(managedTeamSkipKey(datasetId))
+          return
+        }
+      } catch (e) {
+        console.error('[DatasetPage] failed to check managed team', e)
+      }
+      managedTeam.value = null
+      showManagedTeamDialog.value = localStorage.getItem(managedTeamSkipKey(datasetId)) !== '1'
+    }
+
+    function openManagedTeamDialog() {
+      showManagedTeamDialog.value = true
+    }
+
+    function skipManagedTeamDialog() {
+      showManagedTeamDialog.value = false
+      if (currentDatasetId.value) {
+        localStorage.setItem(managedTeamSkipKey(currentDatasetId.value), '1')
+      }
+    }
+
+    function onManagedTeamSaved(team) {
+      managedTeam.value = team
+      showManagedTeamDialog.value = false
+      if (currentDatasetId.value) {
+        localStorage.removeItem(managedTeamSkipKey(currentDatasetId.value))
+      }
+    }
+
     const showFreeAgents = ref(false)
     const showExportOptions = ref(false)
     const showComparisonDialog = ref(false)
@@ -1031,6 +1093,7 @@ export default {
         }
 
         await fetchDataset(datasetIdFromRoute)
+        await checkManagedTeam(datasetIdFromRoute)
       } else {
         pageLoadingError.value = 'No dataset ID provided in URL.'
         pageLoading.value = false
@@ -1216,6 +1279,7 @@ export default {
         datasetFetchController?.abort()
         datasetFetchController = new AbortController()
         await fetchDataset(newId, datasetFetchController.signal)
+        await checkManagedTeam(newId)
       }
     )
 
@@ -1294,6 +1358,11 @@ export default {
       showWonderkids,
       showBargainHunter,
       showWhoToSign,
+      showManagedTeamDialog,
+      managedTeam,
+      openManagedTeamDialog,
+      skipManagedTeamDialog,
+      onManagedTeamSaved,
       showFreeAgents,
       showExportOptions,
       showComparisonDialog,
@@ -1382,6 +1451,30 @@ export default {
         
         .stat-separator {
             opacity: 0.5;
+        }
+    }
+
+    .managed-team-affordance {
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.2rem;
+        cursor: pointer;
+        width: fit-content;
+
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .change-link {
+            text-decoration: underline;
+            opacity: 0.7;
+        }
+
+        &:hover .change-link {
+            opacity: 1;
         }
     }
 }
