@@ -79,7 +79,7 @@
     "conventional-changelog-conventionalcommits": "^8.0.0",
     "happy-dom": "^20.8.9",
     "husky": "^9.1.7",
-    "jsdom": "^26.1.0",
+    "jsdom": "^29.1.1",
     "lint-staged": "^16.1.0",
     "protobufjs-cli": "^2.3.0",
     "rollup-plugin-visualizer": "^6.0.3",
