@@ -295,6 +295,8 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import { getFlagUrl, getPlayerFaceUrl, getTeamLogoUrl } from '../utils/imageOptimization'
+import { llmRequestHeaders } from '../utils/llmHeaders'
+import { consumeSSEStream } from '../utils/sseClient'
 import PlayerCards from './PlayerCards.vue'
 import PlayerComparisonDialog from './PlayerComparisonDialog.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
@@ -493,14 +495,11 @@ export default {
 
         const res = await fetch(`/api/who-to-sign/${props.datasetId}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-OpenAI-Api-Key': uiStore.openaiApiKey,
-          },
+          headers: llmRequestHeaders(uiStore),
           body: JSON.stringify(requestBody),
         })
 
-        if (!res.ok) {
+        if (!res.ok || !res.body) {
           let message = `Unexpected error (${res.status}).`
           let bodyForLog = null
           try {
@@ -514,11 +513,20 @@ export default {
           return
         }
 
-        const data = await res.json()
-        console.log('[WhoToSign] response', data)
-        response.value = data
-        activeTab.value = data?.recommendations?.[0]?.position ?? null
-        phase.value = 'results'
+        await consumeSSEStream(res, {
+          done: (data) => {
+            console.log('[WhoToSign] response', data)
+            response.value = data
+            activeTab.value = data?.recommendations?.[0]?.position ?? null
+            phase.value = 'results'
+          },
+          error: (payload) => {
+            console.error('[WhoToSign] error event', payload)
+            errorStatus.value = payload.code ? Number(payload.code) : null
+            errorMessage.value = payload.message || 'Something went wrong.'
+            phase.value = 'error'
+          },
+        })
       } catch (e) {
         console.error('[WhoToSign] request threw', e)
         errorStatus.value = null

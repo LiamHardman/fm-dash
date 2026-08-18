@@ -48,18 +48,62 @@
               />
               <div class="chat-bubble" :class="`chat-bubble--${m.role}`">
                 <template v-if="m.role === 'assistant'">
-                  <span v-for="(part, pi) in parseChatCitations(m.text, m.referencedPlayers)" :key="pi">
-                    <span v-if="part.type === 'text'">{{ part.content }}</span>
-                    <span
-                      v-else
-                      class="chat-player-link"
-                      :class="{ 'chat-player-link--unresolved': !findPlayerByUid(part.uid) }"
-                      @click="openPlayer(part.uid)"
-                    >{{ part.name }}</span>
-                  </span>
-                  <div v-if="m.chart" class="chat-chart">
+                  <div class="chat-markdown" v-html="renderMessageHtml(m)" @click="onBubbleClick"></div>
+                  <div v-if="m.chart" class="chat-chart" :class="{ 'chat-chart--tall': m.chart.template === 'tactic_formation' }">
                     <Radar v-if="m.chart.template === 'player_radar'" :data="m.chart.data" :options="radarOptions" style="max-height: 280px" />
                     <Bar v-else-if="m.chart.template === 'team_bar'" :data="m.chart.data" :options="barOptions" style="max-height: 280px" />
+                    <div v-else-if="m.chart.template === 'player_comparison_table'" class="chat-table-wrap">
+                      <table class="chat-comparison-table">
+                        <thead>
+                          <tr>
+                            <th></th>
+                            <th v-for="name in m.chart.data.players" :key="name">{{ name }}</th>
+                          </tr>
+                        </thead>
+                        <tbody v-for="cat in m.chart.data.categories" :key="cat.title">
+                          <tr class="chat-comparison-table-category">
+                            <td :colspan="m.chart.data.players.length + 1">{{ cat.title }}</td>
+                          </tr>
+                          <tr v-for="row in cat.rows" :key="row.label">
+                            <td>{{ row.label }}</td>
+                            <td v-for="(v, vi) in row.values" :key="vi">{{ v }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div v-else-if="m.chart.template === 'team_comparison_table'" class="chat-table-wrap">
+                      <table class="chat-comparison-table">
+                        <thead>
+                          <tr>
+                            <th>Position</th>
+                            <th>{{ m.chart.data.clubs[0] }}</th>
+                            <th>{{ m.chart.data.clubs[1] }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="row in m.chart.data.rows" :key="row.position">
+                            <td>{{ row.position }}</td>
+                            <td>{{ row.aAvgOvr }} <span class="chat-table-depth">({{ row.aDepth }})</span></td>
+                            <td>{{ row.bAvgOvr }} <span class="chat-table-depth">({{ row.bDepth }})</span></td>
+                          </tr>
+                          <tr class="chat-comparison-table-category">
+                            <td>Best XI</td>
+                            <td>{{ m.chart.data.bestXI[0] }}</td>
+                            <td>{{ m.chart.data.bestXI[1] }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div v-else-if="m.chart.template === 'tactic_formation'" class="chat-pitch-wrap">
+                      <PitchDisplay
+                        v-if="tacticFormationData(m.chart.data.formationKey)"
+                        :formation="tacticFormationData(m.chart.data.formationKey).formation"
+                        :players="tacticFormationData(m.chart.data.formationKey).players"
+                        disable-player-clicks
+                        :currency-symbol="detectedCurrencySymbol"
+                      />
+                      <div v-else class="chat-pitch-unavailable">Formation data unavailable.</div>
+                    </div>
                   </div>
                 </template>
                 <template v-else>{{ m.text }}</template>
@@ -140,9 +184,13 @@ import {
 } from 'chart.js'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { Bar, Radar } from 'vue-chartjs'
+import { useRouter } from 'vue-router'
+import { computeSquadComposition } from '../composables/useBestXI'
 import { useChatStore } from '../stores/chatStore'
 import { usePlayerStore } from '../stores/playerStore'
-import { parseChatCitations } from '../utils/chatCitations'
+import { renderChatMessageHtml } from '../utils/chatCitations'
+import { getFormationLayout } from '../utils/formations'
+import PitchDisplay from './PitchDisplay.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 ChartJS.register(
@@ -166,6 +214,7 @@ const PRESET_QUESTIONS = [
 
 const chatStore = useChatStore()
 const playerStore = usePlayerStore()
+const router = useRouter()
 
 const open = ref(false)
 const draft = ref('')
@@ -218,7 +267,7 @@ watch(
       }, 3000)
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 onUnmounted(stopManagedTeamPoll)
@@ -235,6 +284,46 @@ function openPlayer(uid) {
   showPlayerDetailDialog.value = true
 }
 
+function renderMessageHtml(m) {
+  return renderChatMessageHtml(m.text, m.referencedPlayers, (uid) => Boolean(findPlayerByUid(uid)))
+}
+
+// Computes the tactic_formation pitch data client-side from the live squad (ticket 03,
+// .scratch/llm-refinements/issues/03-chat-tactics-formation-display.md) — the model
+// only ever supplies a formationKey; computeSquadComposition (shared with
+// TeamViewPage.vue's own Best XI) decides who actually plays where, so the two
+// surfaces can never disagree about who best fits a given formation.
+function tacticFormationData(formationKey) {
+  const formation = getFormationLayout(formationKey)
+  if (!formation.length || !chatStore.managedTeam?.club) return null
+
+  const squad = (playerStore.allPlayers || []).filter((p) => p.club === chatStore.managedTeam.club)
+  if (squad.length === 0) return null
+
+  const { squadComposition } = computeSquadComposition(squad, formation)
+  const players = {}
+  for (const row of formation) {
+    for (const slot of row.positions) {
+      const starter = squadComposition[slot.id]?.[0]
+      players[slot.id] = starter
+        ? {
+            ...starter.player,
+            Overall: starter.overallInRole,
+            exactPositionMatch: starter.exactMatch,
+          }
+        : null
+    }
+  }
+  return { formation, players }
+}
+
+// Player-link spans live inside v-html, so they can't carry a Vue @click binding —
+// this delegated handler reads the uid off whichever chip was actually clicked.
+function onBubbleClick(event) {
+  const uid = event.target?.dataset?.playerUid
+  if (uid) openPlayer(uid)
+}
+
 function ask(question) {
   draft.value = question
   send()
@@ -247,6 +336,23 @@ async function send() {
   await scrollToBottom()
   await chatStore.sendMessage(playerStore.currentDatasetId, text)
   await scrollToBottom()
+  navigateIfRequested()
+}
+
+// Performs the route change a navigate_to_page tool call requested (ticket 04,
+// .scratch/llm-refinements/issues/04-chat-query-rewrite-and-navigation.md). The
+// drawer stays open across the navigation since the widget is mounted once at the
+// app-shell level (App.vue) — no action needed here to keep it open.
+function navigateIfRequested() {
+  const last = chatStore.messages[chatStore.messages.length - 1]
+  const nav = last?.navigate
+  if (!nav) return
+  const isDataset = nav.page === 'dataset'
+  router.push({
+    name: nav.page,
+    params: isDataset ? { datasetId: playerStore.currentDatasetId } : {},
+    query: isDataset && nav.search ? { search: nav.search } : {},
+  })
 }
 
 function doNewChat() {
@@ -381,11 +487,11 @@ watch(
   border-radius: 12px;
   font-size: 0.86rem;
   line-height: 1.5;
-  white-space: pre-wrap;
 }
 .chat-bubble--user {
   background: #1a237e;
   color: white;
+  white-space: pre-wrap;
 }
 .chat-bubble--assistant {
   background: #f3f4fa;
@@ -399,6 +505,7 @@ watch(
 .chat-bubble--error {
   background: #fdecea;
   color: #a33;
+  white-space: pre-wrap;
 }
 .chat-bubble--status {
   background: #f3f4fa;
@@ -406,26 +513,153 @@ watch(
   font-size: 0.8rem;
   display: flex;
   align-items: center;
+  white-space: pre-wrap;
 }
-.chat-player-link {
-  color: #1a237e;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
+.chat-markdown {
+  :deep(p) {
+    margin: 0 0 0.6em;
 
-  .body--dark & {
-    color: #7c8fff;
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
-}
-.chat-player-link--unresolved {
-  color: inherit;
-  font-weight: inherit;
-  text-decoration: none;
-  cursor: default;
+  :deep(ul),
+  :deep(ol) {
+    margin: 0 0 0.6em;
+    padding-left: 1.3em;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  :deep(li) {
+    margin-bottom: 0.2em;
+  }
+  :deep(code) {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    padding: 0.1em 0.3em;
+    font-size: 0.85em;
+
+    .body--dark & {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+  :deep(pre) {
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 6px;
+    padding: 0.6em 0.8em;
+    overflow-x: auto;
+    margin: 0 0 0.6em;
+
+    .body--dark & {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    code {
+      background: none;
+      padding: 0;
+    }
+  }
+  :deep(strong) {
+    font-weight: 700;
+  }
+  :deep(a) {
+    color: #1a237e;
+
+    .body--dark & {
+      color: #7c8fff;
+    }
+  }
+  :deep(.chat-player-link) {
+    color: #1a237e;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+
+    .body--dark & {
+      color: #7c8fff;
+    }
+  }
+  :deep(.chat-player-link--unresolved) {
+    color: inherit;
+    font-weight: inherit;
+    text-decoration: none;
+    cursor: default;
+  }
 }
 .chat-chart {
   margin-top: 10px;
   height: 280px;
+}
+.chat-chart--tall {
+  height: auto;
+}
+.chat-pitch-wrap {
+  max-height: 480px;
+  overflow: auto;
+  border-radius: 6px;
+  transform: scale(0.85);
+  transform-origin: top left;
+  width: 117.6%;
+}
+.chat-pitch-unavailable {
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #888;
+}
+.chat-table-wrap {
+  height: 100%;
+  overflow: auto;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+
+  .body--dark & {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+.chat-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  white-space: nowrap;
+
+  th,
+  td {
+    padding: 4px 8px;
+    text-align: right;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+
+    .body--dark & {
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+  }
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    background: #f3f4fa;
+    font-weight: 600;
+
+    .body--dark & {
+      background: #2a2a38;
+    }
+  }
+  .chat-comparison-table-category td {
+    font-weight: 600;
+    background: rgba(26, 35, 126, 0.04);
+
+    .body--dark & {
+      background: rgba(255, 255, 255, 0.04);
+    }
+  }
+  .chat-table-depth {
+    color: #888;
+    font-size: 0.85em;
+  }
 }
 
 .chat-input-row {

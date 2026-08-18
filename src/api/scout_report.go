@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/responses"
 )
 
@@ -314,6 +313,7 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 		writeScoutReportError(w, r, &whoToSignError{http.StatusBadRequest, "no API key provided — add one in Settings"})
 		return
 	}
+	llmConfig := readLLMRequestConfig(r)
 
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
@@ -346,11 +346,37 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	logInfo(ctx, "Processing scout-report request", "dataset_id", datasetID, "player_uid", req.PlayerUID, "position", req.Position)
 
-	client := openai.NewClient(option.WithAPIKey(apiKey))
-	llmResult, candidates, scoutErr := runScoutReportLoop(ctx, &client, datasetID, systemPrompt, subject.UID)
+	// SSE from here on (Safari fix, see .scratch/llm-refinements/issues/
+	// 05-safari-compatibility-investigation.md): all validation above still fails as
+	// plain JSON before any bytes are committed to the client.
+	setCORSHeaders(w, r)
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flusher, canFlush := w.(http.Flusher)
+	sendStatus := func(label string) {
+		writeSSEEvent(w, "status", map[string]string{"label": label})
+		if canFlush {
+			flusher.Flush()
+		}
+	}
+
+	client, clientErr := newLLMClient(apiKey, llmConfig.baseURL)
+	if clientErr != nil {
+		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(http.StatusBadRequest), "message": clientErr.Error()})
+		if canFlush {
+			flusher.Flush()
+		}
+		return
+	}
+	llmResult, candidates, scoutErr := runScoutReportLoop(ctx, client, datasetID, llmConfig.resolveModel(scoutReportModel), systemPrompt, subject.UID, sendStatus)
 	if scoutErr != nil {
 		logWarn(ctx, "scout-report request failed", "dataset_id", datasetID, "status", scoutErr.status, "error", scoutErr.message)
-		writeScoutReportError(w, r, scoutErr)
+		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(scoutErr.status), "message": scoutErr.message})
+		if canFlush {
+			flusher.Flush()
+		}
 		return
 	}
 
@@ -385,18 +411,16 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	setCORSHeaders(w, r)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		logError(ctx, "Error encoding JSON response for scout-report", "dataset_id", datasetID, "error", err)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	writeSSEEvent(w, "done", result)
+	if canFlush {
+		flusher.Flush()
 	}
 }
 
 // runScoutReportLoop drives the Responses API tool-calling loop for find_comparable_players,
 // mirroring runWhoToSignLoop's shape exactly (who_to_sign.go) — same retry/error/round-cap
 // handling, reused as-is per this map's Decisions.
-func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string, subjectUID int64) (*llmScoutReportOutput, map[int64]Player, *whoToSignError) {
+func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, model, systemPrompt string, subjectUID int64, sendStatus func(string)) (*llmScoutReportOutput, map[int64]Player, *whoToSignError) {
 	candidates := make(map[int64]Player)
 	recordCandidates := func(results []Player) {
 		for _, p := range results {
@@ -423,7 +447,7 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, s
 	}
 
 	params := responses.ResponseNewParams{
-		Model: scoutReportModel,
+		Model: model,
 		Input: responses.ResponseNewParamsInputUnion{
 			OfString: openai.String(systemPrompt),
 		},
@@ -462,6 +486,12 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, s
 			break
 		}
 
+		// Flushes bytes to the client every round (research finding, see
+		// .scratch/llm-refinements/issues/05-safari-compatibility-investigation.md) —
+		// keeps Safari's ~60s idle-fetch timeout from tripping on a call that can
+		// legitimately run up to this route's 120s server-side budget.
+		sendStatus("Finding comparable players…")
+
 		outputItems := make([]responses.ResponseInputItemUnionParam, len(toolCalls))
 		for i, toolCall := range toolCalls {
 			var args findComparablePlayersArgs
@@ -486,7 +516,7 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, s
 		}
 
 		nextParams := responses.ResponseNewParams{
-			Model:              scoutReportModel,
+			Model:              model,
 			PreviousResponseID: openai.String(resp.ID),
 			Tools:              tools,
 			Text:               textFormat,

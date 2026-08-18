@@ -426,6 +426,14 @@ import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import RecommendSigningDialog from '../components/RecommendSigningDialog.vue'
 import TeamLogo from '../components/TeamLogo.vue'
+import {
+  computeSquadComposition,
+  fallbackPositionMap,
+  getPlayerOverallForRole,
+  getSlotSelectionOrder,
+  MIN_SUITABILITY_THRESHOLD,
+  positionSideMap,
+} from '../composables/useBestXI'
 import { fetchTeamData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
@@ -434,23 +442,6 @@ import { formations, getFormationLayout } from '../utils/formations'
 
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
-
-const fmSlotRoleMatcher = {
-  GK: ['Goalkeeper'],
-  'D (R)': ['Defender (Right)', 'Right Back'],
-  'D (L)': ['Defender (Left)', 'Left Back'],
-  'D (C)': ['Defender (Centre)', 'Centre Back'],
-  'WB (R)': ['Wing-Back (Right)', 'Right Wing-Back'],
-  'WB (L)': ['Wing-Back (Left)', 'Left Wing-Back'],
-  'DM (C)': ['Defensive Midfielder (Centre)', 'Centre Defensive Midfielder'],
-  'M (R)': ['Midfielder (Right)', 'Right Midfielder'],
-  'M (L)': ['Midfielder (Left)', 'Left Midfielder'],
-  'M (C)': ['Midfielder (Centre)', 'Centre Midfielder'],
-  'AM (R)': ['Attacking Midfielder (Right)', 'Right Attacking Midfielder', 'Winger (Right)'],
-  'AM (L)': ['Attacking Midfielder (Left)', 'Left Attacking Midfielder', 'Winger (Left)'],
-  'AM (C)': ['Attacking Midfielder (Centre)', 'Centre Attacking Midfielder'],
-  'ST (C)': ['Striker (Centre)', 'Striker'],
-}
 
 export default {
   name: 'TeamViewPage',
@@ -501,106 +492,7 @@ export default {
     const recommendSigningSlotRole = ref('')
     const recommendSigningSlotPositions = ref([])
 
-    const fmMatcherToRoleKeyPrefix = {
-      GOALKEEPER: 'GK',
-      SWEEPER: 'DC',
-      'DEFENDER (RIGHT)': 'DR',
-      'RIGHT BACK': 'DR',
-      'DEFENDER (LEFT)': 'DL',
-      'LEFT BACK': 'DL',
-      'DEFENDER (CENTRE)': 'DC',
-      'CENTRE BACK': 'DC',
-      'WING-BACK (RIGHT)': 'WBR',
-      'RIGHT WING-BACK': 'WBR',
-      'WING-BACK (LEFT)': 'WBL',
-      'LEFT WING-BACK': 'WBL',
-      'DEFENSIVE MIDFIELDER (CENTRE)': 'DM',
-      'CENTRE DEFENSIVE MIDFIELDER': 'DM',
-      'MIDFIELDER (RIGHT)': 'MR',
-      'RIGHT MIDFIELDER': 'MR',
-      'MIDFIELDER (LEFT)': 'ML',
-      'LEFT MIDFIELDER': 'ML',
-      'MIDFIELDER (CENTRE)': 'MC',
-      'CENTRE MIDFIELDER': 'MC',
-      'ATTACKING MIDFIELDER (RIGHT)': 'AMR',
-      'RIGHT ATTACKING MIDFIELDER': 'AMR',
-      'WINGER (RIGHT)': 'AMR',
-      'ATTACKING MIDFIELDER (LEFT)': 'AML',
-      'LEFT ATTACKING MIDFIELDER': 'AML',
-      'WINGER (LEFT)': 'AML',
-      'ATTACKING MIDFIELDER (CENTRE)': 'AMC',
-      'CENTRE ATTACKING MIDFIELDER': 'AMC',
-      'STRIKER (CENTRE)': 'ST',
-      STRIKER: 'ST',
-    }
-
-    // For handling combined positions like D/WB(R)
-    // The first position is the PREFERRED position, others are fallbacks
-    const positionSideMap = {
-      'D (R)': ['DR'],
-      'D (L)': ['DL'],
-      'D (C)': ['DC'],
-      'WB (R)': ['WBR'],
-      'WB (L)': ['WBL'],
-      'DM (C)': ['DM'],
-      'M (R)': ['MR'],
-      'M (L)': ['ML'],
-      'M (C)': ['MC'],
-      'AM (R)': ['AMR'],
-      'AM (L)': ['AML'],
-      'AM (C)': ['AMC'],
-      'ST (C)': ['ST'],
-      GK: ['GK'],
-    }
-
-    const fallbackPositionMap = {
-      'D (R)': ['DR', 'WBR', 'MR'],
-      'D (L)': ['DL', 'WBL', 'ML'],
-      'D (C)': ['DC', 'DM'],
-      'WB (R)': ['WBR', 'DR', 'MR'],
-      'WB (L)': ['WBL', 'DL', 'ML'],
-      'DM (C)': ['DM', 'DC', 'MC'],
-      'M (R)': ['MR', 'WBR', 'AMR'],
-      'M (L)': ['ML', 'WBL', 'AML'],
-      'M (C)': ['MC', 'DM'],
-      'AM (R)': ['AMR', 'MR'],
-      'AM (L)': ['AML', 'ML'],
-      'AM (C)': ['AMC', 'MC'],
-      'ST (C)': ['ST', 'AMC'],
-      GK: ['GK'],
-    }
-
     const LINEUP_SELECTION_VERSION = 'v2-strict-positions'
-
-    const getPlayerShortPositions = (player) => {
-      if (Array.isArray(player?.shortPositions)) return player.shortPositions
-      if (Array.isArray(player?.short_positions)) return player.short_positions
-      return []
-    }
-
-    const getSlotExactPositions = (slotRole) => positionSideMap[slotRole.toUpperCase()] || []
-
-    const getSlotFallbackPositions = (slotRole) => {
-      const exactPositions = getSlotExactPositions(slotRole)
-      const fallbackPositions = fallbackPositionMap[slotRole.toUpperCase()] || []
-      return fallbackPositions.filter((position) => !exactPositions.includes(position))
-    }
-
-    const getExactCandidateCountForSlot = (slot) => {
-      const slotPositions = getSlotExactPositions(slot.role)
-      return teamPlayers.value.filter((player) =>
-        getPlayerShortPositions(player).some((position) => slotPositions.includes(position))
-      ).length
-    }
-
-    const getSlotSelectionOrder = (formationSlots) => {
-      return [...formationSlots].sort((a, b) => {
-        const exactCandidateDifference =
-          getExactCandidateCountForSlot(a) - getExactCandidateCountForSlot(b)
-        if (exactCandidateDifference !== 0) return exactCandidateDifference
-        return formationSlots.indexOf(a) - formationSlots.indexOf(b)
-      })
-    }
 
     const fetchDatasetMetadata = async (datasetId) => {
       pageLoading.value = true
@@ -928,137 +820,6 @@ export default {
       }
     }
 
-    const getPlayerOverallForRole = (player, slotFormationRole) => {
-      if (!player || !slotFormationRole) return 0
-
-      let bestScoreForRole = 0
-
-      if (!player.roleSpecificOveralls) {
-        // If no role-specific overalls, use player's general Overall as fallback
-        return player.Overall || 0
-      }
-
-      const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
-        ? player.roleSpecificOveralls.length > 0
-        : Object.keys(player.roleSpecificOveralls).length > 0
-
-      if (!hasRoleOveralls) {
-        // If no role-specific overalls, use player's general Overall as fallback
-        return player.Overall || 0
-      }
-
-      const upperSlotRoleOriginal = slotFormationRole.toUpperCase()
-      const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
-
-      if (player.shortPositions && player.shortPositions.length > 0) {
-        const exactPositionMatches = player.shortPositions.filter((pos) =>
-          requiredPositions.includes(pos)
-        )
-
-        if (exactPositionMatches.length > 0) {
-          if (Array.isArray(player.roleSpecificOveralls)) {
-            for (const rso of player.roleSpecificOveralls) {
-              const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
-
-              if (exactPositionMatches.includes(rsoBasePosition)) {
-                bestScoreForRole = Math.max(bestScoreForRole, rso.score)
-              }
-            }
-          } else {
-            for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
-              const rsoBasePosition = roleName.split(' - ')[0].trim()
-
-              if (exactPositionMatches.includes(rsoBasePosition)) {
-                bestScoreForRole = Math.max(bestScoreForRole, score)
-              }
-            }
-          }
-
-          if (bestScoreForRole === 0) {
-            bestScoreForRole = Math.max(MIN_SUITABILITY_THRESHOLD, player.Overall || 0)
-          }
-        }
-      }
-
-      if (bestScoreForRole > 0) {
-        return bestScoreForRole
-      }
-
-      const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
-
-      if (player.shortPositions && player.shortPositions.length > 0) {
-        const fallbackMatches = player.shortPositions.filter((pos) =>
-          fallbackPositions.includes(pos)
-        )
-
-        if (fallbackMatches.length > 0) {
-          if (Array.isArray(player.roleSpecificOveralls)) {
-            for (const rso of player.roleSpecificOveralls) {
-              const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
-
-              if (fallbackMatches.includes(rsoBasePosition)) {
-                bestScoreForRole = Math.max(bestScoreForRole, rso.score)
-              }
-            }
-          } else {
-            for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
-              const rsoBasePosition = roleName.split(' - ')[0].trim()
-
-              if (fallbackMatches.includes(rsoBasePosition)) {
-                bestScoreForRole = Math.max(bestScoreForRole, score)
-              }
-            }
-          }
-
-          if (bestScoreForRole === 0) {
-            bestScoreForRole = Math.max(MIN_SUITABILITY_THRESHOLD - 10, (player.Overall || 0) - 5)
-          }
-        }
-      }
-
-      if (bestScoreForRole === 0) {
-        const upperSlotRole = slotFormationRole.toUpperCase()
-        const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole]
-
-        const targetRoleKeyPrefixes = fmPositionMatchers
-          .map((matcher) => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
-          .filter((prefix) => !!prefix)
-          .reduce((acc, val) => {
-            if (!acc.includes(val)) {
-              acc.push(val)
-            }
-            return acc
-          }, [])
-
-        if (Array.isArray(player.roleSpecificOveralls)) {
-          for (const rso of player.roleSpecificOveralls) {
-            const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
-
-            if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-              bestScoreForRole = Math.max(bestScoreForRole, rso.score)
-            }
-          }
-        } else if (player.roleSpecificOveralls) {
-          for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
-            const rsoBasePosition = roleName.split(' - ')[0].trim()
-
-            if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-              bestScoreForRole = Math.max(bestScoreForRole, score)
-            }
-          }
-        }
-
-        // Final fallback to player's general Overall rating if still nothing found
-        if (bestScoreForRole === 0) {
-          bestScoreForRole = Math.max(0, (player.Overall || 0) - 10)
-        }
-      }
-
-      return bestScoreForRole
-    }
-
-    const MIN_SUITABILITY_THRESHOLD = 10
-
     const getSlotDisplayName = (slot, allSlots) => {
       const roleCounts = allSlots.reduce((acc, s) => {
         acc[s.role] = (acc[s.role] || 0) + 1
@@ -1181,7 +942,7 @@ export default {
         const assignedPlayersToSlots = new Set()
 
         // Fill scarce natural positions first so flexible players do not block wing-backs/full-backs.
-        for (const slot of getSlotSelectionOrder(formationSlots)) {
+        for (const slot of getSlotSelectionOrder(formationSlots, teamPlayers.value)) {
           for (const assignment of allPotentialPlayerAssignments) {
             if (
               assignment.slotId === slot.id &&
@@ -1276,7 +1037,6 @@ export default {
         ? 'bg-info text-white'
         : 'bg-blue-2 text-primary'
 
-      const tempSquadComposition = {}
       const formationLayoutForCalc = getFormationLayout(selectedFormationKey.value)
       if (!formationLayoutForCalc) {
         calculationMessage.value = 'Invalid formation selected.'
@@ -1284,237 +1044,17 @@ export default {
         return
       }
 
-      const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
+      const { squadComposition: computedComposition, bestTeamAverageOverall: computedAverage } =
+        computeSquadComposition(teamPlayers.value, formationLayoutForCalc)
+      squadComposition.value = computedComposition
+      bestTeamAverageOverall.value = computedAverage
 
-      // Initialize slots
-      for (const slot of formationSlots) {
-        tempSquadComposition[slot.id] = []
-      }
-
-      // ENHANCEMENT: First, compute all player scores for all positions
-      // and check which players can play in which positions
-      const playerPositionMap = new Map() // Maps player name to positions they can play
-
-      for (const player of teamPlayers.value) {
-        const playablePositions = [...getPlayerShortPositions(player)]
-        playerPositionMap.set(player.name, playablePositions)
-      }
-
-      // Calculate player scores for each position
-      const allPotentialPlayerAssignments = []
-      for (const slot of formationSlots) {
-        for (const player of teamPlayers.value) {
-          const overallInRole = getPlayerOverallForRole(
-            player,
-            slot.role // Use the general role from formation (e.g., "ST (C)")
-          )
-
-          // Only include players who meet the threshold and are properly positioned
-          if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-            // Get the compatible positions for this slot
-            const slotPositions = getSlotExactPositions(slot.role)
-            const fallbackPositions = getSlotFallbackPositions(slot.role)
-
-            // STRICT POSITION CHECKING: Check if player can play in this position
-            // For this to be true, the player MUST have one of the required positions
-            // in their shortPositions array
-
-            const playerPositions = playerPositionMap.get(player.name) || []
-
-            // For first XI and depth chart, we ONLY want players who can ACTUALLY play the position
-            // isExactMatch means player has the EXACT position for this slot
-            const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
-
-            // Include both exact matches and fallback positions for more options
-            const isFallbackMatch = playerPositions.some((pos) => fallbackPositions.includes(pos))
-            const canPlayInPosition = isExactMatch || isFallbackMatch
-
-            if (canPlayInPosition) {
-              // Strict position filtering:
-              // 1. For first team selection, we want EXACT position matches only unless
-              //    there are no players for a position
-              // 2. For depth, we can be more flexible
-
-              // Store the original role score and position match info
-              const assignment = {
-                player,
-                slotId: slot.id,
-                slotRole: slot.role,
-                overallInRole: overallInRole, // Store original score for display
-                sortScore: overallInRole, // Will be used for sorting
-                exactMatch: isExactMatch, // Flag for UI display
-              }
-
-              // Adjust sort score based on position match
-              if (isExactMatch) {
-                assignment.sortScore += 10000
-              } else {
-                assignment.sortScore -= 5000
-              }
-
-              allPotentialPlayerAssignments.push(assignment)
-            }
-          }
-        }
-      }
-
-      // Sort assignments by the sort score, which already includes position match bonus
-      allPotentialPlayerAssignments.sort((a, b) => {
-        return b.sortScore - a.sortScore
-      })
-
-      const assignedPlayersToSlots = new Set()
-      const slotsByNaturalScarcity = getSlotSelectionOrder(formationSlots)
-
-      for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
-        // First pass: fill positions with exact matches
-        for (const slot of slotsByNaturalScarcity) {
-          if (tempSquadComposition[slot.id].length === depthIndex) {
-            // If this slot needs a player at current depth
-            for (const assignment of allPotentialPlayerAssignments) {
-              if (
-                assignment.slotId === slot.id &&
-                assignment.exactMatch && // Only use exact matches in first pass
-                !assignedPlayersToSlots.has(assignment.player.name)
-              ) {
-                // Check if this player is already a starter in *another* slot if we are filling backups
-                let alreadyStarterElsewhere = false
-                if (depthIndex > 0) {
-                  // Only check for backups
-                  for (const sId in tempSquadComposition) {
-                    if (
-                      tempSquadComposition[sId].length > 0 &&
-                      tempSquadComposition[sId][0].player.name === assignment.player.name
-                    ) {
-                      alreadyStarterElsewhere = true
-                      break
-                    }
-                  }
-                }
-
-                if (!alreadyStarterElsewhere) {
-                  tempSquadComposition[slot.id].push({
-                    player: assignment.player,
-                    overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch,
-                  })
-                  assignedPlayersToSlots.add(assignment.player.name)
-                  break // Move to next slot for this depth level
-                }
-              }
-            }
-          }
-        }
-
-        // Second pass: fill remaining positions with fallback matches
-        for (const slot of slotsByNaturalScarcity) {
-          if (tempSquadComposition[slot.id].length === depthIndex) {
-            // If this slot still needs a player after the first pass
-            for (const assignment of allPotentialPlayerAssignments) {
-              if (
-                assignment.slotId === slot.id &&
-                !assignment.exactMatch &&
-                !assignedPlayersToSlots.has(assignment.player.name)
-              ) {
-                // Check if this player is already a starter in *another* slot if we are filling backups
-                let alreadyStarterElsewhere = false
-                if (depthIndex > 0) {
-                  // Only check for backups
-                  for (const sId in tempSquadComposition) {
-                    if (
-                      tempSquadComposition[sId].length > 0 &&
-                      tempSquadComposition[sId][0].player.name === assignment.player.name
-                    ) {
-                      alreadyStarterElsewhere = true
-                      break
-                    }
-                  }
-                }
-
-                if (!alreadyStarterElsewhere) {
-                  tempSquadComposition[slot.id].push({
-                    player: assignment.player,
-                    overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch,
-                  })
-                  assignedPlayersToSlots.add(assignment.player.name)
-                  break // Move to next slot for this depth level
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Ensure each slot in tempSquadComposition is sorted by overallInRole descending
-      for (const slotId in tempSquadComposition) {
-        tempSquadComposition[slotId].sort((a, b) => {
-          if (a.exactMatch !== b.exactMatch) return a.exactMatch ? -1 : 1
-          return b.overallInRole - a.overallInRole
-        })
-      }
-
-      // Check if any positions have no players assigned at all
-      // In that case, try to find any player who can play there as a fallback
-      for (const slot of formationSlots) {
-        if (tempSquadComposition[slot.id].length === 0) {
-          // Get fallback positions for this slot
-          const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
-
-          // Find any players who can play in fallback positions
-          const fallbackAssignments = []
-
-          for (const player of teamPlayers.value) {
-            if (!assignedPlayersToSlots.has(player.name)) {
-              const playerPositions = getPlayerShortPositions(player)
-
-              // Check if player can play any fallback position
-              const canPlayFallback = playerPositions.some((pos) => fallbackPositions.includes(pos))
-
-              if (canPlayFallback) {
-                const overallInRole = getPlayerOverallForRole(player, slot.role)
-                if (overallInRole >= MIN_SUITABILITY_THRESHOLD - 10) {
-                  fallbackAssignments.push({
-                    player,
-                    overallInRole,
-                    exactMatch: false,
-                  })
-                }
-              }
-            }
-          }
-
-          // Sort fallbacks by score
-          fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole)
-
-          // Add best fallback if available
-          if (fallbackAssignments.length > 0) {
-            const bestFallback = fallbackAssignments[0]
-            tempSquadComposition[slot.id].push(bestFallback)
-            assignedPlayersToSlots.add(bestFallback.player.name)
-          }
-        }
-      }
-
-      squadComposition.value = tempSquadComposition
-
-      let sumOfStartersOverall = 0
-      let startersCount = 0
-      for (const slotPlayers of Object.values(squadComposition.value)) {
-        if (slotPlayers && slotPlayers.length > 0) {
-          sumOfStartersOverall += slotPlayers[0].overallInRole
-          startersCount++
-        }
-      }
-
-      if (startersCount > 0) {
-        bestTeamAverageOverall.value = Math.round(sumOfStartersOverall / startersCount)
+      if (computedAverage > 0) {
         calculationMessage.value = `Best XI & Depth calculated. Average Overall: ${bestTeamAverageOverall.value}.`
         calculationMessageClass.value = quasarInstance.dark.isActive
           ? 'bg-positive text-white'
           : 'bg-green-2 text-positive'
       } else {
-        bestTeamAverageOverall.value = 0
         calculationMessage.value = 'Could not assign any suitable players to form a Best XI.'
         calculationMessageClass.value = quasarInstance.dark.isActive
           ? 'bg-negative text-white'

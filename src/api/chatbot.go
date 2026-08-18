@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/responses"
 )
 
@@ -59,11 +58,20 @@ type ChatChart struct {
 	Data     map[string]any `json:"data"`
 }
 
+// ChatNavigate is set by the navigate_to_page tool (ticket 04, .scratch/
+// llm-refinements/issues/04-chat-query-rewrite-and-navigation.md) — Search is only
+// meaningful when Page is "dataset" (the Player Table's free-text search box).
+type ChatNavigate struct {
+	Page   string `json:"page"`
+	Search string `json:"search,omitempty"`
+}
+
 // ChatDoneEvent is the final SSE "done" event payload (ticket 06).
 type ChatDoneEvent struct {
 	Text              string                 `json:"text"`
 	ReferencedPlayers []ChatReferencedPlayer `json:"referencedPlayers"`
 	Chart             *ChatChart             `json:"chart,omitempty"`
+	Navigate          *ChatNavigate          `json:"navigate,omitempty"`
 }
 
 // chatModelResponse is the model's own strict-mode structured output — deliberately
@@ -110,7 +118,6 @@ type ChatPlayerSummary struct {
 	Age                 string         `json:"age"`
 	ShortPositions      []string       `json:"shortPositions"`
 	Overall             int            `json:"overall"`
-	CA                  int            `json:"ca"`
 	BestRoleOverall     string         `json:"bestRoleOverall"`
 	TransferValueAmount int64          `json:"transferValueAmount"`
 	WageAmount          int64          `json:"wageAmount"`
@@ -135,7 +142,6 @@ func buildChatPlayerSummary(player Player, attributeLongNames []string) ChatPlay
 		Age:                 player.Age,
 		ShortPositions:      player.ShortPositions,
 		Overall:             player.Overall,
-		CA:                  player.CA,
 		BestRoleOverall:     player.BestRoleOverall,
 		TransferValueAmount: player.TransferValueAmount,
 		WageAmount:          player.WageAmount,
@@ -144,7 +150,7 @@ func buildChatPlayerSummary(player Player, attributeLongNames []string) ChatPlay
 	}
 }
 
-var chatPlayerTableColumns = []string{"uid", "name", "club", "age", "pos", "ovr", "ca", "role", "value", "wage", "nat"}
+var chatPlayerTableColumns = []string{"uid", "name", "club", "age", "pos", "ovr", "role", "value", "wage", "nat"}
 
 func chatTableFieldSafe(s string) string {
 	s = strings.ReplaceAll(s, "|", "/")
@@ -184,7 +190,6 @@ func renderChatPlayerTable(players []ChatPlayerSummary) string {
 			p.Age,
 			strings.Join(p.ShortPositions, ","),
 			strconv.Itoa(p.Overall),
-			strconv.Itoa(p.CA),
 			chatTableFieldSafe(p.BestRoleOverall),
 			strconv.FormatInt(p.TransferValueAmount, 10),
 			strconv.FormatInt(p.WageAmount, 10),
@@ -501,9 +506,70 @@ func chatGetManagedSquad(datasetID, club string) (basedInNation string, summarie
 // --- render_chart tool (ticket 02, 04) ---
 
 type chatRenderChartArgs struct {
-	Template   string   `json:"template"`
-	PlayerUIDs []int64  `json:"playerUids"`
-	Clubs      []string `json:"clubs"`
+	Template     string   `json:"template"`
+	PlayerUIDs   []int64  `json:"playerUids"`
+	Clubs        []string `json:"clubs"`
+	FormationKey string   `json:"formationKey"`
+}
+
+// chatFormationCatalog mirrors src/utils/formations.js's keys and display names
+// exactly (ticket 03, .scratch/llm-refinements/issues/
+// 03-chat-tactics-formation-display.md) -- the model picks a real formationKey from
+// this list rather than inventing a shape; the frontend looks the same key up in
+// formations.js via getFormationLayout to render it, so the two can't drift apart.
+var chatFormationCatalog = []struct {
+	Key  string
+	Name string
+}{
+	{"41212_narrow_fm", "4-1-2-1-2 Narrow (Diamond FM)"},
+	{"4132_dm_flat_mids", "4-1-3-2 (DM, Flat Mids)"},
+	{"4141_flat", "4-1-4-1 Flat"},
+	{"433_dm_wide", "4-1-2-3 DM Wide (4-3-3 DM)"},
+	{"4222_dual_cam_dm", "4-2-2-2 (Dual CAMs, Dual DMs)"},
+	{"4231_dm_am_wide", "4-2-3-1 DM AM Wide"},
+	{"4231_narrow_dm", "4-2-3-1 Narrow (3 AMCs, 2 DMs)"},
+	{"424_flat_mc", "4-2-4 (Flat MCs, AM L/R Wingers)"},
+	{"4321_christmas_tree", "4-3-2-1 (Christmas Tree)"},
+	{"433_false_nine", "4-3-3 False Nine"},
+	{"433_wide", "4-3-3 Wide"},
+	{"4411_cf_behind_st", "4-4-1-1 (CF behind ST)"},
+	{"442_classic", "4-4-2 Classic"},
+	{"451_flat", "4-5-1 Flat"},
+	{"5212_wb", "5-2-1-2 WB"},
+	{"541_flat_wb", "5-4-1 Flat WB"},
+	{"3142_dm_wb", "3-1-4-2 DM WB"},
+	{"3412_wb", "3-4-1-2 WB"},
+	{"3421_wb", "3-4-2-1 WB (Dual AMs)"},
+	{"343_fm", "3-4-3 FM"},
+	{"352_fm", "3-5-2 / 5-3-2 WB"},
+}
+
+func chatFormationKeys() []string {
+	keys := make([]string, len(chatFormationCatalog))
+	for i, f := range chatFormationCatalog {
+		keys[i] = f.Key
+	}
+	return keys
+}
+
+func chatFormationCatalogDescription() string {
+	var b strings.Builder
+	for i, f := range chatFormationCatalog {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(f.Key + " (" + f.Name + ")")
+	}
+	return b.String()
+}
+
+func isValidChatFormationKey(key string) bool {
+	for _, f := range chatFormationCatalog {
+		if f.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 var chatRenderChartToolSchema = map[string]any{
@@ -511,18 +577,23 @@ var chatRenderChartToolSchema = map[string]any{
 	"properties": map[string]any{
 		"template": map[string]any{
 			"type":        "string",
-			"enum":        []string{"player_radar", "team_bar"},
-			"description": "Which chart template to render.",
+			"enum":        []string{"player_radar", "team_bar", "player_comparison_table", "team_comparison_table", "tactic_formation"},
+			"description": "Which chart template to render. Use the *_table variants instead of the chart variants when exact numbers matter more than a visual shape — e.g. a detailed attribute-by-attribute breakdown rather than an at-a-glance comparison. Use tactic_formation for a \"what tactic would fit\" style question.",
 		},
 		"playerUids": map[string]any{
 			"type":        "array",
 			"items":       map[string]any{"type": "integer"},
-			"description": "For player_radar only: 1-2 player uids (from a tool result this conversation) to compare.",
+			"description": "For player_radar or player_comparison_table only: 1-2 player uids (from a tool result this conversation) to compare.",
 		},
 		"clubs": map[string]any{
 			"type":        "array",
 			"items":       map[string]any{"type": "string"},
-			"description": "For team_bar only: exactly 2 club names to compare.",
+			"description": "For team_bar or team_comparison_table only: exactly 2 club names to compare.",
+		},
+		"formationKey": map[string]any{
+			"type":        "string",
+			"enum":        chatFormationKeys(),
+			"description": "For tactic_formation only: the formation key that best fits the managed squad, from " + chatFormationCatalogDescription() + ".",
 		},
 	},
 	"required": []string{"template"},
@@ -606,6 +677,120 @@ func buildTeamBarChart(datasetID string, clubs []string) *ChatChart {
 	}
 }
 
+// --- Comparison table templates (ticket 02, .scratch/llm-refinements/issues/
+// 02-chat-comparison-table-component.md) — a lightweight-HTML-table alternative to
+// player_radar/team_bar for when exact numbers matter more than a visual shape. ---
+
+// chatComparisonAttributeCategories mirrors PlayerComparisonDialog.vue's Technical/
+// Mental/Physical breakdown exactly (same codes, same grouping, same order) — the
+// full attribute set, deliberately wider than player_radar's 6-attribute "shape" view.
+var chatComparisonAttributeCategories = []struct {
+	Title string
+	Codes []string
+}{
+	{"Technical", []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "Mar", "Pas", "Pen", "Tck", "Tec"}},
+	{"Mental", []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}},
+	{"Physical", []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}},
+}
+
+var chatComparisonAttributeLabels = map[string]string{
+	"Cor": "Corners", "Cro": "Crossing", "Dri": "Dribbling", "Fin": "Finishing",
+	"Fir": "First Touch", "Fre": "Free Kick Taking", "Hea": "Heading", "Lon": "Long Shots",
+	"Mar": "Marking", "Pas": "Passing", "Pen": "Penalty Taking", "Tck": "Tackling", "Tec": "Technique",
+	"Agg": "Aggression", "Ant": "Anticipation", "Bra": "Bravery", "Cmp": "Composure",
+	"Cnt": "Concentration", "Dec": "Decisions", "Det": "Determination", "Fla": "Flair",
+	"Ldr": "Leadership", "OtB": "Off The Ball", "Pos": "Positioning", "Tea": "Team Work",
+	"Vis": "Vision", "Wor": "Work Rate",
+	"Acc": "Acceleration", "Agi": "Agility", "Bal": "Balance", "Jum": "Jumping Reach",
+	"Nat": "Natural Fitness", "Pac": "Pace", "Sta": "Stamina", "Str": "Strength",
+}
+
+// buildPlayerComparisonTable re-derives every attribute value fresh from the live
+// dataset by uid — same grounding rationale as buildPlayerRadarChart: the model only
+// ever supplies identifiers, never the numbers themselves.
+func buildPlayerComparisonTable(datasetID string, uids []int64) *ChatChart {
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		return nil
+	}
+	byUID := make(map[int64]Player, len(players))
+	for i := range players {
+		byUID[players[i].UID] = players[i]
+	}
+
+	var names []string
+	var matched []Player
+	for i, uid := range uids {
+		if i >= 2 {
+			break
+		}
+		player, ok := byUID[uid]
+		if !ok {
+			continue
+		}
+		names = append(names, player.Name)
+		matched = append(matched, player)
+	}
+	if len(matched) == 0 {
+		return nil
+	}
+
+	var categories []map[string]any
+	for _, cat := range chatComparisonAttributeCategories {
+		var rows []map[string]any
+		for _, code := range cat.Codes {
+			values := make([]int, len(matched))
+			for i, p := range matched {
+				values[i] = p.NumericAttributes[code]
+			}
+			rows = append(rows, map[string]any{
+				"label":  chatComparisonAttributeLabels[code],
+				"values": values,
+			})
+		}
+		categories = append(categories, map[string]any{"title": cat.Title, "rows": rows})
+	}
+
+	return &ChatChart{
+		Template: "player_comparison_table",
+		Data:     map[string]any{"players": names, "categories": categories},
+	}
+}
+
+// buildTeamComparisonTable re-derives per-position squad data fresh via
+// computeSquadBuckets — same grounding rationale as buildTeamBarChart, a tabular
+// alternative to that template rather than a duplicate of its data shape.
+func buildTeamComparisonTable(datasetID string, clubs []string) *ChatChart {
+	if len(clubs) != 2 {
+		return nil
+	}
+	statsA, bestXIA, okA := computeSquadBuckets(datasetID, clubs[0])
+	statsB, bestXIB, okB := computeSquadBuckets(datasetID, clubs[1])
+	if !okA || !okB {
+		return nil
+	}
+	var rows []map[string]any
+	for _, bucket := range chatPositionBucketOrder {
+		a := statsA[bucket]
+		b := statsB[bucket]
+		rows = append(rows, map[string]any{
+			"position": bucket,
+			"aAvgOvr":  a.AvgOverall,
+			"aDepth":   a.Count,
+			"bAvgOvr":  b.AvgOverall,
+			"bDepth":   b.Count,
+		})
+	}
+	return &ChatChart{
+		Template: "team_comparison_table",
+		Data: map[string]any{
+			"clubs":  clubs,
+			"rows":   rows,
+			"bestXI": []int{bestXIA, bestXIB},
+		},
+	}
+}
+
 // --- System prompt (ticket 08) ---
 
 func buildChatbotSystemPrompt(managedClub string) string {
@@ -615,7 +800,8 @@ func buildChatbotSystemPrompt(managedClub string) string {
 	b.WriteString("- search_players: search the transfer market, or a specific club's players (set club to scope it; omit club for the wider market). You may call it multiple times per turn, including chaining calls where a value from one search feeds the next — e.g. to find a player better than a specific club's best at a position, first search that club at that position to find their overall, then search again with club omitted and minOverall set to that value.\n")
 	b.WriteString("- compare_squads: get per-position average overall, depth, and a best-XI figure for two clubs — use this for squad composition comparisons instead of eyeballing full rosters yourself.\n")
 	b.WriteString("- get_managed_squad: get the manager's own current squad plus the nation their club is based in. Always call this before answering a homegrown-talent or tactic-fit question.\n")
-	b.WriteString("- render_chart: optionally render a chart (player_radar for 1-2 players' attributes, team_bar for a two-club squad comparison) to accompany your answer. Only call it when a visual genuinely helps — most answers don't need one.\n\n")
+	b.WriteString("- render_chart: optionally render a chart or table (player_radar / player_comparison_table for 1-2 players' attributes, team_bar / team_comparison_table for a two-club squad comparison, tactic_formation for a \"what tactic would fit\" question) to accompany your answer. Prefer the *_table variant when exact numbers matter more than an at-a-glance visual. For tactic_formation, pick the formationKey whose shape best fits the squad's strengths from get_managed_squad's data — the pitch diagram itself is computed independently from the real squad, so just pick the formation; you don't need to name who plays where. Only call it when a visual genuinely helps — most answers don't need one.\n")
+	b.WriteString("- navigate_to_page: optionally send the user to another page of the app when they ask to see, find, or search something better shown there (e.g. \"show me strikers under 21\" → page \"dataset\" with search \"striker\"; \"take me to my squad depth chart\" → page \"team-view\"). Only call it when the user is actually asking to go somewhere or see a filtered list, not for every answer.\n\n")
 	b.WriteString("Instructions:\n")
 	b.WriteString("- Never state a player's stats or attributes that didn't come from a tool result this conversation — do not invent numbers.\n")
 	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary or FIFA-style ratings — PAC, SHO, PAS, DRI, DEF, and PHY do not exist here and must never appear in your reasoning.\n")
@@ -670,6 +856,7 @@ func chatbotHandler(w http.ResponseWriter, r *http.Request) {
 		writeChatbotPreStreamError(w, r, http.StatusBadRequest, "no API key provided — add one in Settings")
 		return
 	}
+	llmConfig := readLLMRequestConfig(r)
 
 	team, found := getManagedTeam(datasetID)
 	if !found || team.Club == "" {
@@ -697,9 +884,16 @@ func chatbotHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	client := openai.NewClient(option.WithAPIKey(apiKey))
+	client, clientErr := newLLMClient(apiKey, llmConfig.baseURL)
+	if clientErr != nil {
+		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(http.StatusBadRequest), "message": clientErr.Error()})
+		if canFlush {
+			flusher.Flush()
+		}
+		return
+	}
 	systemPrompt := buildChatbotSystemPrompt(team.Club)
-	result, chart, chatErr := runChatbotLoop(ctx, &client, datasetID, team.Club, systemPrompt, req.History, sendStatus)
+	result, chart, navigate, chatErr := runChatbotLoop(ctx, client, datasetID, team.Club, llmConfig.resolveModel(chatbotModel), systemPrompt, req.History, sendStatus)
 	if chatErr != nil {
 		logWarn(ctx, "chatbot request failed", "dataset_id", datasetID, "status", chatErr.status, "error", chatErr.message)
 		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(chatErr.status), "message": chatErr.message})
@@ -713,6 +907,7 @@ func chatbotHandler(w http.ResponseWriter, r *http.Request) {
 		Text:              result.Text,
 		ReferencedPlayers: result.ReferencedPlayers,
 		Chart:             chart,
+		Navigate:          navigate,
 	})
 	if canFlush {
 		flusher.Flush()
@@ -757,6 +952,49 @@ var chatbotToolFriendlyLabels = map[string]string{
 	"compare_squads":    "Comparing squads…",
 	"get_managed_squad": "Reviewing your squad…",
 	"render_chart":      "Building chart…",
+	"navigate_to_page":  "Navigating…",
+}
+
+// --- navigate_to_page tool (ticket 04, .scratch/llm-refinements/issues/
+// 04-chat-query-rewrite-and-navigation.md) — one combined tool for both asks from
+// llmrefinements.md: routing the user to another page, and (page: "dataset" only)
+// setting the Player Table's free-text search box the same way typing into it would.
+// chatNavigatePages mirrors src/router/index.js's plain (non-shared, non-datasetId)
+// route names for every dataset-scoped page. ---
+
+var chatNavigatePages = []string{
+	"dataset", "team-view", "nations", "teams", "leagues",
+	"performance", "wishlist", "cards", "progression", "save-analysis",
+}
+
+type chatNavigateToPageArgs struct {
+	Page   string `json:"page"`
+	Search string `json:"search"`
+}
+
+var chatNavigateToPageToolSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"page": map[string]any{
+			"type":        "string",
+			"enum":        chatNavigatePages,
+			"description": "Which page to send the user to. \"dataset\" is the Player Table.",
+		},
+		"search": map[string]any{
+			"type":        "string",
+			"description": "Only meaningful when page is \"dataset\": sets the Player Table's free-text search box, the same as the user typing a name or search term into it themselves.",
+		},
+	},
+	"required": []string{"page"},
+}
+
+func isValidChatNavigatePage(page string) bool {
+	for _, p := range chatNavigatePages {
+		if p == page {
+			return true
+		}
+	}
+	return false
 }
 
 // runChatbotLoop drives one turn's Responses API tool-calling loop: declares all four
@@ -764,7 +1002,7 @@ var chatbotToolFriendlyLabels = map[string]string{
 // a final structured answer — capped at chatbotMaxToolRoundsPerTurn rounds (ticket 01).
 // Conversation history is rebuilt from req.History on every call (ticket 01: stateless,
 // no PreviousResponseID carried across HTTP turns — only within this one turn's loop).
-func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, managedClub, systemPrompt string, history []ChatHistoryTurn, sendStatus func(string)) (*chatModelResponse, *ChatChart, *whoToSignError) {
+func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, managedClub, model, systemPrompt string, history []ChatHistoryTurn, sendStatus func(string)) (*chatModelResponse, *ChatChart, *ChatNavigate, *whoToSignError) {
 	items := make([]responses.ResponseInputItemUnionParam, 0, len(history))
 	for _, turn := range history {
 		role := responses.EasyInputMessageRoleUser
@@ -777,7 +1015,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 	tools := []responses.ToolUnionParam{
 		{OfFunction: &responses.FunctionToolParam{
 			Name:        "search_players",
-			Description: openai.String("Search the transfer market or a specific club's players. Returns a pipe-delimited table (header row first): uid|name|club|age|pos|ovr|ca|role|value|wage|nat, plus one column per requested attribute."),
+			Description: openai.String("Search the transfer market or a specific club's players. Returns a pipe-delimited table (header row first): uid|name|club|age|pos|ovr|role|value|wage|nat, plus one column per requested attribute."),
 			Parameters:  chatSearchPlayersToolSchema,
 		}},
 		{OfFunction: &responses.FunctionToolParam{
@@ -792,8 +1030,13 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 		}},
 		{OfFunction: &responses.FunctionToolParam{
 			Name:        "render_chart",
-			Description: openai.String("Render a chart to accompany your answer. player_radar needs playerUids (1-2); team_bar needs clubs (exactly 2)."),
+			Description: openai.String("Render a chart or table to accompany your answer. player_radar and player_comparison_table need playerUids (1-2); team_bar and team_comparison_table need clubs (exactly 2); tactic_formation needs formationKey. Prefer the *_table variants when exact numbers matter more than a visual shape."),
 			Parameters:  chatRenderChartToolSchema,
+		}},
+		{OfFunction: &responses.FunctionToolParam{
+			Name:        "navigate_to_page",
+			Description: openai.String("Send the user to another page, optionally setting the Player Table's search box (page: \"dataset\" only)."),
+			Parameters:  chatNavigateToPageToolSchema,
 		}},
 	}
 	textFormat := responses.ResponseTextConfigParam{
@@ -808,7 +1051,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 	}
 
 	params := responses.ResponseNewParams{
-		Model:        chatbotModel,
+		Model:        model,
 		Instructions: openai.String(systemPrompt),
 		Input:        responses.ResponseNewParamsInputUnion{OfInputItemList: items},
 		Tools:        tools,
@@ -817,10 +1060,11 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 
 	resp, apiErr := callResponsesWithRetry(ctx, client, params)
 	if apiErr != nil {
-		return nil, nil, apiErr
+		return nil, nil, nil, apiErr
 	}
 
 	var lastChart *ChatChart
+	var lastNavigate *ChatNavigate
 
 	for round := 0; ; round++ {
 		var toolCalls []responses.ResponseFunctionToolCall
@@ -838,9 +1082,9 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 					"status", resp.Status,
 					"output_text_len", len(outputText),
 				)
-				return nil, nil, &whoToSignError{http.StatusInternalServerError, "the assistant's response could not be parsed"}
+				return nil, nil, nil, &whoToSignError{http.StatusInternalServerError, "the assistant's response could not be parsed"}
 			}
-			return &result, lastChart, nil
+			return &result, lastChart, lastNavigate, nil
 		}
 		if round >= chatbotMaxToolRoundsPerTurn {
 			break
@@ -858,7 +1102,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 
 		outputItems := make([]responses.ResponseInputItemUnionParam, len(toolCalls))
 		for i, toolCall := range toolCalls {
-			outputText := dispatchChatbotTool(datasetID, managedClub, toolCall.Name, toolCall.Arguments, &lastChart)
+			outputText := dispatchChatbotTool(datasetID, managedClub, toolCall.Name, toolCall.Arguments, &lastChart, &lastNavigate)
 			outputItems[i] = responses.ResponseInputItemUnionParam{
 				OfFunctionCallOutput: &responses.ResponseInputItemFunctionCallOutputParam{
 					CallID: toolCall.CallID,
@@ -870,7 +1114,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 		}
 
 		nextParams := responses.ResponseNewParams{
-			Model:              chatbotModel,
+			Model:              model,
 			PreviousResponseID: openai.String(resp.ID),
 			Tools:              tools,
 			Text:               textFormat,
@@ -878,19 +1122,20 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 		}
 		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
 		if apiErr != nil {
-			return nil, nil, apiErr
+			return nil, nil, nil, apiErr
 		}
 	}
 
-	return nil, nil, &whoToSignError{
+	return nil, nil, nil, &whoToSignError{
 		http.StatusGatewayTimeout,
 		"the assistant couldn't settle on an answer within the allowed search attempts — try a narrower question and try again.",
 	}
 }
 
 // dispatchChatbotTool executes one tool call and returns its result as a string ready
-// to hand back to the model. lastChart is updated in place when render_chart succeeds.
-func dispatchChatbotTool(datasetID, managedClub, name, argsJSON string, lastChart **ChatChart) string {
+// to hand back to the model. lastChart/lastNavigate are updated in place when
+// render_chart/navigate_to_page succeed.
+func dispatchChatbotTool(datasetID, managedClub, name, argsJSON string, lastChart **ChatChart, lastNavigate **ChatNavigate) string {
 	switch name {
 	case "search_players":
 		var args chatSearchPlayersArgs
@@ -923,12 +1168,32 @@ func dispatchChatbotTool(datasetID, managedClub, name, argsJSON string, lastChar
 			chart = buildPlayerRadarChart(datasetID, args.PlayerUIDs)
 		case "team_bar":
 			chart = buildTeamBarChart(datasetID, args.Clubs)
+		case "player_comparison_table":
+			chart = buildPlayerComparisonTable(datasetID, args.PlayerUIDs)
+		case "team_comparison_table":
+			chart = buildTeamComparisonTable(datasetID, args.Clubs)
+		case "tactic_formation":
+			if isValidChatFormationKey(args.FormationKey) {
+				chart = &ChatChart{
+					Template: "tactic_formation",
+					Data:     map[string]any{"formationKey": args.FormationKey},
+				}
+			}
 		}
 		if chart == nil {
 			return "Chart could not be rendered — check the player uids or club names."
 		}
 		*lastChart = chart
 		return "Chart rendered."
+
+	case "navigate_to_page":
+		var args chatNavigateToPageArgs
+		_ = json.Unmarshal([]byte(argsJSON), &args)
+		if !isValidChatNavigatePage(args.Page) {
+			return "Could not navigate — unknown page."
+		}
+		*lastNavigate = &ChatNavigate{Page: args.Page, Search: args.Search}
+		return "Navigation queued."
 
 	default:
 		return "Unknown tool."

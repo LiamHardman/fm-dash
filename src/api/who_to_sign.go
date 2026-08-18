@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/responses"
 )
 
@@ -606,6 +605,7 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 		writeWhoToSignError(w, r, &whoToSignError{http.StatusBadRequest, "no API key provided — add one in Settings"})
 		return
 	}
+	llmConfig := readLLMRequestConfig(r)
 
 	squad, found := getSquadForTeam(datasetID, req.Team)
 	if !found {
@@ -622,11 +622,37 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 	squadSummaries := buildSquadSummaries(squad, req)
 	systemPrompt := buildWhoToSignSystemPrompt(req, squadSummaries)
 
-	client := openai.NewClient(option.WithAPIKey(apiKey))
-	result, considered, candidates, scoutErr := runWhoToSignLoop(ctx, &client, datasetID, systemPrompt)
+	// SSE from here on (Safari fix, see .scratch/llm-refinements/issues/
+	// 05-safari-compatibility-investigation.md): all validation above still fails as
+	// plain JSON before any bytes are committed to the client.
+	setCORSHeaders(w, r)
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flusher, canFlush := w.(http.Flusher)
+	sendStatus := func(label string) {
+		writeSSEEvent(w, "status", map[string]string{"label": label})
+		if canFlush {
+			flusher.Flush()
+		}
+	}
+
+	client, clientErr := newLLMClient(apiKey, llmConfig.baseURL)
+	if clientErr != nil {
+		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(http.StatusBadRequest), "message": clientErr.Error()})
+		if canFlush {
+			flusher.Flush()
+		}
+		return
+	}
+	result, considered, candidates, scoutErr := runWhoToSignLoop(ctx, client, datasetID, llmConfig.resolveModel(whoToSignModel), systemPrompt, sendStatus)
 	if scoutErr != nil {
 		logWarn(ctx, "who-to-sign request failed", "dataset_id", datasetID, "status", scoutErr.status, "error", scoutErr.message)
-		writeWhoToSignError(w, r, scoutErr)
+		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(scoutErr.status), "message": scoutErr.message})
+		if canFlush {
+			flusher.Flush()
+		}
 		return
 	}
 
@@ -661,11 +687,9 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 		result.Recommendations[i].ClosestSquadPlayer = closest
 	}
 
-	setCORSHeaders(w, r)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		logError(ctx, "Error encoding JSON response for who-to-sign", "dataset_id", datasetID, "error", err)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	writeSSEEvent(w, "done", result)
+	if canFlush {
+		flusher.Flush()
 	}
 }
 
@@ -680,7 +704,7 @@ func whoToSignEnvAPIKey() string {
 // executes it in-process on each function_call, and returns once the model produces
 // a final structured answer — capped at whoToSignMaxToolRounds rounds (ticket 08),
 // with one retry on transient OpenAI errors (ticket 10).
-func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, systemPrompt string) (*WhoToSignResponse, map[string][]ScoutPlayerSummary, map[int64]ScoutPlayerSummary, *whoToSignError) {
+func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, model, systemPrompt string, sendStatus func(string)) (*WhoToSignResponse, map[string][]ScoutPlayerSummary, map[int64]ScoutPlayerSummary, *whoToSignError) {
 	// considered accumulates every find_players result across the whole loop, keyed by
 	// the uppercased shortPosition searched, deduped by UID and capped at 10 per
 	// position — purely server-side bookkeeping for the frontend's "other players
@@ -736,7 +760,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 	// so omitting them on a follow-up leaves the model free to answer in prose instead of
 	// the required JSON schema.
 	params := responses.ResponseNewParams{
-		Model: whoToSignModel,
+		Model: model,
 		Input: responses.ResponseNewParamsInputUnion{
 			OfString: openai.String(systemPrompt),
 		},
@@ -782,6 +806,12 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 			break
 		}
 
+		// Flushes bytes to the client every round (research finding, see
+		// .scratch/llm-refinements/issues/05-safari-compatibility-investigation.md) —
+		// keeps Safari's ~60s idle-fetch timeout from tripping on a call that can
+		// legitimately run up to this route's 120s server-side budget.
+		sendStatus("Searching players…")
+
 		outputItems := make([]responses.ResponseInputItemUnionParam, len(toolCalls))
 		for i, toolCall := range toolCalls {
 			var args whoToSignFindPlayersArgs
@@ -802,7 +832,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, sys
 		}
 
 		nextParams := responses.ResponseNewParams{
-			Model:              whoToSignModel,
+			Model:              model,
 			PreviousResponseID: openai.String(resp.ID),
 			Tools:              tools,
 			Text:               textFormat,

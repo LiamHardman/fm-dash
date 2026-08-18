@@ -131,6 +131,8 @@ import { usePlayerStore } from '../stores/playerStore'
 import { useScoutReportStore } from '../stores/scoutReportStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import { llmRequestHeaders } from '../utils/llmHeaders'
+import { consumeSSEStream } from '../utils/sseClient'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 import StarRating from './StarRating.vue'
 
@@ -244,13 +246,10 @@ export default defineComponent({
       try {
         const res = await fetch(`/api/scout-report/${props.datasetId}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-OpenAI-Api-Key': uiStore.openaiApiKey,
-          },
+          headers: llmRequestHeaders(uiStore),
           body: JSON.stringify({ playerUid: playerUid.value, position: position.value }),
         })
-        if (!res.ok) {
+        if (!res.ok || !res.body) {
           let message = `Unexpected error (${res.status}).`
           try {
             const body = await res.json()
@@ -259,9 +258,15 @@ export default defineComponent({
           error.value = message
           return
         }
-        const data = await res.json()
-        report.value = data
-        scoutReportStore.set(props.datasetId, playerUid.value, position.value, data)
+        await consumeSSEStream(res, {
+          done: (data) => {
+            report.value = data
+            scoutReportStore.set(props.datasetId, playerUid.value, position.value, data)
+          },
+          error: (payload) => {
+            error.value = payload.message || 'Something went wrong.'
+          },
+        })
       } catch (e) {
         console.error('[ScoutReportTab] request threw', e)
         error.value = 'Could not reach the server. Check your connection and try again.'

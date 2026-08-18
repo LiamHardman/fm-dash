@@ -25,6 +25,13 @@ export const useUiStore = defineStore('ui', () => {
   // User's own OpenAI API key for the "Who to Sign" scouting feature (bring-your-own-key)
   const openaiApiKey = ref('')
 
+  // Configurable LLM endpoint/model (map decision, see .scratch/llm-refinements/issues/
+  // 01-configurable-llm-endpoint-and-model.md), shared by all three LLM features. Both
+  // empty by default -- each independently falls back to the backend's own hardcoded
+  // default when unset.
+  const openaiBaseUrl = ref('')
+  const openaiModel = ref('')
+
   // Function to toggle dark mode
   function toggleDarkMode() {
     // Directly toggle the current state
@@ -266,6 +273,42 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {}
   }
 
+  // Function to set the user's custom LLM base URL
+  function setOpenaiBaseUrl(url) {
+    openaiBaseUrl.value = url
+    try {
+      localStorage.setItem('openaiBaseUrl', url || '')
+    } catch (_e) {}
+  }
+
+  // Initialize custom LLM base URL from localStorage
+  function initOpenaiBaseUrl() {
+    try {
+      const stored = localStorage.getItem('openaiBaseUrl')
+      if (stored !== null) {
+        openaiBaseUrl.value = stored
+      }
+    } catch (_e) {}
+  }
+
+  // Function to set the user's custom LLM model name
+  function setOpenaiModel(model) {
+    openaiModel.value = model
+    try {
+      localStorage.setItem('openaiModel', model || '')
+    } catch (_e) {}
+  }
+
+  // Initialize custom LLM model name from localStorage
+  function initOpenaiModel() {
+    try {
+      const stored = localStorage.getItem('openaiModel')
+      if (stored !== null) {
+        openaiModel.value = stored
+      }
+    } catch (_e) {}
+  }
+
   // Initialize all settings
   function initSettings() {
     initDarkMode()
@@ -277,6 +320,8 @@ export const useUiStore = defineStore('ui', () => {
     initAttributeMasksDisplay()
     initCADisplay()
     initOpenaiApiKey()
+    initOpenaiBaseUrl()
+    initOpenaiModel()
   }
 
   // Tutorial functions
@@ -322,6 +367,12 @@ export const useUiStore = defineStore('ui', () => {
     openaiApiKey,
     setOpenaiApiKey,
     initOpenaiApiKey,
+    openaiBaseUrl,
+    setOpenaiBaseUrl,
+    initOpenaiBaseUrl,
+    openaiModel,
+    setOpenaiModel,
+    initOpenaiModel,
     showFirstTimeTutorial,
     showTutorial,
     hideTutorial,

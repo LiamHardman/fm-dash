@@ -297,8 +297,8 @@ import { useRoute, useRouter } from 'vue-router'
 import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import FreeAgentsDialog from '../components/FreeAgentsDialog.vue'
-import ManagedTeamDialog from '../components/ManagedTeamDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
+import ManagedTeamDialog from '../components/ManagedTeamDialog.vue'
 import PlayerComparisonDialog from '../components/PlayerComparisonDialog.vue'
 import PlayerComparisonTray from '../components/PlayerComparisonTray.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
@@ -495,6 +495,23 @@ export default {
     for (const attrKey of allRawFmAttributeKeys) {
       currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0
     }
+
+    // Seeds the free-text search from ?search= whenever it changes (ticket 04,
+    // .scratch/llm-refinements/issues/04-chat-query-rewrite-and-navigation.md) — the
+    // chat widget's navigate_to_page tool sets this. Watched reactively, not just on
+    // mount, since Vue Router doesn't remount this component for a query-only change
+    // on the same route, so a second chat message while already here still updates
+    // the table. The param stays in the URL (shareable/bookmarkable), not stripped
+    // after being consumed.
+    watch(
+      () => route.query.search,
+      (search) => {
+        if (typeof search === 'string' && search) {
+          currentFilters.value.name = search
+        }
+      },
+      { immediate: true }
+    )
 
     // Computed properties from store
     const allPlayersData = computed(() => playerStore.allPlayers)

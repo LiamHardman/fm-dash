@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { llmRequestHeaders } from '../utils/llmHeaders'
+import { consumeSSEStream } from '../utils/sseClient'
 import { useUiStore } from './uiStore'
 
 // FM-Dash Chatbot conversation state. In-memory only (ticket 01 / map decision) — no
@@ -42,40 +44,24 @@ export const useChatStore = defineStore('chat', () => {
     statusLabel.value = ''
   }
 
-  function parseSSEEvent(rawEvent) {
-    let eventType = 'message'
-    let dataLine = ''
-    for (const line of rawEvent.split('\n')) {
-      if (line.startsWith('event:')) eventType = line.slice(6).trim()
-      else if (line.startsWith('data:')) dataLine += line.slice(5).trim()
-    }
-    if (!dataLine) return null
-    try {
-      return { eventType, payload: JSON.parse(dataLine) }
-    } catch (_e) {
-      return null
-    }
-  }
-
-  function handleSSEEvent(rawEvent) {
-    const parsed = parseSSEEvent(rawEvent)
-    if (!parsed) return
-    const { eventType, payload } = parsed
-
-    if (eventType === 'status') {
+  const sseHandlers = {
+    status: (payload) => {
       statusLabel.value = payload.label || ''
-    } else if (eventType === 'done') {
+    },
+    done: (payload) => {
       statusLabel.value = ''
       messages.value.push({
         role: 'assistant',
         text: payload.text,
         referencedPlayers: payload.referencedPlayers || [],
         chart: payload.chart || null,
+        navigate: payload.navigate || null,
       })
-    } else if (eventType === 'error') {
+    },
+    error: (payload) => {
       statusLabel.value = ''
       messages.value.push({ role: 'error', text: payload.message || 'Something went wrong.' })
-    }
+    },
   }
 
   async function sendMessage(datasetId, text) {
@@ -99,10 +85,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const res = await fetch(`/api/chatbot/${datasetId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-OpenAI-Api-Key': uiStore.openaiApiKey,
-        },
+        headers: llmRequestHeaders(uiStore),
         body: JSON.stringify({ history }),
       })
 
@@ -118,22 +101,7 @@ export const useChatStore = defineStore('chat', () => {
         return
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-
-        let boundary = buffer.indexOf('\n\n')
-        while (boundary !== -1) {
-          handleSSEEvent(buffer.slice(0, boundary))
-          buffer = buffer.slice(boundary + 2)
-          boundary = buffer.indexOf('\n\n')
-        }
-      }
+      await consumeSSEStream(res, sseHandlers)
     } catch (_e) {
       messages.value.push({
         role: 'error',

@@ -373,8 +373,8 @@
                     <q-expansion-item
                         expand-separator
                         icon="person_search"
-                        label="AI Scouting (Who to Sign)"
-                        caption="Bring your own OpenAI API key to use the Who to Sign scouting assistant"
+                        label="AI Features"
+                        caption="Bring your own OpenAI API key for the Chatbot, Who to Sign, and AI Scout Report"
                         header-class="settings-expansion-header"
                         class="settings-expansion"
                         :default-opened="false"
@@ -382,9 +382,10 @@
                         <q-card flat class="expansion-content">
                             <q-card-section>
                                 <div class="section-description">
-                                    The "Who to Sign" scouting assistant calls OpenAI's API directly using your
-                                    own key — it is never sent anywhere except OpenAI, and this app does not
-                                    provide a shared key. Your key is stored only in this browser.
+                                    The Chatbot, "Who to Sign", and AI Scout Report features call OpenAI's API
+                                    directly using your own key — it is never sent anywhere except OpenAI (or a
+                                    custom endpoint you configure below), and this app does not provide a shared
+                                    key. Your key is stored only in this browser.
                                 </div>
                                 <q-input
                                     filled
@@ -399,8 +400,38 @@
                                         <q-icon name="vpn_key" />
                                     </template>
                                 </q-input>
+                                <q-input
+                                    filled
+                                    v-model="openaiBaseUrl"
+                                    label="Base URL (optional)"
+                                    placeholder="https://api.openai.com"
+                                    class="q-mt-md"
+                                    autocomplete="off"
+                                >
+                                    <template v-slot:prepend>
+                                        <q-icon name="link" />
+                                    </template>
+                                </q-input>
+                                <p class="text-caption q-mt-sm text-warning">
+                                    Your API key is sent to whatever URL you configure here — only point this at
+                                    an endpoint you trust.
+                                </p>
+                                <q-input
+                                    filled
+                                    v-model="openaiModel"
+                                    label="Model (optional)"
+                                    placeholder="gpt-5.6-luna"
+                                    class="q-mt-md"
+                                    autocomplete="off"
+                                >
+                                    <template v-slot:prepend>
+                                        <q-icon name="smart_toy" />
+                                    </template>
+                                </q-input>
                                 <p class="text-caption q-mt-sm">
-                                    The setting is saved automatically and will persist across browser sessions.
+                                    Leave Base URL or Model blank to use this app's defaults — each is independent,
+                                    so you can override just one if you want. Settings are saved automatically and
+                                    persist across browser sessions.
                                 </p>
                             </q-card-section>
                         </q-card>
@@ -523,6 +554,16 @@ export default defineComponent({
       set: (value) => uiStore.setOpenaiApiKey(value),
     })
 
+    const openaiBaseUrl = computed({
+      get: () => uiStore.openaiBaseUrl,
+      set: (value) => uiStore.setOpenaiBaseUrl(value),
+    })
+
+    const openaiModel = computed({
+      get: () => uiStore.openaiModel,
+      set: (value) => uiStore.setOpenaiModel(value),
+    })
+
     const showAttributeMasks = computed({
       get: () => uiStore.showAttributeMasks,
       set: (_value) => uiStore.toggleAttributeMasks(),
@@ -632,6 +673,8 @@ export default defineComponent({
       showAttributeMasks,
       showCA,
       openaiApiKey,
+      openaiBaseUrl,
+      openaiModel,
       isLoading,
       activeTab,
       showTutorial,
