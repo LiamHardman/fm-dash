@@ -13,6 +13,7 @@ const PerformancePage = () => import('../pages/PerformancePage.vue')
 const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
 const ProgressionPage = () => import('../pages/ProgressionPage.vue')
 const SaveImportPage = () => import('../pages/SaveImportPage.vue')
+const SaveAnalysisPage = () => import('../pages/SaveAnalysisPage.vue')
 
 const routes = [
   {
@@ -110,6 +111,17 @@ const routes = [
     path: '/save-import',
     name: 'save-import',
     component: SaveImportPage,
+  },
+  {
+    path: '/save_analysis',
+    name: 'save-analysis',
+    component: SaveAnalysisPage,
+  },
+  {
+    path: '/save_analysis/:datasetId',
+    name: 'shared-save-analysis',
+    component: SaveAnalysisPage,
+    props: true,
   },
 ]
 
