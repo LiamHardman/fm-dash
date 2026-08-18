@@ -442,7 +442,7 @@ func TestCalculateOverallForRoleGoLinear(t *testing.T) {
 				"Pac": 10,
 				"Dri": 8,
 			},
-			expected: 84, // Adjusted to match actual calculation
+			expected: 85, // overallScalingFactor recalibrated 5.85->5.9 (rating-algorithm ticket 02)
 		},
 		{
 			name:        "empty role weights",
@@ -462,7 +462,7 @@ func TestCalculateOverallForRoleGoLinear(t *testing.T) {
 				"Pac": 10,
 				"Dri": 8,
 			},
-			expected: 91, // Adjusted to match actual calculation
+			expected: 92, // overallScalingFactor recalibrated 5.85->5.9 (rating-algorithm ticket 02)
 		},
 		{
 			name: "no matching attributes",

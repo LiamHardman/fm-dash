@@ -56,7 +56,7 @@ const (
 	defaultPlayerCapacity    = 4096             // Increased from 2048 for better pre-allocation
 	defaultAttributeCapacity = 120              // Increased from 80 for FM attributes + extras
 	defaultCellCapacity      = 120              // Increased from 80 for table cells + extras
-	overallScalingFactor     = 5.85             // Used for scaling role-specific attribute averages (1-20) to 0-99
+	overallScalingFactor     = 5.9              // Used for scaling role-specific attribute averages (1-20) to 0-99; recalibrated for the mean-of-categories Overall aggregation (rating-algorithm ticket 02)
 	maxTokenBufferSize       = 16 * 1024 * 1024 // Increased from 4MB to 16MB for larger files
 
 	// Optimized processing constants

@@ -4558,6 +4558,14 @@ func playerScoreForPosition(player Player, position string) int {
 	return player.Overall
 }
 
+// cachedPerformanceResponse pairs already-serialized response bytes with the Content-Type they
+// were serialized as, so a cache hit can replay the correct header instead of assuming JSON —
+// the cache key is shared between JSON- and protobuf-negotiated requests for the same query.
+type cachedPerformanceResponse struct {
+	Body        []byte
+	ContentType string
+}
+
 // performanceDataHandler handles GET requests for retrieving detailed performance data by dataset ID.
 func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -4644,13 +4652,13 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check cache for performance data
 	if cachedPerformance, cacheFound := getFromMemCache(performanceCacheKey); cacheFound {
-		if jsonData, ok := cachedPerformance.([]byte); ok {
+		if cached, ok := cachedPerformance.(*cachedPerformanceResponse); ok {
 			logDebug(ctx, "Serving performance data from cache", "dataset_id", datasetID)
 
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", cached.ContentType)
 			w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
 			setCORSHeaders(w, r)
-			if _, err := w.Write(jsonData); err != nil {
+			if _, err := w.Write(cached.Body); err != nil {
 				logError(ctx, "Error writing cached performance response", "error", err)
 			}
 			SetSpanAttributes(ctx, attribute.Bool("performance_cache.hit", true))
@@ -4821,8 +4829,12 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cache the performance data
-	setInMemCacheForDataset(performanceCacheKey, responseData, 5*time.Minute) // Cache for 5 minutes
+	// Cache the performance data alongside the Content-Type it was serialized as, since the same
+	// cache key can be hit by both JSON- and protobuf-negotiated requests.
+	setInMemCacheForDataset(performanceCacheKey, &cachedPerformanceResponse{
+		Body:        responseData,
+		ContentType: serializer.ContentType(),
+	}, 5*time.Minute) // Cache for 5 minutes
 
 	// Set response headers
 	w.Header().Set("Content-Type", serializer.ContentType())

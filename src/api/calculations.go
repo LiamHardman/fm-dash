@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 	"strconv"
+	"strings"
 )
 
 // Global variables for attribute weights
@@ -338,6 +339,44 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 		return 0
 	}
 	return finalScore
+}
+
+// roleStyleCategory strips a role's trailing duty (e.g. "- Defend"/"- Cover"/"- Stopper"/
+// "- Support"/"- Attack") to get its style category, e.g. "DC - Ball Playing Defender - Defend"
+// becomes "DC - Ball Playing Defender". Role names always have the form "POS - Style - Duty".
+func roleStyleCategory(roleName string) string {
+	idx := strings.LastIndex(roleName, " - ")
+	if idx == -1 {
+		return roleName
+	}
+	return roleName[:idx]
+}
+
+// CalculateMeanCategoryOverall aggregates a player's role-specific overalls into a single Overall
+// score. Duty variants of the same style (Cover/Defend/Stopper/Support/Attack) are collapsed into
+// one category via their best score, and Overall is the mean across every distinct category the
+// player qualifies for — not a top-N subset. A top-N subset lets a one-dimensional player hide
+// their weak categories behind duplicated duty-variants of their one strong category, which is
+// how a pure defensive specialist ends up rated close to an equally-defensive but also
+// ball-playing-capable peer.
+func CalculateMeanCategoryOverall(roleScores []RoleOverallScore) int {
+	if len(roleScores) == 0 {
+		return 0
+	}
+
+	bestByCategory := make(map[string]int, len(roleScores))
+	for _, r := range roleScores {
+		category := roleStyleCategory(r.RoleName)
+		if existing, ok := bestByCategory[category]; !ok || r.Score > existing {
+			bestByCategory[category] = r.Score
+		}
+	}
+
+	total := 0
+	for _, score := range bestByCategory {
+		total += score
+	}
+	return total / len(bestByCategory)
 }
 
 // categoryStatValue returns the FIFA stat value for a named category key without allocating a map.
