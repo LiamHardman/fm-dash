@@ -523,6 +523,32 @@ watch(
       margin-bottom: 0;
     }
   }
+  :deep(h1),
+  :deep(h2),
+  :deep(h3),
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    margin: 0.8em 0 0.4em;
+    font-weight: 600;
+    line-height: 1.3;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+  :deep(h1) {
+    font-size: 1.05em;
+  }
+  :deep(h2) {
+    font-size: 1em;
+  }
+  :deep(h3),
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    font-size: 0.95em;
+  }
   :deep(ul),
   :deep(ol) {
     margin: 0 0 0.6em;
