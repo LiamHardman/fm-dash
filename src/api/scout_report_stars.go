@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Deterministic star ratings — ticket 06 of the Scout Report map
@@ -146,6 +148,12 @@ func scoutReportStarsHandler(w http.ResponseWriter, r *http.Request) {
 
 	squadStars, divisionStars := scoutReportStars(players, *subject, position, managedTeam.Club)
 	RecordScoutReportSubjectStars(r.Context(), squadStars, divisionStars)
+	SetSpanAttributes(r.Context(),
+		attribute.Int64("fm24.scout_report.subject_uid", playerUID),
+		attribute.String("fm24.scout_report.position", position),
+		attribute.Float64("fm24.scout_report.subject_squad_stars", squadStars),
+		attribute.Float64("fm24.scout_report.subject_division_stars", divisionStars),
+	)
 
 	setCORSHeaders(w, r)
 	w.Header().Set("Content-Type", "application/json")

@@ -1154,9 +1154,12 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 
 // dispatchChatbotTool executes one tool call and returns its result as a string ready
 // to hand back to the model. lastChart/lastNavigate are updated in place when
-// render_chart/navigate_to_page succeed. ctx is used only for the search_players
-// instrumentation below (tracing map ticket 04) — the only one of the 5 tools tracing.md
-// asks about.
+// render_chart/navigate_to_page succeed. Every tool call gets a RecordToolCall span
+// (tracing map ticket 04, widened post-launch after a live trace showed 3 of 4 LLM
+// round-trips in one real chat turn had no visible cause — only search_players was
+// originally instrumented). resultCount's meaning varies by tool: a real count for
+// search_players/get_managed_squad, a 1/0 success flag for the other three, which have
+// no natural "count" of their own.
 func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, argsJSON string, lastChart **ChatChart, lastNavigate **ChatNavigate) string {
 	switch name {
 	case "search_players":
@@ -1173,15 +1176,19 @@ func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, args
 		statsA, bestXIA, okA := computeSquadBuckets(datasetID, args.ClubA)
 		statsB, bestXIB, okB := computeSquadBuckets(datasetID, args.ClubB)
 		if !okA || !okB {
+			RecordToolCall(ctx, "compare_squads", argsJSON, 0)
 			return "One or both clubs have no players in this dataset — check the club names."
 		}
+		RecordToolCall(ctx, "compare_squads", argsJSON, 1)
 		return renderCompareSquadsTable(args.ClubA, statsA, bestXIA, args.ClubB, statsB, bestXIB)
 
 	case "get_managed_squad":
 		basedInNation, summaries, ok := chatGetManagedSquad(datasetID, managedClub)
 		if !ok {
+			RecordToolCall(ctx, "get_managed_squad", argsJSON, 0)
 			return "Could not load the managed squad."
 		}
+		RecordToolCall(ctx, "get_managed_squad", argsJSON, len(summaries))
 		return "basedInNation: " + basedInNation + "\n" + renderChatPlayerTable(summaries)
 
 	case "render_chart":
@@ -1206,8 +1213,10 @@ func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, args
 			}
 		}
 		if chart == nil {
+			RecordToolCall(ctx, "render_chart", argsJSON, 0)
 			return "Chart could not be rendered — check the player uids or club names."
 		}
+		RecordToolCall(ctx, "render_chart", argsJSON, 1)
 		*lastChart = chart
 		return "Chart rendered."
 
@@ -1215,8 +1224,10 @@ func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, args
 		var args chatNavigateToPageArgs
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		if !isValidChatNavigatePage(args.Page) {
+			RecordToolCall(ctx, "navigate_to_page", argsJSON, 0)
 			return "Could not navigate — unknown page."
 		}
+		RecordToolCall(ctx, "navigate_to_page", argsJSON, 1)
 		*lastNavigate = &ChatNavigate{Page: args.Page, Search: args.Search}
 		return "Navigation queued."
 

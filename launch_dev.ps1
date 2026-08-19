@@ -36,9 +36,11 @@ function Stop-DevServers {
     Remove-Item $script:frontendPidFile -ErrorAction SilentlyContinue
     Remove-Item $script:backendPidFile  -ErrorAction SilentlyContinue
 
-    if ($script:jaegerStarted) {
-        Write-Host "Stopping local Jaeger container (fmdash-jaeger)..."
-        docker stop fmdash-jaeger *>$null
+    if ($script:observabilityStarted) {
+        Write-Host "Stopping local observability stack..."
+        Push-Location (Join-Path $script:scriptRootPath "observability")
+        docker compose stop *>$null
+        Pop-Location
     }
 
     # Brief wait, then port-based sweep as a safety net
@@ -107,36 +109,35 @@ if (Get-Command kubectl -ErrorAction SilentlyContinue) {
 
 Write-Host ""
 
-# --- Start local Jaeger for OTEL trace visualization (tracing map ticket 06) ---
-# Always-on by default: warn and continue without tracing if Docker isn't available,
-# mirroring the kubectl/S3-credentials fallback above.
-$jaegerStarted = $false
+# --- Start the local OTEL observability stack: Jaeger (traces) + otel-collector +
+# Prometheus + Grafana (metrics) -- tracing map ticket 06, widened after live testing
+# showed Jaeger alone can't display any of the fm24_*/gen_ai.* metrics (its OTLP
+# receiver only implements the trace service). The app's single OTLP endpoint now
+# points at the collector, which fans traces out to Jaeger and metrics out to
+# Prometheus/Grafana. Always-on by default: warn and continue without it if Docker
+# isn't available, mirroring the kubectl/S3-credentials fallback above.
+$observabilityStarted = $false
 $otelEnabled = $null
 $otelEndpoint = $null
 $otelInsecure = $null
+$enableMetrics = $null
 
 if (Get-Command docker -ErrorAction SilentlyContinue) {
     docker info *>$null
     if ($?) {
-        Write-Host "Starting local Jaeger (OTEL trace visualization)..."
-        $running = docker ps --filter "name=^fmdash-jaeger$" --filter "status=running" -q
+        Write-Host "Starting local observability stack (Jaeger + otel-collector + Prometheus + Grafana)..."
+        Push-Location (Join-Path $scriptRootPath "observability")
+        $running = docker compose ps --status running -q
         if ($running) {
-            Write-Host "  fmdash-jaeger already running, reusing it."
-            $jaegerStarted = $true
+            Write-Host "  Already running, reusing it."
+            $observabilityStarted = $true
         } else {
-            $existing = docker ps -a --filter "name=^fmdash-jaeger$" -q
-            if ($existing) {
-                docker start fmdash-jaeger *>$null
-                $jaegerStarted = $?
-            } else {
-                docker run -d --name fmdash-jaeger `
-                    -p 4317:4317 -p 4318:4318 -p 16686:16686 `
-                    jaegertracing/all-in-one:1.60.0 *>$null
-                $jaegerStarted = $?
-            }
+            docker compose up -d *>$null
+            $observabilityStarted = $?
         }
+        Pop-Location
 
-        if ($jaegerStarted) {
+        if ($observabilityStarted) {
             # Brief readiness wait (~5s) so early backend spans aren't dropped -- proceed
             # regardless once the timeout elapses, never block dev startup indefinitely.
             for ($i = 0; $i -lt 25; $i++) {
@@ -147,15 +148,21 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
             $otelEnabled = "true"
             $otelEndpoint = "localhost:4317"
             $otelInsecure = "true"
-            Write-Host "  Jaeger UI: http://localhost:16686" -ForegroundColor Cyan
+            # ENABLE_METRICS gates initEnhancedMetrics() (config.go) -- a separate flag
+            # from OTEL_ENABLED, otherwise every fm24_*/gen_ai.* metric instrument is
+            # never even created. Found via live testing; not otherwise documented.
+            $enableMetrics = "true"
+            Write-Host "  Jaeger UI:     http://localhost:16686" -ForegroundColor Cyan
+            Write-Host "  Grafana UI:    http://localhost:3001  (Prometheus + Jaeger datasources preconfigured)" -ForegroundColor Cyan
+            Write-Host "  Prometheus UI: http://localhost:9090" -ForegroundColor Cyan
         } else {
-            Write-Warning "Could not start Jaeger. Continuing without local tracing."
+            Write-Warning "Could not start the observability stack. Continuing without local tracing."
         }
     } else {
-        Write-Warning "Docker is installed but not running. Continuing without local tracing (Jaeger)."
+        Write-Warning "Docker is installed but not running. Continuing without local tracing."
     }
 } else {
-    Write-Warning "Docker not found. Continuing without local tracing (Jaeger)."
+    Write-Warning "Docker not found. Continuing without local tracing."
 }
 Write-Host ""
 
@@ -202,6 +209,7 @@ try {
                     $env:OTEL_ENABLED               = $using:otelEnabled
                     $env:OTEL_EXPORTER_OTLP_ENDPOINT = $using:otelEndpoint
                     $env:OTEL_EXPORTER_OTLP_INSECURE = $using:otelInsecure
+                    $env:ENABLE_METRICS              = $using:enableMetrics
                 }
                 go run . *>&1
             } -ArgumentList $goApiDir, $backendPidFile

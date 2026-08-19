@@ -1,0 +1,57 @@
+name: fmdash-observability
+
+# Local OTEL debug stack (tracing map ticket 06, widened after live testing showed the
+# original Jaeger-only setup can't display any of the fm24_*/gen_ai.* metrics — Jaeger's
+# OTLP receiver only implements the trace service). The app now points its single OTLP
+# endpoint at the collector below, which fans traces out to Jaeger and metrics out to
+# Prometheus. Grafana is provisioned with both as datasources for one browsable UI;
+# Jaeger's own native UI (better for a single trace's waterfall) stays available too.
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.60.0
+    container_name: fmdash-jaeger
+    ports:
+      - "16686:16686" # Jaeger UI
+    networks: [otel]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    container_name: fmdash-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC — the app's OTEL_EXPORTER_OTLP_ENDPOINT target
+      - "4318:4318" # OTLP HTTP
+      - "8889:8889" # Prometheus exporter (scraped by prometheus below; also curl-able directly)
+    depends_on: [jaeger]
+    networks: [otel]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: fmdash-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090" # Prometheus UI
+    depends_on: [otel-collector]
+    networks: [otel]
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: fmdash-grafana
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3001:3000" # Grafana UI (3000 is already Vite's dev server)
+    depends_on: [prometheus, jaeger]
+    networks: [otel]
+
+networks:
+  otel:
+    name: fmdash-otel

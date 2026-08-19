@@ -30,9 +30,9 @@ cleanup() {
         echo "Backend server (PID: $BACKEND_PID) already stopped or not found."
     fi
 
-    if [ "$JAEGER_STARTED" = "true" ]; then
-        echo "Stopping local Jaeger container (fmdash-jaeger)..."
-        docker stop fmdash-jaeger >/dev/null 2>&1
+    if [ "$OBSERVABILITY_STARTED" = "true" ]; then
+        echo "Stopping local observability stack..."
+        (cd observability && docker compose stop) >/dev/null 2>&1
     fi
 
     echo "Cleanup complete."
@@ -78,24 +78,24 @@ echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line
 echo "To disable format-aware caching, set FORMAT_AWARE_CACHE_ENABLED=false or comment out the export line above"
 echo ""
 
-# --- Start local Jaeger for OTEL trace visualization (tracing map ticket 06) ---
-# Always-on by default: warn and continue without tracing if Docker isn't available,
-# mirroring the kubectl/S3-credentials fallback above.
-JAEGER_STARTED=false
+# --- Start the local OTEL observability stack: Jaeger (traces) + otel-collector +
+# Prometheus + Grafana (metrics) -- tracing map ticket 06, widened after live testing
+# showed Jaeger alone can't display any of the fm24_*/gen_ai.* metrics (its OTLP
+# receiver only implements the trace service). The app's single OTLP endpoint now
+# points at the collector, which fans traces out to Jaeger and metrics out to
+# Prometheus/Grafana. Always-on by default: warn and continue without it if Docker
+# isn't available, mirroring the kubectl/S3-credentials fallback above.
+OBSERVABILITY_STARTED=false
 if command -v docker &>/dev/null && docker info >/dev/null 2>&1; then
-    echo "Starting local Jaeger (OTEL trace visualization)..."
-    if docker ps --filter "name=^fmdash-jaeger$" --filter "status=running" -q | grep -q .; then
-        echo "  fmdash-jaeger already running, reusing it."
-        JAEGER_STARTED=true
-    elif docker ps -a --filter "name=^fmdash-jaeger$" -q | grep -q .; then
-        docker start fmdash-jaeger >/dev/null 2>&1 && JAEGER_STARTED=true
+    echo "Starting local observability stack (Jaeger + otel-collector + Prometheus + Grafana)..."
+    if (cd observability && docker compose ps --status running -q) | grep -q .; then
+        echo "  Already running, reusing it."
+        OBSERVABILITY_STARTED=true
     else
-        docker run -d --name fmdash-jaeger \
-            -p 4317:4317 -p 4318:4318 -p 16686:16686 \
-            jaegertracing/all-in-one:1.60.0 >/dev/null 2>&1 && JAEGER_STARTED=true
+        (cd observability && docker compose up -d) >/dev/null 2>&1 && OBSERVABILITY_STARTED=true
     fi
 
-    if [ "$JAEGER_STARTED" = "true" ]; then
+    if [ "$OBSERVABILITY_STARTED" = "true" ]; then
         # Brief readiness wait (~5s) so early backend spans aren't dropped -- proceed
         # regardless once the timeout elapses, never block dev startup indefinitely.
         for i in $(seq 1 25); do
@@ -105,12 +105,18 @@ if command -v docker &>/dev/null && docker info >/dev/null 2>&1; then
         export OTEL_ENABLED=true
         export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
         export OTEL_EXPORTER_OTLP_INSECURE=true
-        echo "  Jaeger UI: http://localhost:16686"
+        # ENABLE_METRICS gates initEnhancedMetrics() (config.go) -- a separate flag from
+        # OTEL_ENABLED, otherwise every fm24_*/gen_ai.* metric instrument is never even
+        # created. Found via live testing; not otherwise documented anywhere.
+        export ENABLE_METRICS=true
+        echo "  Jaeger UI:     http://localhost:16686"
+        echo "  Grafana UI:    http://localhost:3001  (Prometheus + Jaeger datasources preconfigured)"
+        echo "  Prometheus UI: http://localhost:9090"
     else
-        echo "  Warning: could not start Jaeger. Continuing without local tracing."
+        echo "  Warning: could not start the observability stack. Continuing without local tracing."
     fi
 else
-    echo "Warning: Docker not found or not running. Continuing without local tracing (Jaeger)."
+    echo "Warning: Docker not found or not running. Continuing without local tracing."
 fi
 echo ""
 
