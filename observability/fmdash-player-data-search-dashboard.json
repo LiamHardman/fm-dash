@@ -1,0 +1,119 @@
+{
+  "__inputs": [
+    { "name": "DS_PROMETHEUS", "label": "Prometheus", "description": "", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus" }
+  ],
+  "__elements": {},
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.3.1" },
+    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" }
+  ],
+  "annotations": {
+    "list": [
+      { "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" }
+    ]
+  },
+  "description": "Player data (/api/players/) and search cache hit rates, search result-count distribution, player-data stage-timing latency. Generated from the app-observability map, ticket 02.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "panels": [], "title": "Player Data (/api/players/)", "type": "row" },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Cache hit vs miss for the highest-traffic route in the app.",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "pieType": "donut", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (cache_status) (increase(fm24_player_data_cache_status_total[$__range]))", "legendFormat": "{{cache_status}}", "refId": "A" }
+      ],
+      "title": "Player data cache hit rate",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "p50/p95 latency for /api/players/.",
+      "gridPos": { "h": 7, "w": 16, "x": 8, "y": 1 },
+      "id": 2,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "histogram_quantile(0.5, sum by (le) (rate(fm24_api_request_duration_seconds_bucket{http_route=~\"/api/players.*\"}[$__rate_interval])))", "legendFormat": "p50", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(fm24_api_request_duration_seconds_bucket{http_route=~\"/api/players.*\"}[$__rate_interval])))", "legendFormat": "p95", "refId": "B" }
+      ],
+      "title": "Player data latency",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 }, "id": 101, "panels": [], "title": "Search", "type": "row" },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Cache hit vs miss for search.",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 9 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "pieType": "donut", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (cache_status) (increase(fm24_search_cache_status_total[$__range]))", "legendFormat": "{{cache_status}}", "refId": "A" }
+      ],
+      "title": "Search cache hit rate",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Average result count per search request. A sustained drop toward 0 signals a zero-result problem (bad index, overly narrow queries, etc).",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 9 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(increase(fm24_search_results_count_sum[$__range])) / sum(increase(fm24_search_results_count_count[$__range]))", "legendFormat": "avg results", "refId": "A" }
+      ],
+      "title": "Avg search results",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Search request rate and error rate.",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 9 },
+      "id": 5,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(rate(fm24_api_requests_total{http_route=~\"/api/search.*\"}[$__rate_interval]))", "legendFormat": "requests/s", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(rate(fm24_error_events_total{http_route=~\"/api/search.*\"}[$__rate_interval]))", "legendFormat": "errors/s", "refId": "B" }
+      ],
+      "title": "Search traffic",
+      "type": "timeseries"
+    },
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }, "id": 102, "panels": [], "title": "Percentiles & Other Player Data Routes", "type": "row" },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Request rate for the percentiles family and full-player-stats, now all on WriteErrorResponse.",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 17 },
+      "id": 6,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (http_route) (rate(fm24_api_requests_total{http_route=~\"/api/percentiles.*|/api/player-percentiles.*|/api/fullplayerstats.*\"}[$__rate_interval]))", "legendFormat": "{{http_route}}", "refId": "A" }
+      ],
+      "title": "Percentiles family & full-player-stats traffic",
+      "type": "timeseries"
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": ["fmdash", "app-observability", "player-data-search"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "FM-Dash - Player Data & Search Observability",
+  "uid": "fmdash-player-data-search",
+  "version": 1,
+  "weekStart": ""
+}

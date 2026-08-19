@@ -10,6 +10,7 @@ import (
 	pb "api/proto"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
@@ -130,6 +131,9 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 			attribute.Int("cache.player_count", len(cachedData.JSONData)),
 			attribute.Float64("cache.age_seconds", time.Since(cachedData.CacheTime).Seconds()),
 		)
+		if playerDataCacheStatusTotal != nil {
+			playerDataCacheStatusTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("cache_status", "hit")))
+		}
 
 		// Write the cached response using the appropriate format
 		if err := WritePlayerDataResponse(ctx, w, r, cachedData); err != nil {
@@ -144,6 +148,9 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Cache miss - need to load and process the data
 	SetSpanAttributes(ctx, attribute.Bool("cache.hit", false))
+	if playerDataCacheStatusTotal != nil {
+		playerDataCacheStatusTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("cache_status", "miss")))
+	}
 
 	stageStart := time.Now()
 
@@ -156,6 +163,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Continue with default weights rather than failing the request
 	}
 	logInfo(ctx, "PERF config_init", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	span.SetAttributes(attribute.Int64("stage.config_init_ms", time.Since(stageStart).Milliseconds()))
 	stageStart = time.Now()
 
 	// Parse division filter early
@@ -176,11 +184,13 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		logDebug(ctx, "Waited for background percentile calculation to complete", "dataset_id", datasetID)
 	}
 	logInfo(ctx, "PERF percentile_wait", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	span.SetAttributes(attribute.Int64("stage.percentile_wait_ms", time.Since(stageStart).Milliseconds()))
 	stageStart = time.Now()
 
 	// Use the storage interface to get player data
 	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
 	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.SetAttributes(attribute.Int64("stage.duration_ms", time.Since(stageStart).Milliseconds()))
 	dataSpan.End()
 	logInfo(ctx, "PERF storage_get", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
 	stageStart = time.Now()
@@ -215,6 +225,10 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		logDebug(ctx, "Skipping ratings recalculation; dataset appears precomputed")
 	}
+	recalcSpan.SetAttributes(
+		attribute.Int64("stage.duration_ms", time.Since(stageStart).Milliseconds()),
+		attribute.Bool("stage.skipped", !shouldRecalc),
+	)
 	recalcSpan.End()
 	logInfo(ctx, "PERF ratings_recalc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", !shouldRecalc)
 	stageStart = time.Now()
@@ -237,11 +251,16 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// everything up front in this branch. See docs/PERFORMANCE_FIXES_2026-07-08.md #3.
 		playersCopy := FastDeepCopyPlayers(players)
 		logInfo(ctx, "PERF deep_copy", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "player_count", len(playersCopy))
+		span.SetAttributes(attribute.Int64("stage.deep_copy_ms", time.Since(stageStart).Milliseconds()))
 		stageStart = time.Now()
 
 		ctx, stepSpan = StartSpan(ctx, "percentiles.calculate")
 		filteredPlayersForPercentiles := ApplyDivisionFilter(playersCopy, divisionFilter, targetDivision)
 		CalculatePlayerPerformancePercentiles(filteredPlayersForPercentiles)
+		stepSpan.SetAttributes(
+			attribute.Int64("stage.duration_ms", time.Since(stageStart).Milliseconds()),
+			attribute.Bool("stage.skipped", false),
+		)
 		stepSpan.End()
 		logInfo(ctx, "PERF percentile_calc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", false)
 		stageStart = time.Now()
@@ -249,6 +268,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		ctx, stepSpan = StartSpan(ctx, "filters.apply")
 		filteredPlayers = ApplyAllFilters(ctx, playersCopy, filterPosition, filterRole, minAgeStr, maxAgeStr,
 			minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilter, targetDivision, positionCompare)
+		stepSpan.SetAttributes(attribute.Int64("stage.duration_ms", time.Since(stageStart).Milliseconds()))
 		stepSpan.End()
 	} else {
 		// Fast path: percentiles are already correct on the stored data and divisionFilter is
@@ -256,10 +276,12 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// avoids copying players that the response will discard anyway.
 		logDebug(ctx, "Skipping percentile calculation; already present on stored data", "dataset_id", datasetID)
 		logInfo(ctx, "PERF percentile_calc", "ms", 0, "total_ms", time.Since(startTime).Milliseconds(), "skipped", true)
+		span.SetAttributes(attribute.Bool("stage.percentile_calc_skipped", true))
 
 		ctx, stepSpan = StartSpan(ctx, "filters.apply_and_copy")
 		filteredPlayers = FastFilterAndCopyPlayers(players, filterPosition, filterRole, minAgeStr, maxAgeStr,
 			minTransferValueStr, maxTransferValueStr, maxSalaryStr)
+		stepSpan.SetAttributes(attribute.Int64("stage.duration_ms", time.Since(stageStart).Milliseconds()))
 		stepSpan.End()
 	}
 	logInfo(ctx, "PERF filter_apply", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "filtered_count", len(filteredPlayers))
@@ -318,6 +340,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		logError(ctx, "Failed to marshal protobuf for cache", "error", err)
 	}
 	logInfo(ctx, "PERF proto_conversion", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	span.SetAttributes(attribute.Int64("stage.proto_conversion_ms", time.Since(stageStart).Milliseconds()))
 	stageStart = time.Now()
 
 	cachedResponse := &CachedPlayerDataResponse{
@@ -338,6 +361,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, r, "response_error", "Error writing response", nil, http.StatusInternalServerError)
 	}
 	logInfo(ctx, "PERF response_write", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	span.SetAttributes(attribute.Int64("stage.response_write_ms", time.Since(stageStart).Milliseconds()))
 
 	// Cache asynchronously — don't block the response on JSON serialization
 	go CachePlayerData(context.Background(), cacheKey, responsePlayers, currencySymbol, filterHash, protoBytes, 5*time.Minute)

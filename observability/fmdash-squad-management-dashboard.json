@@ -1,0 +1,119 @@
+{
+  "__inputs": [
+    { "name": "DS_PROMETHEUS", "label": "Prometheus", "description": "", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus" }
+  ],
+  "__elements": {},
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.3.1" },
+    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" }
+  ],
+  "annotations": {
+    "list": [
+      { "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" }
+    ]
+  },
+  "description": "Bargain hunter and upgrade finder result-count distributions, team-match confidence, export format split, progression comparison size + outcome breakdown. Generated from the app-observability map, ticket 04.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "panels": [], "title": "Bargain Hunter & Upgrade Finder", "type": "row" },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Average bargain candidates found per request. A sustained drop toward 0 signals overly strict filters or a real supply problem.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(increase(fm24_bargain_hunter_results_count_sum[$__range])) / sum(increase(fm24_bargain_hunter_results_count_count[$__range]))", "legendFormat": "avg bargains found", "refId": "A" }
+      ],
+      "title": "Avg bargain candidates",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Average upgrade candidates found per request.",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(increase(fm24_upgrade_finder_results_count_sum[$__range])) / sum(increase(fm24_upgrade_finder_results_count_count[$__range]))", "legendFormat": "avg upgrades found", "refId": "A" }
+      ],
+      "title": "Avg upgrade candidates",
+      "type": "stat"
+    },
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 }, "id": 101, "panels": [], "title": "Team Match & Export", "type": "row" },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Average confidence score of the best team-name match per request. Low scores signal ambiguous or poor matches.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 9 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(increase(fm24_team_match_top_score_sum[$__range])) / sum(increase(fm24_team_match_top_score_count[$__range]))", "legendFormat": "avg top match score", "refId": "A" }
+      ],
+      "title": "Avg team-match confidence",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Export requests by format (json/csv).",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 },
+      "id": 4,
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "pieType": "donut", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (export_format) (increase(fm24_export_requests_total[$__range]))", "legendFormat": "{{export_format}}", "refId": "A" }
+      ],
+      "title": "Export format split",
+      "type": "piechart"
+    },
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }, "id": 102, "panels": [], "title": "Progression", "type": "row" },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Average players present in every compared snapshot per progression request.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 17 },
+      "id": 5,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum(increase(fm24_progression_players_compared_sum[$__range])) / sum(increase(fm24_progression_players_compared_count[$__range]))", "legendFormat": "avg players compared", "refId": "A" }
+      ],
+      "title": "Avg players compared",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Outcome breakdown: normal / order_ambiguous / empty_intersection. These two edge cases return HTTP 200 with a flag field, so they're invisible to the generic error metric - this is their only signal.",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 17 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "pieType": "donut", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.3.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }, "expr": "sum by (outcome) (increase(fm24_progression_outcome_total[$__range]))", "legendFormat": "{{outcome}}", "refId": "A" }
+      ],
+      "title": "Progression outcome breakdown",
+      "type": "piechart"
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": ["fmdash", "app-observability", "squad-management"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "FM-Dash - Squad Management Tools Observability",
+  "uid": "fmdash-squad-management",
+  "version": 1,
+  "weekStart": ""
+}

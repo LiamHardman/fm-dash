@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -304,8 +305,18 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 	return nil
 }
 
-// WriteErrorResponse writes an error response using the appropriate format
+// WriteErrorResponse writes an error response using the appropriate format. Also records the
+// failure to the current span and fm24_error_events_total, keyed by errorCode (already a small
+// bounded string at every call site) and the request's bounded ServeMux route pattern -- found
+// missing while auditing this function's 93 call sites app-wide for the app-observability map
+// (ticket 02); previously every failure through here was invisible beyond the generic HTTP
+// status code.
 func WriteErrorResponse(w http.ResponseWriter, r *http.Request, errorCode, message string, details []string, statusCode int) {
+	RecordError(r.Context(), errors.New(message), "API error response",
+		WithErrorCode(errorCode),
+		WithRoute(r.Pattern),
+	)
+
 	requestID := r.Header.Get("X-Request-ID")
 	if requestID == "" {
 		requestID = generateRequestID()

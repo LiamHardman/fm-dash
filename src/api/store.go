@@ -71,11 +71,7 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 	// Invalidate role index for upgrade finder optimization
 	InvalidateRoleIndex()
 
-	RecordBusinessOperation(ctx, "dataset_store", true, map[string]interface{}{
-		"dataset_id":   datasetID,
-		"player_count": len(players),
-		"currency":     currencySymbol,
-	})
+	RecordBusinessOperation(ctx, "dataset_store", true, nil)
 
 	return nil
 }
@@ -133,13 +129,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 			attribute.String("operation.status", "success"),
 		)
 
-		RecordBusinessOperation(ctx, "dataset_store_async", true, map[string]interface{}{
-			"dataset_id":     datasetID,
-			"player_count":   len(playersCopy),
-			"currency":       currencySymbol,
-			"duration_ms":    duration.Milliseconds(),
-			"operation_type": "async",
-		})
+		RecordBusinessOperation(ctx, "dataset_store_async", true, nil)
 
 		LogInfo("Successfully stored dataset %s asynchronously in %v", sanitizeForLogging(datasetID), duration)
 	}()
@@ -164,10 +154,7 @@ func RetrieveDataset(datasetID string) ([]Player, string, error) {
 		attribute.String("dataset.currency", data.CurrencySymbol),
 	)
 
-	RecordBusinessOperation(ctx, "dataset_retrieve", true, map[string]interface{}{
-		"dataset_id":   datasetID,
-		"player_count": len(data.Players),
-	})
+	RecordBusinessOperation(ctx, "dataset_retrieve", true, nil)
 
 	return data.Players, data.CurrencySymbol, nil
 }

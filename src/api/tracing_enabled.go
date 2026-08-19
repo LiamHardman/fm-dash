@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -14,6 +15,20 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// fileProcessingOperationLabel derives a bounded metric label from a filename's extension, so
+// TraceFileProcessing's duration histogram groups by file type (csv/html/other) rather than by
+// the raw filename, which is effectively unbounded (one distinct label per upload).
+func fileProcessingOperationLabel(filename string) string {
+	switch {
+	case strings.HasSuffix(strings.ToLower(filename), ".csv"):
+		return "csv_parse"
+	case strings.HasSuffix(strings.ToLower(filename), ".html"), strings.HasSuffix(strings.ToLower(filename), ".htm"):
+		return "html_parse"
+	default:
+		return "other"
+	}
+}
 
 var tracer = otel.Tracer("v2fmdash-api")
 
@@ -92,7 +107,8 @@ func RecordError(ctx context.Context, err error, description string, opts ...Err
 		opt(errorInfo)
 	}
 
-	// Enhanced error attributes
+	// Enhanced error attributes -- span-only; error.message/error.stacktrace are unbounded
+	// free text and must never reach a metric attribute (see metricAttrs below).
 	attrs := []attribute.KeyValue{
 		attribute.String("error.type", errorInfo.ErrorType),
 		attribute.String("error.message", errorInfo.ErrorMessage),
@@ -118,10 +134,37 @@ func RecordError(ctx context.Context, err error, description string, opts ...Err
 	if errorInfo.Feature != "" {
 		attrs = append(attrs, attribute.String("fm24.llm.feature", errorInfo.Feature))
 	}
+	if errorInfo.Route != "" {
+		attrs = append(attrs, attribute.String("http.route", errorInfo.Route))
+	}
 
-	// Record error metric with enhanced attributes
+	span.SetAttributes(attrs...)
+
+	// Record error metric with only bounded attributes. error.message/error.stacktrace are
+	// free text (unique per call, often per-request) and must never become Prometheus label
+	// values -- found live while wiring WriteErrorResponse's 93 call sites through this path
+	// (app-observability map, ticket 02); fixed here since every caller of RecordError shares
+	// this one function, including the three already-shipped LLM features.
 	if errorEventsTotal != nil {
-		errorEventsTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
+		metricAttrs := []attribute.KeyValue{
+			attribute.String("error.type", errorInfo.ErrorType),
+		}
+		if errorInfo.ErrorCode != "" {
+			metricAttrs = append(metricAttrs, attribute.String("error.code", errorInfo.ErrorCode))
+		}
+		if errorInfo.ErrorCategory != "" {
+			metricAttrs = append(metricAttrs, attribute.String("error.category", errorInfo.ErrorCategory))
+		}
+		if errorInfo.Severity != "" {
+			metricAttrs = append(metricAttrs, attribute.String("error.severity", errorInfo.Severity))
+		}
+		if errorInfo.Route != "" {
+			metricAttrs = append(metricAttrs, attribute.String("http.route", errorInfo.Route))
+		}
+		if errorInfo.Feature != "" {
+			metricAttrs = append(metricAttrs, attribute.String("fm24.llm.feature", errorInfo.Feature))
+		}
+		errorEventsTotal.Add(ctx, 1, metric.WithAttributes(metricAttrs...))
 	}
 
 	// Log error with trace correlation and enhanced context
@@ -160,6 +203,7 @@ type ErrorInfo struct {
 	RequestID     string
 	Severity      string
 	Feature       string
+	Route         string
 }
 
 // ErrorOption allows customizing error recording
@@ -169,6 +213,16 @@ type ErrorOption func(*ErrorInfo)
 func WithErrorCode(code string) ErrorOption {
 	return func(info *ErrorInfo) {
 		info.ErrorCode = code
+	}
+}
+
+// WithRoute tags the bounded route pattern (e.g. r.Pattern from ServeMux -- "/api/players/",
+// never a raw path containing a dataset ID or other per-request identifier) an error belongs
+// to, so fm24_error_events_total can be broken down by route without cardinality risk
+// (app-observability map ticket 02, added while fixing WriteErrorResponse).
+func WithRoute(route string) ErrorOption {
+	return func(info *ErrorInfo) {
+		info.Route = route
 	}
 }
 
@@ -225,14 +279,21 @@ func TraceFileProcessing(ctx context.Context, filename string, fileSize int64, f
 	defer func() {
 		duration := time.Since(start)
 		if fileProcessingDuration != nil {
+			// file.name is unbounded (per-upload); use a bounded operation label instead --
+			// found live while implementing the app-observability map's Data Ingestion ticket,
+			// the same class of bug as RecordError's error.message/error.stacktrace fix above.
 			fileProcessingDuration.Record(ctx, duration.Seconds(), metric.WithAttributes(
-				attribute.String("file.name", filename),
+				attribute.String("processing.operation", fileProcessingOperationLabel(filename)),
 			))
 		}
 	}()
 
 	if err := fn(ctx); err != nil {
-		RecordError(ctx, err, "File processing failed")
+		// Not RecordError'd here: this function's only caller (uploadHandler) already calls
+		// WriteErrorResponse for this same error, which records it -- an extra call here would
+		// double-count fm24_error_events_total (found while wiring the app-observability map's
+		// Data Ingestion ticket). Span status below still reflects the failure via span.End().
+		span.SetStatus(codes.Error, "File processing failed")
 		return err
 	}
 

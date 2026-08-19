@@ -60,6 +60,31 @@ var (
 	scoutReportComparableDivStars   metric.Float64Histogram
 	scoutReportSubjectSquadStars    metric.Float64Histogram
 	scoutReportSubjectDivisionStars metric.Float64Histogram
+
+	// Data Ingestion business metrics (app-observability map ticket 01).
+	uploadPlayerCount      metric.Float64Histogram
+	uploadDatasetSizeBytes metric.Float64Histogram
+
+	// Player Data & Search business metrics (app-observability map ticket 02).
+	playerDataCacheStatusTotal metric.Int64Counter
+	searchCacheStatusTotal     metric.Int64Counter
+	searchResultsCount         metric.Float64Histogram
+
+	// Squad Management Tools business metrics (app-observability map ticket 04).
+	bargainHunterResultsCount  metric.Float64Histogram
+	upgradeFinderResultsCount  metric.Float64Histogram
+	teamMatchTopScore          metric.Float64Histogram
+	exportRequestsTotal        metric.Int64Counter
+	progressionPlayersCompared metric.Float64Histogram
+	progressionOutcomeTotal    metric.Int64Counter
+
+	// Asset Resolution business metrics (app-observability map ticket 05).
+	assetResolutionTotal        metric.Int64Counter
+	clubLogoResolveStatusTotal  metric.Int64Counter
+	clubLogoOverrideWritesTotal metric.Int64Counter
+
+	// Ops/Internal business metrics (app-observability map ticket 06).
+	cacheOperationsTotal metric.Int64Counter
 )
 
 var durationBuckets = []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
@@ -151,6 +176,127 @@ func initEnhancedMetrics() {
 	)
 	if err != nil {
 		slog.Error("Failed to create business operations total counter", "error", err)
+	}
+
+	uploadPlayerCount, err = meter.Float64Histogram(
+		"fm24_upload_player_count",
+		metric.WithDescription("Players successfully parsed per upload"),
+	)
+	if err != nil {
+		slog.Error("Failed to create upload player count histogram", "error", err)
+	}
+
+	uploadDatasetSizeBytes, err = meter.Float64Histogram(
+		"fm24_upload_dataset_size_bytes",
+		metric.WithDescription("Actual file size processed per upload"),
+		metric.WithUnit("By"),
+	)
+	if err != nil {
+		slog.Error("Failed to create upload dataset size histogram", "error", err)
+	}
+
+	playerDataCacheStatusTotal, err = meter.Int64Counter(
+		"fm24_player_data_cache_status_total",
+		metric.WithDescription("Player data (/api/players/) requests by cache hit/miss status"),
+	)
+	if err != nil {
+		slog.Error("Failed to create player data cache status counter", "error", err)
+	}
+
+	searchCacheStatusTotal, err = meter.Int64Counter(
+		"fm24_search_cache_status_total",
+		metric.WithDescription("Search requests by cache hit/miss status"),
+	)
+	if err != nil {
+		slog.Error("Failed to create search cache status counter", "error", err)
+	}
+
+	searchResultsCount, err = meter.Float64Histogram(
+		"fm24_search_results_count",
+		metric.WithDescription("Result count per search request"),
+	)
+	if err != nil {
+		slog.Error("Failed to create search results count histogram", "error", err)
+	}
+
+	bargainHunterResultsCount, err = meter.Float64Histogram(
+		"fm24_bargain_hunter_results_count",
+		metric.WithDescription("Bargain candidates found per request"),
+	)
+	if err != nil {
+		slog.Error("Failed to create bargain hunter results count histogram", "error", err)
+	}
+
+	upgradeFinderResultsCount, err = meter.Float64Histogram(
+		"fm24_upgrade_finder_results_count",
+		metric.WithDescription("Upgrade candidates found per request"),
+	)
+	if err != nil {
+		slog.Error("Failed to create upgrade finder results count histogram", "error", err)
+	}
+
+	teamMatchTopScore, err = meter.Float64Histogram(
+		"fm24_team_match_top_score",
+		metric.WithDescription("Confidence score of the best team-name match per request"),
+	)
+	if err != nil {
+		slog.Error("Failed to create team match top score histogram", "error", err)
+	}
+
+	exportRequestsTotal, err = meter.Int64Counter(
+		"fm24_export_requests_total",
+		metric.WithDescription("Export requests by format"),
+	)
+	if err != nil {
+		slog.Error("Failed to create export requests total counter", "error", err)
+	}
+
+	progressionPlayersCompared, err = meter.Float64Histogram(
+		"fm24_progression_players_compared",
+		metric.WithDescription("Players present in every compared snapshot per progression request"),
+	)
+	if err != nil {
+		slog.Error("Failed to create progression players compared histogram", "error", err)
+	}
+
+	progressionOutcomeTotal, err = meter.Int64Counter(
+		"fm24_progression_outcome_total",
+		metric.WithDescription("Progression analyze requests by outcome (normal/order_ambiguous/empty_intersection)"),
+	)
+	if err != nil {
+		slog.Error("Failed to create progression outcome total counter", "error", err)
+	}
+
+	assetResolutionTotal, err = meter.Int64Counter(
+		"fm24_asset_resolution_total",
+		metric.WithDescription("Face/logo image resolution requests by asset type and outcome"),
+	)
+	if err != nil {
+		slog.Error("Failed to create asset resolution total counter", "error", err)
+	}
+
+	clubLogoResolveStatusTotal, err = meter.Int64Counter(
+		"fm24_club_logo_resolve_status_total",
+		metric.WithDescription("Club logo resolve requests by resolution status"),
+	)
+	if err != nil {
+		slog.Error("Failed to create club logo resolve status counter", "error", err)
+	}
+
+	clubLogoOverrideWritesTotal, err = meter.Int64Counter(
+		"fm24_club_logo_override_writes_total",
+		metric.WithDescription("Club logo override writes by action (confirm/reject/delete)"),
+	)
+	if err != nil {
+		slog.Error("Failed to create club logo override writes counter", "error", err)
+	}
+
+	cacheOperationsTotal, err = meter.Int64Counter(
+		"fm24_cache_operations_total",
+		metric.WithDescription("Cache operations by cache type, operation, and result"),
+	)
+	if err != nil {
+		slog.Error("Failed to create cache operations total counter", "error", err)
 	}
 
 	initLLMMetrics(meter)
@@ -289,6 +435,33 @@ func initLLMMetrics(meter metric.Meter) {
 	if err != nil {
 		slog.Error("Failed to create scout report subject division stars histogram", "error", err)
 	}
+}
+
+// RecordAssetResolution records one face/logo resolution outcome (app-observability map
+// ticket 05). assetType is "face" or "logo"; outcome is one of external_redirect/s3_hit/
+// local_hit/regen_fallback/not_found -- regen_fallback only ever fires for assetType "face".
+func RecordAssetResolution(ctx context.Context, assetType, outcome string) {
+	if !otelEnabled || assetResolutionTotal == nil {
+		return
+	}
+	assetResolutionTotal.Add(ctx, 1, metric.WithAttributes(
+		attribute.String("asset_type", assetType),
+		attribute.String("outcome", outcome),
+	))
+}
+
+// RecordCacheOperation records one cache operation outcome (app-observability map ticket 06).
+// cacheType is one of nation-ratings/percentiles/bargain-hunter/search; operation is
+// get/post/delete; result is hit/miss/success/error -- all bounded, small sets.
+func RecordCacheOperation(ctx context.Context, cacheType, operation, result string) {
+	if !otelEnabled || cacheOperationsTotal == nil {
+		return
+	}
+	cacheOperationsTotal.Add(ctx, 1, metric.WithAttributes(
+		attribute.String("cache_type", cacheType),
+		attribute.String("operation", operation),
+		attribute.String("result", result),
+	))
 }
 
 // RecordAPIOperation records metrics for API operations

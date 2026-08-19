@@ -82,7 +82,6 @@ func GetCurrentMemoryStats() MemoryStats {
 	return stats
 }
 
-
 // MemoryOptimizationReport generates a comprehensive memory optimization report
 type MemoryOptimizationReport struct {
 	PlayerCount                int                         `json:"player_count"`
@@ -121,7 +120,7 @@ func GetMemoryOptimizationHandler() func(w http.ResponseWriter, r *http.Request)
 
 		if r.Method != "GET" {
 			logWarn(ctx, "Invalid HTTP method for memory optimization endpoint", "method", r.Method)
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed", nil, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -160,7 +159,7 @@ func GetMemoryOptimizationHandler() func(w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(report); err != nil {
 			logError(ctx, "Failed to encode memory optimization report", "error", err)
-			http.Error(w, "Failed to encode report", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "response_encoding_failed", "Failed to encode report", nil, http.StatusInternalServerError)
 			return
 		}
 

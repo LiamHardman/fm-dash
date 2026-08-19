@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/proto"
 
 	apperrors "api/errors"
@@ -270,7 +271,7 @@ func getFileSizeLimitErrorMessage() string {
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 	startTime := time.Now()
@@ -304,7 +305,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			"content_length_bytes", r.ContentLength,
 			"max_size_bytes", getMaxUploadSize())
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "content_length_exceeded"))
-		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
+		WriteErrorResponse(w, r, "content_length_exceeded", getFileSizeLimitErrorMessage(), nil, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -312,7 +313,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// but the total request size is what we're primarily concerned with for the file part.
 	// We'll check the actual file size after getting the file.
 	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB for other form data, not the file itself immediately
-		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
+		WriteErrorResponse(w, r, "multipart_parse_failed", "Error parsing multipart form: "+err.Error(), nil, http.StatusBadRequest)
 		return
 	}
 
@@ -320,8 +321,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, handler, err := r.FormFile("playerFile")
 	if err != nil {
-		RecordError(ctx, err, "Failed to retrieve uploaded file")
-		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
+		WriteErrorResponse(w, r, "file_retrieval_failed", "Error retrieving the file: "+err.Error(), nil, http.StatusBadRequest)
 		return
 	}
 	defer func() {
@@ -334,11 +334,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	limitedReader := http.MaxBytesReader(w, file, getMaxUploadSize())
 	fileContent, err := io.ReadAll(limitedReader)
 	if err != nil {
-		RecordError(ctx, err, "File size validation failed - file too large or read error")
 		logWarn(ctx, "Upload rejected: File content exceeds size limit or read error",
 			"max_size_bytes", getMaxUploadSize(),
 			"filename", handler.Filename)
-		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
+		WriteErrorResponse(w, r, "file_size_exceeded", getFileSizeLimitErrorMessage(), nil, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -361,7 +360,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			"file_size_bytes", actualFileSize,
 			"max_size_bytes", getMaxUploadSize())
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "file_size_exceeded"))
-		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
+		WriteErrorResponse(w, r, "file_size_exceeded", getFileSizeLimitErrorMessage(), nil, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -405,17 +404,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			setCORSHeaders(w, r)
 
 			if err := json.NewEncoder(w).Encode(response); err != nil {
-				RecordError(ctx, err, "Failed to encode duplicate response")
-				http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+				WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response: "+err.Error(), nil, http.StatusInternalServerError)
 				return
 			}
 
-			RecordBusinessOperation(ctx, "duplicate_upload_detected", true, map[string]interface{}{
-				"filename":            handler.Filename,
-				"file_size_bytes":     actualFileSize,
-				"existing_dataset_id": existingDatasetID,
-				"file_hash":           fileHash[:16] + "...",
-			})
+			RecordBusinessOperation(ctx, "duplicate_upload_detected", true, nil)
 
 			return
 		}
@@ -495,7 +488,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	LogDebug("File parsing attempt finished - channel closed by parser.")
 
 	if processingError != nil {
-		RecordError(ctx, processingError, "File parsing failed")
 		logError(ctx, "Error during file parsing or worker setup", "error", processingError)
 		if len(headersSnapshot) > 0 {
 			logInfo(ctx, "Waiting for any potentially started workers after parsing error...")
@@ -503,7 +495,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		close(resultsChan)
 		<-doneConsumingResults
-		http.Error(w, processingError.Error(), http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "parse_error", processingError.Error(), nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -512,7 +504,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		SetSpanAttributes(ctx, attribute.String("error.type", "no_headers_parsed"))
 		close(resultsChan)
 		<-doneConsumingResults
-		http.Error(w, "Could not parse table headers, no data processed.", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "no_headers_parsed", "Could not parse table headers, no data processed.", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -617,8 +609,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		RecordError(ctx, err, "Failed to encode upload response")
-		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response: "+err.Error(), nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -654,23 +645,21 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		calculationTime := time.Since(startTime)
 		logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
 
-		RecordBusinessOperation(ctx, "async_percentile_calculation_completed", true, map[string]interface{}{
-			"dataset_id":       datasetID,
-			"player_count":     len(playersList),
-			"calculation_time": calculationTime.Milliseconds(),
-		})
+		if fileProcessingDuration != nil {
+			fileProcessingDuration.Record(ctx, calculationTime.Seconds(), metric.WithAttributes(
+				attribute.String("processing.operation", "percentile_calculation"),
+			))
+		}
+		RecordBusinessOperation(ctx, "async_percentile_calculation_completed", true, nil)
 	}()
 
-	RecordBusinessOperation(ctx, "file_upload_completed", true, map[string]interface{}{
-		"filename":             handler.Filename,
-		"file_size_bytes":      actualFileSize,
-		"dataset_id":           datasetID,
-		"player_count":         len(playersList),
-		"parse_duration_ms":    parseDuration.Milliseconds(),
-		"currency_symbol":      finalDatasetCurrencySymbol,
-		"roles_count":          len(roles),
-		"total_upload_time_ms": time.Since(startTime).Milliseconds(),
-	})
+	if uploadPlayerCount != nil {
+		uploadPlayerCount.Record(ctx, float64(len(playersList)))
+	}
+	if uploadDatasetSizeBytes != nil {
+		uploadDatasetSizeBytes.Record(ctx, float64(actualFileSize))
+	}
+	RecordBusinessOperation(ctx, "file_upload_completed", true, nil)
 }
 
 // playerDataHandler handles GET requests for retrieving player data by dataset ID.
@@ -1066,7 +1055,6 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Write JSON response using content negotiation
 	if err := WriteResponse(w, r, responseData); err != nil {
-		RecordError(ctx, err, "Failed to write JSON response")
 		WriteErrorResponse(w, r, "SERIALIZATION_ERROR",
 			"Failed to serialize response data",
 			[]string{err.Error()},
@@ -1081,15 +1069,15 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		"response_format", serializer.ContentType(),
 		"processing_time_ms", time.Since(startTime).Milliseconds())
 
-	RecordBusinessOperation(ctx, "player_data_served", true, map[string]interface{}{
-		"dataset_id":           datasetID,
-		"player_count":         len(processedPlayers),
-		"response_format":      serializer.ContentType(),
-		"processing_time_ms":   time.Since(startTime).Milliseconds(),
-		"percentile_cache_hit": found,
-		"division_filter":      divisionFilterStr,
-		"has_filters":          filterPosition != "" || filterRole != "" || minAgeStr != "" || maxAgeStr != "",
-	})
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("dataset.player_count", len(processedPlayers)),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("percentile.cache_hit", found),
+		attribute.String("filter.division", divisionFilterStr),
+		attribute.Bool("filter.has_filters", filterPosition != "" || filterRole != "" || minAgeStr != "" || maxAgeStr != ""),
+	)
+	RecordBusinessOperation(ctx, "player_data_served", true, nil)
 }
 
 // leaguesHandler returns league data with teams and their ratings
@@ -1547,20 +1535,20 @@ type PlayerPercentilesRequest struct {
 func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/percentiles/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
 
 	var req PercentileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_request_body", "Error parsing request body: "+err.Error(), nil, http.StatusBadRequest)
 		return
 	}
 
@@ -1574,7 +1562,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1588,7 +1576,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetPlayerIndex == -1 {
-		http.Error(w, "Player not found in dataset", http.StatusNotFound)
+		WriteErrorResponse(w, r, "player_not_found", "Player not found in dataset", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1628,7 +1616,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
 			logError(ctx, "Error encoding JSON response for cached percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -1682,7 +1670,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if updatedPlayer == nil {
-		http.Error(w, "Player not found after calculation", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "player_not_found", "Player not found after calculation", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -1699,7 +1687,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
 		logError(ctx, "Error encoding JSON response for percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -1707,20 +1695,20 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/player-percentiles/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
 
 	var req PlayerPercentilesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_request_body", "Error parsing request body: "+err.Error(), nil, http.StatusBadRequest)
 		return
 	}
 
@@ -1734,7 +1722,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1742,7 +1730,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	var targetPlayer *Player
 	playerUID, err := strconv.ParseInt(req.PlayerUID, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid player UID format", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_player_uid", "Invalid player UID format", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -1754,7 +1742,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetPlayer == nil {
-		http.Error(w, "Player not found in dataset", http.StatusNotFound)
+		WriteErrorResponse(w, r, "player_not_found", "Player not found in dataset", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1802,7 +1790,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
 			logError(ctx, "Error encoding JSON response for cached player percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -1856,7 +1844,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if updatedPlayer == nil {
-		http.Error(w, "Player not found after calculation", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "player_not_found", "Player not found after calculation", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -1892,7 +1880,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(resultPercentiles); err != nil {
 		logError(ctx, "Error encoding JSON response for player percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -1900,13 +1888,13 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/percentiles-status/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -1917,7 +1905,7 @@ func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1978,7 +1966,7 @@ func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(statusResponse); err != nil {
 		logError(ctx, "Error encoding JSON response for percentiles status", "dataset_id", sanitizeForLogging(datasetID), "error", err)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -2539,6 +2527,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		SetSpanAttributes(ctx,
 			attribute.Int("search.results_count", len(cachedResults)),
 			attribute.String("search.cache_status", "HIT"))
+		if searchCacheStatusTotal != nil {
+			searchCacheStatusTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("cache_status", "hit")))
+		}
+		if searchResultsCount != nil {
+			searchResultsCount.Record(ctx, float64(len(cachedResults)))
+		}
 
 		// Set CORS headers
 		setCORSHeaders(w, r)
@@ -2601,7 +2595,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Cache-Status", "HIT")
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
-			RecordError(ctx, err, "Failed to encode cached search results")
 			WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 			return
 		}
@@ -2632,6 +2625,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	SetSpanAttributes(ctx,
 		attribute.Int("search.results_count", len(results)),
 		attribute.String("search.cache_status", "MISS"))
+	if searchCacheStatusTotal != nil {
+		searchCacheStatusTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("cache_status", "miss")))
+	}
+	if searchResultsCount != nil {
+		searchResultsCount.Record(ctx, float64(len(results)))
+	}
 
 	// Set CORS headers
 	setCORSHeaders(w, r)
@@ -2694,7 +2693,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Status", "MISS")
 	if err := json.NewEncoder(w).Encode(results); err != nil {
-		RecordError(ctx, err, "Failed to encode search results")
 		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 		return
 	}
@@ -2888,23 +2886,35 @@ type BargainHunterResponse struct {
 // bargainHunterHandler handles POST requests to find the best value players within budget constraints
 func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "api.bargain-hunter.post")
+	defer span.End()
+
 	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/bargain-hunter/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
 
 	var req BargainHunterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_request_body", "Error parsing request body: "+err.Error(), nil, http.StatusBadRequest)
 		return
 	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int64("bargain_hunter.max_budget", req.MaxBudget),
+		attribute.Int64("bargain_hunter.max_salary", req.MaxSalary),
+		attribute.Int("bargain_hunter.min_age", req.MinAge),
+		attribute.Int("bargain_hunter.max_age", req.MaxAge),
+		attribute.Int("bargain_hunter.min_overall", req.MinOverall),
+	)
 
 	logInfo(ctx, "Processing bargain hunter request",
 		"dataset_id", datasetID,
@@ -2918,7 +2928,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -2935,12 +2945,16 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 			"cache_key", cacheKey,
 			"result_count", len(cachedResults))
 
+		if bargainHunterResultsCount != nil {
+			bargainHunterResultsCount.Record(ctx, float64(len(cachedResults)))
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
 			logError(ctx, "Error encoding JSON response for cached bargain hunter", "dataset_id", sanitizeForLogging(datasetID), "error", err)
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -2952,6 +2966,9 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Process bargain hunter analysis
 	bargainPlayers := processBargainHunter(players, req.MaxBudget, req.MaxSalary, int64(req.MinAge), int64(req.MaxAge), int64(req.MinOverall))
+	if bargainHunterResultsCount != nil {
+		bargainHunterResultsCount.Record(ctx, float64(len(bargainPlayers)))
+	}
 
 	// NEW: Save to cache for future requests
 	go func() {
@@ -2962,8 +2979,8 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(bargainPlayers); err != nil {
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 		logError(ctx, "Error encoding JSON response for bargain hunter", "dataset_id", sanitizeForLogging(datasetID), "error", err)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding JSON response", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -3138,7 +3155,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Only allow GET requests
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -3146,14 +3163,14 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.URL.Query().Get("uid")
 	if uid == "" {
 		logWarn(ctx, "Missing uid parameter in faces request")
-		http.Error(w, "Missing 'uid' parameter", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_uid_parameter", "Missing 'uid' parameter", nil, http.StatusBadRequest)
 		return
 	}
 
 	// Validate UID format for security (prevent path injection)
 	if err := validateID(uid, 100); err != nil {
-		RecordError(ctx, apperrors.WrapErrInvalidUID(sanitizeForLogging(uid), err), "Invalid UID format")
-		http.Error(w, "Invalid UID format", http.StatusBadRequest)
+		logWarn(ctx, "Invalid UID format", "error", apperrors.WrapErrInvalidUID(sanitizeForLogging(uid), err))
+		WriteErrorResponse(w, r, "invalid_uid_format", "Invalid UID format", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3163,6 +3180,9 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
 		externalURL := fmt.Sprintf("%s/face/%s.png?width=256", imageAPIURL, uid)
 		logInfo(ctx, "Redirecting to external image API", "url", externalURL)
+
+		SetSpanAttributes(ctx, attribute.String("resolution.path", "external_redirect"))
+		RecordAssetResolution(ctx, "face", "external_redirect")
 
 		// Set appropriate headers for redirect
 		setCORSHeaders(w, r)
@@ -3188,6 +3208,8 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 			// Fall through to local storage
 		} else {
 			logInfo(ctx, "Successfully served face from S3", "filename", sanitizeForLogging(faceFileName))
+			SetSpanAttributes(ctx, attribute.String("resolution.path", "s3_hit"))
+			RecordAssetResolution(ctx, "face", "s3_hit")
 			return
 		}
 	}
@@ -3198,8 +3220,8 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	// Safely construct the file path to prevent path injection
 	faceFilePath, err := validateAndJoinPath(facesDir, faceFileName)
 	if err != nil {
-		RecordError(ctx, apperrors.WrapErrInvalidFilePath(sanitizeForLogging(uid), err), "Path validation failed")
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		logWarn(ctx, "Face path validation failed", "error", apperrors.WrapErrInvalidFilePath(sanitizeForLogging(uid), err))
+		WriteErrorResponse(w, r, "invalid_file_path", "Invalid file path", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3213,17 +3235,23 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 		if nationality := r.URL.Query().Get("nationality"); nationality != "" {
 			if serveRegenFace(ctx, w, r, uid, nationality) {
 				logInfo(ctx, "Served regen fallback face", "nationality", sanitizeForLogging(nationality))
+				SetSpanAttributes(ctx, attribute.String("resolution.path", "regen_fallback"))
+				RecordAssetResolution(ctx, "face", "regen_fallback")
 				return
 			}
 		}
 
-		http.Error(w, "Face image not found", http.StatusNotFound)
+		SetSpanAttributes(ctx, attribute.String("resolution.path", "not_found"))
+		RecordAssetResolution(ctx, "face", "not_found")
+		WriteErrorResponse(w, r, "image_not_found", "Face image not found", nil, http.StatusNotFound)
 		return
 	}
 
 	// Serve the file
 	http.ServeFile(w, r, faceFilePath)
 	logInfo(ctx, "Successfully served face from local storage", "path", sanitizeForLogging(faceFilePath))
+	SetSpanAttributes(ctx, attribute.String("resolution.path", "local_hit"))
+	RecordAssetResolution(ctx, "face", "local_hit")
 }
 
 // getFacesDirectory returns the directory path for local face storage
@@ -3243,7 +3271,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Only allow GET requests
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -3251,14 +3279,14 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	teamID := r.URL.Query().Get("teamId")
 	if teamID == "" {
 		logWarn(ctx, "Missing teamId parameter in logos request")
-		http.Error(w, "Missing 'teamId' parameter", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_team_id_parameter", "Missing 'teamId' parameter", nil, http.StatusBadRequest)
 		return
 	}
 
 	// Validate team ID format for security (prevent path injection)
 	if err := validateID(teamID, 100); err != nil {
-		RecordError(ctx, apperrors.WrapErrInvalidTeamID(sanitizeForLogging(teamID), err), "Invalid team ID format")
-		http.Error(w, "Invalid team ID format", http.StatusBadRequest)
+		logWarn(ctx, "Invalid team ID format", "error", apperrors.WrapErrInvalidTeamID(sanitizeForLogging(teamID), err))
+		WriteErrorResponse(w, r, "invalid_team_id_format", "Invalid team ID format", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3267,6 +3295,9 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if externalURL := externalTeamLogoURL(teamID); externalURL != "" {
 		logInfo(ctx, "Redirecting to external image API", "url", externalURL)
+
+		SetSpanAttributes(ctx, attribute.String("resolution.path", "external_redirect"))
+		RecordAssetResolution(ctx, "logo", "external_redirect")
 
 		// Set appropriate headers for redirect
 		setCORSHeaders(w, r)
@@ -3292,6 +3323,8 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 			// Fall through to local storage
 		} else {
 			logDebug(ctx, "Successfully served logo from S3", "filename", sanitizeForLogging(logoFileName))
+			SetSpanAttributes(ctx, attribute.String("resolution.path", "s3_hit"))
+			RecordAssetResolution(ctx, "logo", "s3_hit")
 			return
 		}
 	}
@@ -3299,8 +3332,8 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	// Try local storage as fallback.
 	logoFilePath, err := localTeamLogoPathForHandler(teamID)
 	if err != nil && !os.IsNotExist(err) {
-		RecordError(ctx, apperrors.WrapErrInvalidFilePathForTeamID(sanitizeForLogging(teamID), err), "Path validation failed")
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		logWarn(ctx, "Logo path validation failed", "error", apperrors.WrapErrInvalidFilePathForTeamID(sanitizeForLogging(teamID), err))
+		WriteErrorResponse(w, r, "invalid_file_path", "Invalid file path", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3309,13 +3342,17 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if file exists
 	if err != nil || logoFilePath == "" {
 		logWarn(ctx, "Team logo not found", "path", sanitizeForLogging(logoFilePath))
-		http.Error(w, "Team logo not found", http.StatusNotFound)
+		SetSpanAttributes(ctx, attribute.String("resolution.path", "not_found"))
+		RecordAssetResolution(ctx, "logo", "not_found")
+		WriteErrorResponse(w, r, "logo_not_found", "Team logo not found", nil, http.StatusNotFound)
 		return
 	}
 
 	// Serve the file
 	http.ServeFile(w, r, logoFilePath)
 	logInfo(ctx, "Successfully served logo from local storage", "path", sanitizeForLogging(logoFilePath))
+	SetSpanAttributes(ctx, attribute.String("resolution.path", "local_hit"))
+	RecordAssetResolution(ctx, "logo", "local_hit")
 }
 
 // getLogosDirectory returns the directory path for local logo storage
@@ -3330,7 +3367,7 @@ func getLogosDirectory() string {
 // cacheStatusHandler returns cache statistics and status
 func cacheStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -3356,7 +3393,7 @@ func cacheStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(status); err != nil {
-		http.Error(w, "Error encoding cache status", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding cache status", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -3367,14 +3404,14 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	teamName := r.URL.Query().Get("name")
 	if teamName == "" {
 		logWarn(ctx, "Missing 'name' parameter in team match request")
-		http.Error(w, "Missing 'name' parameter", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_name_parameter", "Missing 'name' parameter", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3382,6 +3419,9 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get team match results
 	matches := findTeamMatches(teamName)
+	if teamMatchTopScore != nil && len(matches) > 0 {
+		teamMatchTopScore.Record(ctx, matches[0].Score)
+	}
 
 	// Log detailed results for troubleshooting
 	if len(matches) == 0 {
@@ -3414,7 +3454,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(matches); err != nil {
 		logError(ctx, "Error encoding team match response", "error", err, "teamName", teamName)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -3425,14 +3465,14 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	teamName := r.URL.Query().Get("name")
 	if teamName == "" {
 		logWarn(ctx, "Missing 'name' parameter in club logo resolve request")
-		http.Error(w, "Missing 'name' parameter", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_name_parameter", "Missing 'name' parameter", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3443,6 +3483,10 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 		"teamID", resolution.TeamID,
 		"teamNameResolved", resolution.TeamName,
 		"score", resolution.Score)
+	SetSpanAttributes(ctx, attribute.String("club_logo.status", resolution.Status))
+	if clubLogoResolveStatusTotal != nil {
+		clubLogoResolveStatusTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("status", resolution.Status)))
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -3450,7 +3494,7 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(resolution); err != nil {
 		logError(ctx, "Error encoding club logo resolve response", "error", err, "teamName", teamName)
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Error encoding response", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -3460,6 +3504,8 @@ func clubLogoResolveHandler(w http.ResponseWriter, r *http.Request) {
 // DELETE /api/club-logo/overrides?name=X â†’ removes an override
 func clubLogoOverridesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "handlers.clubLogoOverrides")
+	defer span.End()
 	setCORSHeaders(w, r)
 
 	switch r.Method {
@@ -3477,15 +3523,22 @@ func clubLogoOverridesHandler(w http.ResponseWriter, r *http.Request) {
 			TeamID string `json:"teamId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
-			http.Error(w, "invalid body: name is required", http.StatusBadRequest)
+			WriteErrorResponse(w, r, "invalid_body", "invalid body: name is required", nil, http.StatusBadRequest)
 			return
 		}
 		if err := SetLogoOverride(body.Name, body.TeamID); err != nil {
 			logError(ctx, "Error saving logo override", "error", err)
-			http.Error(w, "failed to save override", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "save_failed", "failed to save override", nil, http.StatusInternalServerError)
 			return
 		}
 		logDebug(ctx, "Logo override saved", "name", body.Name, "teamId", body.TeamID)
+		action := "confirm"
+		if body.TeamID == "" {
+			action = "reject"
+		}
+		if clubLogoOverrideWritesTotal != nil {
+			clubLogoOverrideWritesTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("action", action)))
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"ok":true}`))
@@ -3493,21 +3546,24 @@ func clubLogoOverridesHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		name := r.URL.Query().Get("name")
 		if name == "" {
-			http.Error(w, "name query parameter is required", http.StatusBadRequest)
+			WriteErrorResponse(w, r, "missing_name_parameter", "name query parameter is required", nil, http.StatusBadRequest)
 			return
 		}
 		if err := DeleteLogoOverride(name); err != nil {
 			logError(ctx, "Error deleting logo override", "error", err)
-			http.Error(w, "failed to delete override", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "delete_failed", "failed to delete override", nil, http.StatusInternalServerError)
 			return
 		}
 		logDebug(ctx, "Logo override deleted", "name", name)
+		if clubLogoOverrideWritesTotal != nil {
+			clubLogoOverrideWritesTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("action", "delete")))
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"ok":true}`))
 
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "method not allowed", nil, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -3615,7 +3671,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract player UID and dataset ID from URL
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 5 {
-		http.Error(w, "Invalid URL format. Expected: /api/fullplayerstats/{datasetID}/{playerUID}", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_url", "Invalid URL format. Expected: /api/fullplayerstats/{datasetID}/{playerUID}", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3625,7 +3681,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse player UID
 	playerUID, err := strconv.ParseInt(playerUIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid player UID", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_player_uid", "Invalid player UID", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3643,7 +3699,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 		logError(ctx, "Failed to get dataset for full player stats",
 			"dataset_id", datasetID,
 			"player_uid", playerUID)
-		http.Error(w, "Dataset not found", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
@@ -3667,7 +3723,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetPlayer == nil {
-		http.Error(w, "Player not found", http.StatusNotFound)
+		WriteErrorResponse(w, r, "player_not_found", "Player not found", nil, http.StatusNotFound)
 		return
 	}
 
@@ -3758,7 +3814,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 			"dataset_id", datasetID,
 			"player_uid", playerUID)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Internal server error", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -3773,7 +3829,7 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 			"dataset_id", datasetID,
 			"player_uid", playerUID)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_error", "Internal server error", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -3849,7 +3905,7 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Expected format: /api/team-data/{datasetID}/{type}/{name}
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/team-data/"), "/")
 	if len(pathParts) < 3 {
-		http.Error(w, "Invalid URL format. Expected: /api/team-data/{datasetID}/{type}/{name}", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_url", "Invalid URL format. Expected: /api/team-data/{datasetID}/{type}/{name}", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3859,7 +3915,7 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate data type
 	if dataType != "team" && dataType != "nation" {
-		http.Error(w, "Invalid data type. Must be 'team' or 'nation'", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_data_type", "Invalid data type. Must be 'team' or 'nation'", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3870,7 +3926,7 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 			"dataset_id", datasetID,
 			"type", dataType,
 			"name", teamOrNationName)
-		http.Error(w, "Dataset not found", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
@@ -3893,7 +3949,7 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(filteredPlayers) == 0 {
-		http.Error(w, fmt.Sprintf("No players found for %s: %s", dataType, teamOrNationName), http.StatusNotFound)
+		WriteErrorResponse(w, r, "no_players_found", fmt.Sprintf("No players found for %s: %s", dataType, teamOrNationName), nil, http.StatusNotFound)
 		return
 	}
 
@@ -3930,7 +3986,7 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 			"dataset_id", datasetID,
 			"type", dataType,
 			"name", teamOrNationName)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Internal server error", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -3946,7 +4002,7 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 			"dataset_id", datasetID,
 			"type", dataType,
 			"name", teamOrNationName)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_error", "Internal server error", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -3962,14 +4018,14 @@ func nationTopPlayersHandler(w http.ResponseWriter, r *http.Request) {
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/nation-top-players/"), "/")
 	if len(pathParts) < 2 || pathParts[0] == "" || pathParts[1] == "" {
-		http.Error(w, "Invalid URL format. Expected: /api/nation-top-players/{datasetID}/{nationName}", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_url", "Invalid URL format. Expected: /api/nation-top-players/{datasetID}/{nationName}", nil, http.StatusBadRequest)
 		return
 	}
 
 	datasetID := pathParts[0]
 	nationName, err := url.PathUnescape(pathParts[1])
 	if err != nil {
-		http.Error(w, "Invalid nation name", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_nation_name", "Invalid nation name", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -3994,14 +4050,14 @@ func nationTopPlayersHandler(w http.ResponseWriter, r *http.Request) {
 		logError(ctx, "Failed to get dataset for nation top players",
 			"dataset_id", datasetID,
 			"nation", nationName)
-		http.Error(w, "Dataset not found", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
 	nationPlayers := prepareNationPlayersForRatings(players, nationName)
 	topPlayers := selectTopNationPlayers(nationPlayers, nationName, limit)
 	if len(topPlayers) == 0 {
-		http.Error(w, fmt.Sprintf("No players found for nation: %s", nationName), http.StatusNotFound)
+		WriteErrorResponse(w, r, "no_players_found", fmt.Sprintf("No players found for nation: %s", nationName), nil, http.StatusNotFound)
 		return
 	}
 
@@ -4027,7 +4083,7 @@ func writeGenericJSONDataResponse(ctx context.Context, w http.ResponseWriter, r 
 			"dataset_id", datasetID,
 			"type", dataType,
 			"name", name)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_encoding_failed", "Internal server error", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -4041,7 +4097,7 @@ func writeGenericJSONDataResponse(ctx context.Context, w http.ResponseWriter, r 
 			"dataset_id", datasetID,
 			"type", dataType,
 			"name", name)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "response_error", "Internal server error", nil, http.StatusInternalServerError)
 	}
 }
 
@@ -4914,6 +4970,9 @@ func exportDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	SetSpanAttributes(ctx, attribute.String("export.format", format))
+	if exportRequestsTotal != nil {
+		exportRequestsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("export.format", format)))
+	}
 
 	logDebug(ctx, "Processing export request",
 		"dataset_id", datasetID,
@@ -5745,6 +5804,9 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		"filter_time_ms", filterTime.Milliseconds(),
 		"data_load_time_ms", dataLoadTime.Milliseconds(),
 		"total_time_ms", time.Since(startTime).Milliseconds())
+	if upgradeFinderResultsCount != nil {
+		upgradeFinderResultsCount.Record(ctx, float64(len(upgrades)))
+	}
 
 	// Set CORS headers
 	setCORSHeaders(w, r)
@@ -6066,6 +6128,9 @@ func nationsSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	startTime := time.Now()
 
+	ctx, span := StartSpan(ctx, "api.nations-summary.get")
+	defer span.End()
+
 	if r.Method != http.MethodGet {
 		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
@@ -6095,7 +6160,7 @@ func nationsSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -6107,8 +6172,8 @@ func nationsSummaryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(summaryData); err != nil {
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 		logError(ctx, "Error encoding JSON response for nations summary", "dataset_id", sanitizeForLogging(datasetID), "error", err)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding JSON response", nil, http.StatusInternalServerError)
 		return
 	}
 

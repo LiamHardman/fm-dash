@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // ProgressionAnalyzeRequest is the body of POST /api/progression/analyze.
@@ -28,12 +31,12 @@ type ProgressionPlayer struct {
 
 // ProgressionAnalyzeResponse is the response of POST /api/progression/analyze.
 type ProgressionAnalyzeResponse struct {
-	Order               []string             `json:"order,omitempty"`
-	Players             []ProgressionPlayer  `json:"players,omitempty"`
-	OrderAmbiguous      bool                 `json:"orderAmbiguous,omitempty"`
-	AmbiguousDatasetIDs []string             `json:"ambiguousDatasetIds,omitempty"`
-	EmptyIntersection   bool                 `json:"emptyIntersection,omitempty"`
-	CurrencySymbol      string               `json:"currencySymbol,omitempty"`
+	Order               []string            `json:"order,omitempty"`
+	Players             []ProgressionPlayer `json:"players,omitempty"`
+	OrderAmbiguous      bool                `json:"orderAmbiguous,omitempty"`
+	AmbiguousDatasetIDs []string            `json:"ambiguousDatasetIds,omitempty"`
+	EmptyIntersection   bool                `json:"emptyIntersection,omitempty"`
+	CurrencySymbol      string              `json:"currencySymbol,omitempty"`
 }
 
 // progressionFieldAccessors resolves a "known interesting field" name to a numeric value
@@ -133,6 +136,8 @@ func determineSnapshotOrder(datasetIDs []string, datasetPlayers map[string][]Pla
 
 func progressionAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "api.progression.analyze")
+	defer span.End()
 
 	if r.Method != http.MethodPost {
 		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
@@ -180,6 +185,9 @@ func progressionAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if orderAmbiguous {
+		if progressionOutcomeTotal != nil {
+			progressionOutcomeTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("outcome", "order_ambiguous")))
+		}
 		if err := json.NewEncoder(w).Encode(ProgressionAnalyzeResponse{
 			OrderAmbiguous:      true,
 			AmbiguousDatasetIDs: ambiguousIDs,
@@ -210,6 +218,9 @@ func progressionAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(intersectedUIDs) == 0 {
+		if progressionOutcomeTotal != nil {
+			progressionOutcomeTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("outcome", "empty_intersection")))
+		}
 		if err := json.NewEncoder(w).Encode(ProgressionAnalyzeResponse{
 			Order:             order,
 			EmptyIntersection: true,
@@ -258,6 +269,14 @@ func progressionAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	} else {
 		sort.Slice(players, func(i, j int) bool { return players[i].Name < players[j].Name })
+	}
+
+	SetSpanAttributes(ctx, attribute.Int("progression.players_compared", len(players)))
+	if progressionPlayersCompared != nil {
+		progressionPlayersCompared.Record(ctx, float64(len(players)))
+	}
+	if progressionOutcomeTotal != nil {
+		progressionOutcomeTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("outcome", "normal")))
 	}
 
 	if err := json.NewEncoder(w).Encode(ProgressionAnalyzeResponse{

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Cache version - increment when calculation logic changes
@@ -130,18 +132,25 @@ func InitCacheStorage(ctx context.Context) {
 // cacheHandler handles cache operations for various cache types
 func cacheHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "api.cache.operation")
+	defer span.End()
 
 	// Parse URL path to determine cache type and operation
 	path := strings.TrimPrefix(r.URL.Path, "/api/cache/")
 	pathParts := strings.Split(path, "/")
 
 	if len(pathParts) < 2 {
-		http.Error(w, "Invalid cache endpoint format", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_cache_endpoint", "Invalid cache endpoint format", nil, http.StatusBadRequest)
 		return
 	}
 
 	cacheType := pathParts[0]
 	cacheKey := pathParts[1]
+
+	SetSpanAttributes(ctx,
+		attribute.String("cache.type", cacheType),
+		attribute.String("http.method", r.Method),
+	)
 
 	logDebug(ctx, "Processing cache request",
 		"cache_type", cacheType,
@@ -150,15 +159,15 @@ func cacheHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch cacheType {
 	case "nation-ratings":
-		handleNationRatingsCache(w, r, cacheKey)
+		handleNationRatingsCache(w, r.WithContext(ctx), cacheKey)
 	case "percentiles":
-		handlePercentilesCache(w, r, cacheKey)
+		handlePercentilesCache(w, r.WithContext(ctx), cacheKey)
 	case "bargain-hunter":
-		handleBargainHunterCache(w, r, cacheKey)
+		handleBargainHunterCache(w, r.WithContext(ctx), cacheKey)
 	case "search":
-		handleSearchCache(w, r, cacheKey)
+		handleSearchCache(w, r.WithContext(ctx), cacheKey)
 	default:
-		http.Error(w, "Unknown cache type", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "unknown_cache_type", "Unknown cache type", nil, http.StatusBadRequest)
 	}
 }
 
@@ -181,9 +190,11 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
-			http.Error(w, "Cache not found", http.StatusNotFound)
+			RecordCacheOperation(ctx, "nation-ratings", "get", "miss")
+			WriteErrorResponse(w, r, "cache_not_found", "Cache not found", nil, http.StatusNotFound)
 			return
 		}
+		RecordCacheOperation(ctx, "nation-ratings", "get", "hit")
 
 		logDebug(ctx, "Cache hit for nation ratings",
 			"cache_key", cacheKey,
@@ -212,7 +223,7 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 			logError(ctx, "Invalid JSON body in cache POST request",
 				"error", err,
 				"cache_key", cacheKey)
-			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			WriteErrorResponse(w, r, "invalid_json_body", "Invalid JSON body", nil, http.StatusBadRequest)
 			return
 		}
 
@@ -230,9 +241,11 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
-			http.Error(w, "Failed to store cache", http.StatusInternalServerError)
+			RecordCacheOperation(ctx, "nation-ratings", "post", "error")
+			WriteErrorResponse(w, r, "cache_store_failed", "Failed to store cache", nil, http.StatusInternalServerError)
 			return
 		}
+		RecordCacheOperation(ctx, "nation-ratings", "post", "success")
 
 		logDebug(ctx, "Nation ratings cache stored successfully",
 			"cache_key", cacheKey,
@@ -253,10 +266,12 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
+			RecordCacheOperation(ctx, "nation-ratings", "delete", "error")
 		} else {
 			logDebug(ctx, "Nation ratings cache deleted successfully",
 				"cache_key", cacheKey,
 				"deletion_duration_ms", time.Since(start).Milliseconds())
+			RecordCacheOperation(ctx, "nation-ratings", "delete", "success")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -268,7 +283,7 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 		}
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed", nil, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -291,9 +306,11 @@ func handlePercentilesCache(w http.ResponseWriter, r *http.Request, cacheKey str
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
-			http.Error(w, "Cache not found", http.StatusNotFound)
+			RecordCacheOperation(ctx, "percentiles", "get", "miss")
+			WriteErrorResponse(w, r, "cache_not_found", "Cache not found", nil, http.StatusNotFound)
 			return
 		}
+		RecordCacheOperation(ctx, "percentiles", "get", "hit")
 
 		logDebug(ctx, "Cache hit for percentiles",
 			"cache_key", cacheKey,
@@ -322,10 +339,12 @@ func handlePercentilesCache(w http.ResponseWriter, r *http.Request, cacheKey str
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
+			RecordCacheOperation(ctx, "percentiles", "delete", "error")
 		} else {
 			logDebug(ctx, "Percentiles cache deleted successfully",
 				"cache_key", cacheKey,
 				"deletion_duration_ms", time.Since(start).Milliseconds())
+			RecordCacheOperation(ctx, "percentiles", "delete", "success")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -337,7 +356,7 @@ func handlePercentilesCache(w http.ResponseWriter, r *http.Request, cacheKey str
 		}
 
 	default:
-		http.Error(w, "Method not allowed for percentiles cache", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed for percentiles cache", nil, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -360,9 +379,11 @@ func handleBargainHunterCache(w http.ResponseWriter, r *http.Request, cacheKey s
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
-			http.Error(w, "Cache not found", http.StatusNotFound)
+			RecordCacheOperation(ctx, "bargain-hunter", "get", "miss")
+			WriteErrorResponse(w, r, "cache_not_found", "Cache not found", nil, http.StatusNotFound)
 			return
 		}
+		RecordCacheOperation(ctx, "bargain-hunter", "get", "hit")
 
 		logDebug(ctx, "Cache hit for bargain hunter",
 			"cache_key", cacheKey,
@@ -391,10 +412,12 @@ func handleBargainHunterCache(w http.ResponseWriter, r *http.Request, cacheKey s
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
+			RecordCacheOperation(ctx, "bargain-hunter", "delete", "error")
 		} else {
 			logDebug(ctx, "Bargain hunter cache deleted successfully",
 				"cache_key", cacheKey,
 				"deletion_duration_ms", time.Since(start).Milliseconds())
+			RecordCacheOperation(ctx, "bargain-hunter", "delete", "success")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -406,7 +429,7 @@ func handleBargainHunterCache(w http.ResponseWriter, r *http.Request, cacheKey s
 		}
 
 	default:
-		http.Error(w, "Method not allowed for bargain hunter cache", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed for bargain hunter cache", nil, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -429,9 +452,11 @@ func handleSearchCache(w http.ResponseWriter, r *http.Request, cacheKey string) 
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
-			http.Error(w, "Cache not found", http.StatusNotFound)
+			RecordCacheOperation(ctx, "search", "get", "miss")
+			WriteErrorResponse(w, r, "cache_not_found", "Cache not found", nil, http.StatusNotFound)
 			return
 		}
+		RecordCacheOperation(ctx, "search", "get", "hit")
 
 		logDebug(ctx, "Cache hit for search",
 			"cache_key", cacheKey,
@@ -460,10 +485,12 @@ func handleSearchCache(w http.ResponseWriter, r *http.Request, cacheKey string) 
 				"error", err,
 				"cache_dataset_id", cacheDatasetID,
 				"cache_key", cacheKey)
+			RecordCacheOperation(ctx, "search", "delete", "error")
 		} else {
 			logDebug(ctx, "Search cache deleted successfully",
 				"cache_key", cacheKey,
 				"deletion_duration_ms", time.Since(start).Milliseconds())
+			RecordCacheOperation(ctx, "search", "delete", "success")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -475,7 +502,7 @@ func handleSearchCache(w http.ResponseWriter, r *http.Request, cacheKey string) 
 		}
 
 	default:
-		http.Error(w, "Method not allowed for search cache", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Method not allowed for search cache", nil, http.StatusMethodNotAllowed)
 	}
 }
 
