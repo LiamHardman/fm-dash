@@ -396,9 +396,14 @@ func RecordLLMCall(ctx context.Context, feature string, round int, inputTokens, 
 		return
 	}
 
+	// fm24.-prefixed to match every other custom attribute in this codebase (including
+	// RecordError's WithFeature) -- found via building a Grafana dashboard: this used to
+	// be bare "llm.feature"/"llm.round", which meant fm24_error_events_total (labeled
+	// fm24_llm_feature) and this metric (labeled llm_feature) couldn't be joined by
+	// feature in PromQL at all.
 	attrs := metric.WithAttributes(
-		attribute.String("llm.feature", feature),
-		attribute.Int("llm.round", round),
+		attribute.String("fm24.llm.feature", feature),
+		attribute.Int("fm24.llm.round", round),
 	)
 	if llmInputTokens != nil {
 		llmInputTokens.Record(ctx, float64(inputTokens), attrs)

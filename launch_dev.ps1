@@ -120,7 +120,6 @@ $observabilityStarted = $false
 $otelEnabled = $null
 $otelEndpoint = $null
 $otelInsecure = $null
-$enableMetrics = $null
 
 if (Get-Command docker -ErrorAction SilentlyContinue) {
     docker info *>$null
@@ -148,10 +147,6 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
             $otelEnabled = "true"
             $otelEndpoint = "localhost:4317"
             $otelInsecure = "true"
-            # ENABLE_METRICS gates initEnhancedMetrics() (config.go) -- a separate flag
-            # from OTEL_ENABLED, otherwise every fm24_*/gen_ai.* metric instrument is
-            # never even created. Found via live testing; not otherwise documented.
-            $enableMetrics = "true"
             Write-Host "  Jaeger UI:     http://localhost:16686" -ForegroundColor Cyan
             Write-Host "  Grafana UI:    http://localhost:3001  (Prometheus + Jaeger datasources preconfigured)" -ForegroundColor Cyan
             Write-Host "  Prometheus UI: http://localhost:9090" -ForegroundColor Cyan
@@ -209,7 +204,6 @@ try {
                     $env:OTEL_ENABLED               = $using:otelEnabled
                     $env:OTEL_EXPORTER_OTLP_ENDPOINT = $using:otelEndpoint
                     $env:OTEL_EXPORTER_OTLP_INSECURE = $using:otelInsecure
-                    $env:ENABLE_METRICS              = $using:enableMetrics
                 }
                 go run . *>&1
             } -ArgumentList $goApiDir, $backendPidFile

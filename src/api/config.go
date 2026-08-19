@@ -268,8 +268,12 @@ var (
 
 // init is called when the package is loaded but only does minimal setup
 func init() {
-	// Only initialize metrics toggle from environment variable
-	metricsEnabled = os.Getenv("ENABLE_METRICS") == "true"
+	// Metrics default ON — ENABLE_METRICS=false is the only way to opt out. Previously
+	// defaulted off via a separate flag from OTEL_ENABLED, which meant every custom
+	// metric instrument (fm24_*, including all the tracing-map LLM ones) silently never
+	// got created unless this exact undocumented var was set — found via live testing,
+	// not set anywhere in this repo's kube manifests.
+	metricsEnabled = os.Getenv("ENABLE_METRICS") != "false"
 	LogInfo("Metrics collection enabled: %v", metricsEnabled)
 
 	// Initialize logging configuration from environment variable

@@ -105,10 +105,6 @@ if command -v docker &>/dev/null && docker info >/dev/null 2>&1; then
         export OTEL_ENABLED=true
         export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
         export OTEL_EXPORTER_OTLP_INSECURE=true
-        # ENABLE_METRICS gates initEnhancedMetrics() (config.go) -- a separate flag from
-        # OTEL_ENABLED, otherwise every fm24_*/gen_ai.* metric instrument is never even
-        # created. Found via live testing; not otherwise documented anywhere.
-        export ENABLE_METRICS=true
         echo "  Jaeger UI:     http://localhost:16686"
         echo "  Grafana UI:    http://localhost:3001  (Prometheus + Jaeger datasources preconfigured)"
         echo "  Prometheus UI: http://localhost:9090"
