@@ -21,7 +21,21 @@ const (
 	scoutReportModel         = whoToSignModel
 	scoutReportMaxToolRounds = 5
 	scoutReportFindPlayersN  = 10
+
+	// scoutReportFeature tags this feature's spans/metrics/errors (tracing map ticket 01).
+	scoutReportFeature = "scout_report"
 )
+
+// scoutReportGradeOrdinal maps scoutReportGradeEnum's letter grades onto the tracing
+// map's locked D=1..A+=7 ordinal scale, so grades can be averaged (tracing map ticket 05).
+func scoutReportGradeOrdinal(grade string) int {
+	for i, g := range scoutReportGradeEnum {
+		if g == grade {
+			return len(scoutReportGradeEnum) - i // A+=7 ... D=1
+		}
+	}
+	return 0 // unrecognized — shouldn't happen, strict schema constrains the model to the enum
+}
 
 // --- Request contract (ticket 04) ---
 
@@ -380,6 +394,8 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	RecordScoutReportSubjectGrade(ctx, scoutReportGradeOrdinal(llmResult.SubjectGrade))
+
 	result := ScoutReportResponse{
 		SubjectGrade:          llmResult.SubjectGrade,
 		SubjectGradeRationale: llmResult.SubjectGradeRationale,
@@ -393,6 +409,7 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		squadStars, divisionStars := scoutReportStars(players, candidate, req.Position, managedTeam.Club)
+		RecordScoutReportComparable(ctx, scoutReportGradeOrdinal(pick.Grade), squadStars, divisionStars)
 		result.ComparablePlayers = append(result.ComparablePlayers, ScoutReportComparable{
 			UID:                 candidate.UID,
 			Name:                candidate.Name,
@@ -455,7 +472,7 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, m
 		Text:  textFormat,
 	}
 
-	resp, apiErr := callResponsesWithRetry(ctx, client, params)
+	resp, apiErr := callResponsesWithRetry(ctx, client, params, scoutReportFeature, 0)
 	if apiErr != nil {
 		return nil, nil, apiErr
 	}
@@ -478,6 +495,7 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, m
 					"output_text_len", len(outputText),
 					"output_text", outputText,
 				)
+				RecordError(ctx, err, "Final response could not be parsed", WithFeature(scoutReportFeature), WithErrorCode("response_unparseable"))
 				return nil, nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
 			}
 			return &result, candidates, nil
@@ -497,6 +515,8 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, m
 			var args findComparablePlayersArgs
 			_ = json.Unmarshal([]byte(toolCall.Arguments), &args)
 			toolResults := findComparablePlayersForScout(datasetID, args, subjectUID)
+			RecordToolCall(ctx, "find_comparable_players", toolCall.Arguments, len(toolResults))
+			RecordScoutReportSearchResults(ctx, len(toolResults))
 			recordCandidates(toolResults)
 
 			summaries := make([]ScoutPlayerSummary, len(toolResults))
@@ -524,12 +544,13 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, m
 				OfInputItemList: outputItems,
 			},
 		}
-		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
+		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams, scoutReportFeature, round+1)
 		if apiErr != nil {
 			return nil, nil, apiErr
 		}
 	}
 
+	RecordError(ctx, errToolRoundsExceeded, "Tool-call round cap exceeded", WithFeature(scoutReportFeature), WithErrorCode("tool_rounds_exceeded"))
 	return nil, nil, &whoToSignError{
 		http.StatusGatewayTimeout,
 		"the AI scout couldn't settle on a report within the allowed search attempts — try again shortly.",

@@ -145,6 +145,7 @@ func scoutReportStarsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	squadStars, divisionStars := scoutReportStars(players, *subject, position, managedTeam.Club)
+	RecordScoutReportSubjectStars(r.Context(), squadStars, divisionStars)
 
 	setCORSHeaders(w, r)
 	w.Header().Set("Content-Type", "application/json")

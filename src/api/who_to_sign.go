@@ -13,6 +13,10 @@ import (
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/responses"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Who to Sign — LLM scouting assistant. Implements the spec charted in
@@ -22,6 +26,9 @@ const (
 	whoToSignModel         = "gpt-5.6-luna"
 	whoToSignMaxToolRounds = 5
 	whoToSignFindPlayersN  = 15
+
+	// whoToSignFeature tags this feature's spans/metrics/errors (tracing map ticket 01).
+	whoToSignFeature = "who_to_sign"
 )
 
 // whoToSignAttributeShortCodes maps the long attribute names shown in the frontend's
@@ -563,6 +570,11 @@ type whoToSignError struct {
 
 func (e *whoToSignError) Error() string { return e.message }
 
+// errToolRoundsExceeded is the sentinel passed to RecordError when a feature's
+// tool-calling loop hits its round cap without a final answer — shared by all three
+// LLM features (tracing map ticket 02's "tool_rounds_exceeded" reason).
+var errToolRoundsExceeded = errors.New("tool-call round cap exceeded without a final answer")
+
 func writeWhoToSignError(w http.ResponseWriter, r *http.Request, err *whoToSignError) {
 	setCORSHeaders(w, r)
 	w.Header().Set("Content-Type", "application/json")
@@ -619,6 +631,17 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 
 	logInfo(ctx, "Processing who-to-sign request", "dataset_id", datasetID, "team", req.Team)
 
+	positionsJSON, _ := json.Marshal(req.Positions)
+	SetSpanAttributes(ctx,
+		attribute.String("fm24.who_to_sign.team", req.Team),
+		attribute.String("fm24.who_to_sign.squad_status", req.SquadStatus),
+		attribute.String("fm24.who_to_sign.player_profile", req.PlayerProfile),
+		attribute.String("fm24.who_to_sign.free_text", req.FreeText),
+		attribute.String("fm24.who_to_sign.positions", string(positionsJSON)),
+		attribute.Int64("fm24.who_to_sign.max_transfer_budget", req.MaxTransferBudget),
+		attribute.Int64("fm24.who_to_sign.max_wage_budget", req.MaxWageBudget),
+	)
+
 	squadSummaries := buildSquadSummaries(squad, req)
 	systemPrompt := buildWhoToSignSystemPrompt(req, squadSummaries)
 
@@ -662,9 +685,14 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 	for _, pos := range req.Positions {
 		positionAttrs[strings.ToUpper(pos.Position)] = pos.Attributes
 	}
+	playersRecommendedTotal := 0
 	for i := range result.Recommendations {
 		posKey := strings.ToUpper(result.Recommendations[i].Position)
 		result.Recommendations[i].PlayersConsidered = considered[posKey]
+
+		positionRecommendationCount := 1 + len(result.Recommendations[i].RunnersUp)
+		playersRecommendedTotal += positionRecommendationCount
+		RecordWhoToSignPositionOutcome(ctx, positionRecommendationCount, result.Recommendations[i].MainPick.SigningScore)
 
 		// Overwrite the model's factual fields (name, club, value, wage, ...) with the
 		// authoritative record for that uid, wherever one can be resolved — the model's own
@@ -686,6 +714,8 @@ func whoToSignHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		result.Recommendations[i].ClosestSquadPlayer = closest
 	}
+	RecordWhoToSignPlayersRecommendedTotal(ctx, playersRecommendedTotal)
+	SetSpanAttributes(ctx, attribute.Int("fm24.who_to_sign.players_recommended_total", playersRecommendedTotal))
 
 	writeSSEEvent(w, "done", result)
 	if canFlush {
@@ -768,7 +798,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 		Text:  textFormat,
 	}
 
-	resp, apiErr := callResponsesWithRetry(ctx, client, params)
+	resp, apiErr := callResponsesWithRetry(ctx, client, params, whoToSignFeature, 0)
 	if apiErr != nil {
 		return nil, nil, nil, apiErr
 	}
@@ -798,6 +828,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 					"output_text_len", len(outputText),
 					"output_text", outputText,
 				)
+				RecordError(ctx, err, "Final response could not be parsed", WithFeature(whoToSignFeature), WithErrorCode("response_unparseable"))
 				return nil, nil, nil, &whoToSignError{http.StatusInternalServerError, "the AI scout's response could not be parsed"}
 			}
 			return &result, considered, candidates, nil
@@ -817,6 +848,7 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 			var args whoToSignFindPlayersArgs
 			_ = json.Unmarshal([]byte(toolCall.Arguments), &args)
 			toolResults := findPlayersForScout(datasetID, args)
+			RecordToolCall(ctx, "find_players", toolCall.Arguments, len(toolResults))
 			recordConsidered(args.ShortPosition, toolResults)
 			recordCandidates(toolResults)
 			toolResultsTable := renderPlayerTable(toolResults)
@@ -840,12 +872,13 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 				OfInputItemList: outputItems,
 			},
 		}
-		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
+		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams, whoToSignFeature, round+1)
 		if apiErr != nil {
 			return nil, nil, nil, apiErr
 		}
 	}
 
+	RecordError(ctx, errToolRoundsExceeded, "Tool-call round cap exceeded", WithFeature(whoToSignFeature), WithErrorCode("tool_rounds_exceeded"))
 	return nil, nil, nil, &whoToSignError{
 		http.StatusGatewayTimeout,
 		"the AI scout couldn't settle on recommendations within the allowed search attempts — try narrowing your request (fewer positions, or a specific position) and try again.",
@@ -853,10 +886,24 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 }
 
 // callResponsesWithRetry makes one Responses API call, retrying once on transient
-// failures (429/5xx/network), per ticket 10.
-func callResponsesWithRetry(ctx context.Context, client *openai.Client, params responses.ResponseNewParams) (*responses.Response, *whoToSignError) {
+// failures (429/5xx/network), per ticket 10. feature/round tag the span/metrics/error
+// recorded for this call (tracing map ticket 01) — feature is one of whoToSignFeature/
+// chatbotFeature/scoutReportFeature, round is the caller's own round counter (0 for the
+// pre-loop call, then the loop's current round for each follow-up).
+func callResponsesWithRetry(ctx context.Context, client *openai.Client, params responses.ResponseNewParams, feature string, round int) (*responses.Response, *whoToSignError) {
+	ctx, span := StartSpan(ctx, "gen_ai.responses.create")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("gen_ai.system", "openai"),
+		attribute.String("gen_ai.request.model", params.Model),
+		attribute.String("fm24.llm.feature", feature),
+		attribute.Int("fm24.llm.round", round),
+	)
+
+	start := time.Now()
 	resp, err := client.Responses.New(ctx, params)
 	if err == nil {
+		recordLLMCallSuccess(ctx, span, feature, round, resp, time.Since(start))
 		return resp, nil
 	}
 
@@ -864,9 +911,11 @@ func callResponsesWithRetry(ctx context.Context, client *openai.Client, params r
 	if errors.As(err, &apiErr) {
 		logWarn(ctx, "who-to-sign OpenAI call failed", "status_code", apiErr.StatusCode, "code", apiErr.Code, "type", apiErr.Type, "message", apiErr.Message)
 		if apiErr.StatusCode == http.StatusUnauthorized {
+			RecordError(ctx, err, "OpenAI rejected the API key", WithFeature(feature), WithErrorCode("openai_auth_rejected"))
 			return nil, &whoToSignError{http.StatusBadGateway, "OpenAI rejected the provided API key — check it's valid in Settings"}
 		}
 		if apiErr.StatusCode != http.StatusTooManyRequests && apiErr.StatusCode < 500 {
+			RecordError(ctx, err, "OpenAI rejected the request", WithFeature(feature), WithErrorCode("openai_request_rejected"))
 			return nil, &whoToSignError{http.StatusBadGateway, "OpenAI rejected the request: " + apiErr.Message}
 		}
 	} else {
@@ -875,15 +924,31 @@ func callResponsesWithRetry(ctx context.Context, client *openai.Client, params r
 
 	// Transient (429/5xx/network) — one retry after a short backoff.
 	time.Sleep(500 * time.Millisecond)
+	start = time.Now()
 	resp, err = client.Responses.New(ctx, params)
 	if err != nil {
 		var retryAPIErr *openai.Error
 		if errors.As(err, &retryAPIErr) {
 			logWarn(ctx, "who-to-sign OpenAI retry also failed", "status_code", retryAPIErr.StatusCode, "code", retryAPIErr.Code, "type", retryAPIErr.Type, "message", retryAPIErr.Message)
+			RecordError(ctx, err, "OpenAI rejected the retried request", WithFeature(feature), WithErrorCode("openai_unavailable"))
 			return nil, &whoToSignError{http.StatusBadGateway, "OpenAI rejected the request: " + retryAPIErr.Message}
 		}
 		logWarn(ctx, "who-to-sign OpenAI retry also failed (non-API error)", "error", err.Error())
+		RecordError(ctx, err, "OpenAI call failed after retry", WithFeature(feature), WithErrorCode("openai_unavailable"))
 		return nil, &whoToSignError{http.StatusBadGateway, "the AI scouting service is temporarily unavailable, try again shortly"}
 	}
+	recordLLMCallSuccess(ctx, span, feature, round, resp, time.Since(start))
 	return resp, nil
+}
+
+// recordLLMCallSuccess records the GenAI span attributes and the per-call token/duration
+// metrics for one successful Responses API call (tracing map ticket 01).
+func recordLLMCallSuccess(ctx context.Context, span trace.Span, feature string, round int, resp *responses.Response, duration time.Duration) {
+	span.SetAttributes(
+		attribute.String("gen_ai.response.model", string(resp.Model)),
+		attribute.Int64("gen_ai.usage.input_tokens", resp.Usage.InputTokens),
+		attribute.Int64("gen_ai.usage.output_tokens", resp.Usage.OutputTokens),
+	)
+	span.SetStatus(codes.Ok, "LLM call succeeded")
+	RecordLLMCall(ctx, feature, round, resp.Usage.InputTokens, resp.Usage.OutputTokens, duration)
 }

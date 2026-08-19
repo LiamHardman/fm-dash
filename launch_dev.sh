@@ -29,6 +29,12 @@ cleanup() {
     else
         echo "Backend server (PID: $BACKEND_PID) already stopped or not found."
     fi
+
+    if [ "$JAEGER_STARTED" = "true" ]; then
+        echo "Stopping local Jaeger container (fmdash-jaeger)..."
+        docker stop fmdash-jaeger >/dev/null 2>&1
+    fi
+
     echo "Cleanup complete."
     exit 0
 }
@@ -70,6 +76,42 @@ echo "Protobuf serialization: ENABLED"
 echo "Format-aware caching: ENABLED"
 echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line above"
 echo "To disable format-aware caching, set FORMAT_AWARE_CACHE_ENABLED=false or comment out the export line above"
+echo ""
+
+# --- Start local Jaeger for OTEL trace visualization (tracing map ticket 06) ---
+# Always-on by default: warn and continue without tracing if Docker isn't available,
+# mirroring the kubectl/S3-credentials fallback above.
+JAEGER_STARTED=false
+if command -v docker &>/dev/null && docker info >/dev/null 2>&1; then
+    echo "Starting local Jaeger (OTEL trace visualization)..."
+    if docker ps --filter "name=^fmdash-jaeger$" --filter "status=running" -q | grep -q .; then
+        echo "  fmdash-jaeger already running, reusing it."
+        JAEGER_STARTED=true
+    elif docker ps -a --filter "name=^fmdash-jaeger$" -q | grep -q .; then
+        docker start fmdash-jaeger >/dev/null 2>&1 && JAEGER_STARTED=true
+    else
+        docker run -d --name fmdash-jaeger \
+            -p 4317:4317 -p 4318:4318 -p 16686:16686 \
+            jaegertracing/all-in-one:1.60.0 >/dev/null 2>&1 && JAEGER_STARTED=true
+    fi
+
+    if [ "$JAEGER_STARTED" = "true" ]; then
+        # Brief readiness wait (~5s) so early backend spans aren't dropped -- proceed
+        # regardless once the timeout elapses, never block dev startup indefinitely.
+        for i in $(seq 1 25); do
+            (exec 3<>/dev/tcp/localhost/4317) >/dev/null 2>&1 && exec 3<&- 3>&- && break
+            sleep 0.2
+        done
+        export OTEL_ENABLED=true
+        export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
+        export OTEL_EXPORTER_OTLP_INSECURE=true
+        echo "  Jaeger UI: http://localhost:16686"
+    else
+        echo "  Warning: could not start Jaeger. Continuing without local tracing."
+    fi
+else
+    echo "Warning: Docker not found or not running. Continuing without local tracing (Jaeger)."
+fi
 echo ""
 
 # --- Start Frontend Server ---

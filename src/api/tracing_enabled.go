@@ -115,6 +115,9 @@ func RecordError(ctx context.Context, err error, description string, opts ...Err
 	if errorInfo.Severity != "" {
 		attrs = append(attrs, attribute.String("error.severity", errorInfo.Severity))
 	}
+	if errorInfo.Feature != "" {
+		attrs = append(attrs, attribute.String("fm24.llm.feature", errorInfo.Feature))
+	}
 
 	// Record error metric with enhanced attributes
 	if errorEventsTotal != nil {
@@ -137,6 +140,9 @@ func RecordError(ctx context.Context, err error, description string, opts ...Err
 	if errorInfo.Severity != "" {
 		logAttrs = append(logAttrs, "error_severity", errorInfo.Severity)
 	}
+	if errorInfo.Feature != "" {
+		logAttrs = append(logAttrs, "llm_feature", errorInfo.Feature)
+	}
 
 	if GetMinLogLevel() <= LogLevelCritical {
 		slog.ErrorContext(ctx, "Operation failed", logAttrs...)
@@ -153,6 +159,7 @@ type ErrorInfo struct {
 	UserID        string
 	RequestID     string
 	Severity      string
+	Feature       string
 }
 
 // ErrorOption allows customizing error recording
@@ -190,6 +197,15 @@ func WithSeverity(severity string) ErrorOption {
 func WithRequestID(requestID string) ErrorOption {
 	return func(info *ErrorInfo) {
 		info.RequestID = requestID
+	}
+}
+
+// WithFeature tags which LLM feature ("who_to_sign" | "chatbot" | "scout_report") an
+// error belongs to, so errorEventsTotal can be filtered per feature for a failure-rate
+// breakdown (tracing map ticket 01/02).
+func WithFeature(feature string) ErrorOption {
+	return func(info *ErrorInfo) {
+		info.Feature = feature
 	}
 }
 
@@ -403,4 +419,24 @@ func TraceSlowQuery(ctx context.Context, operation string, threshold time.Durati
 	}
 
 	return err
+}
+
+// RecordToolCall records a short span for one in-process tool execution within an LLM
+// tool-calling loop (find_players/search_players/find_comparable_players, etc.) — shared
+// by all three LLM features (tracing map ticket 01). argsJSON is captured verbatim (the
+// map's locked no-redaction decision — this is a self-hosted BYOK tool, no PII concern).
+func RecordToolCall(ctx context.Context, toolName string, argsJSON string, resultCount int) {
+	if !otelEnabled {
+		return
+	}
+
+	_, span := StartSpan(ctx, "gen_ai.tool.execute")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("gen_ai.tool.name", toolName),
+		attribute.String("fm24.llm.tool.arguments", argsJSON),
+		attribute.Int("fm24.llm.tool.result_count", resultCount),
+	)
+	span.SetStatus(codes.Ok, "Tool call executed")
 }

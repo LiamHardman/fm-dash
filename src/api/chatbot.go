@@ -11,7 +11,12 @@ import (
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/responses"
+
+	"go.opentelemetry.io/otel/attribute"
 )
+
+// chatbotFeature tags this feature's spans/metrics/errors (tracing map ticket 01).
+const chatbotFeature = "chatbot"
 
 // FM-Dash Chatbot — dataset-scoped, multi-turn LLM scouting assistant. Implements the
 // spec charted in .scratch/chatbot/ (Wayfinder map "FM-Dash Chatbot").
@@ -870,6 +875,13 @@ func chatbotHandler(w http.ResponseWriter, r *http.Request) {
 
 	logInfo(ctx, "Processing chatbot request", "dataset_id", datasetID, "club", team.Club, "turns", userTurns)
 
+	conversationID := r.Header.Get("X-Chat-Conversation-Id")
+	SetSpanAttributes(ctx,
+		attribute.String("fm24.chatbot.conversation_id", conversationID),
+		attribute.Int("fm24.chatbot.history_length", len(req.History)),
+		attribute.String("fm24.chatbot.user_message", req.History[len(req.History)-1].Text),
+	)
+
 	setCORSHeaders(w, r)
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -902,6 +914,7 @@ func chatbotHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	SetSpanAttributes(ctx, attribute.String("fm24.chatbot.response_text", result.Text))
 
 	writeSSEEvent(w, "done", ChatDoneEvent{
 		Text:              result.Text,
@@ -1058,13 +1071,14 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 		Text:         textFormat,
 	}
 
-	resp, apiErr := callResponsesWithRetry(ctx, client, params)
+	resp, apiErr := callResponsesWithRetry(ctx, client, params, chatbotFeature, 0)
 	if apiErr != nil {
 		return nil, nil, nil, apiErr
 	}
 
 	var lastChart *ChatChart
 	var lastNavigate *ChatNavigate
+	searchCount := 0
 
 	for round := 0; ; round++ {
 		var toolCalls []responses.ResponseFunctionToolCall
@@ -1082,8 +1096,10 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 					"status", resp.Status,
 					"output_text_len", len(outputText),
 				)
+				RecordError(ctx, err, "Final response could not be parsed", WithFeature(chatbotFeature), WithErrorCode("response_unparseable"))
 				return nil, nil, nil, &whoToSignError{http.StatusInternalServerError, "the assistant's response could not be parsed"}
 			}
+			RecordChatbotSearchesPerTurn(ctx, searchCount)
 			return &result, lastChart, lastNavigate, nil
 		}
 		if round >= chatbotMaxToolRoundsPerTurn {
@@ -1102,7 +1118,10 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 
 		outputItems := make([]responses.ResponseInputItemUnionParam, len(toolCalls))
 		for i, toolCall := range toolCalls {
-			outputText := dispatchChatbotTool(datasetID, managedClub, toolCall.Name, toolCall.Arguments, &lastChart, &lastNavigate)
+			if toolCall.Name == "search_players" {
+				searchCount++
+			}
+			outputText := dispatchChatbotTool(ctx, datasetID, managedClub, toolCall.Name, toolCall.Arguments, &lastChart, &lastNavigate)
 			outputItems[i] = responses.ResponseInputItemUnionParam{
 				OfFunctionCallOutput: &responses.ResponseInputItemFunctionCallOutputParam{
 					CallID: toolCall.CallID,
@@ -1120,12 +1139,13 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 			Text:               textFormat,
 			Input:              responses.ResponseNewParamsInputUnion{OfInputItemList: outputItems},
 		}
-		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams)
+		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams, chatbotFeature, round+1)
 		if apiErr != nil {
 			return nil, nil, nil, apiErr
 		}
 	}
 
+	RecordError(ctx, errToolRoundsExceeded, "Tool-call round cap exceeded", WithFeature(chatbotFeature), WithErrorCode("tool_rounds_exceeded"))
 	return nil, nil, nil, &whoToSignError{
 		http.StatusGatewayTimeout,
 		"the assistant couldn't settle on an answer within the allowed search attempts — try a narrower question and try again.",
@@ -1134,13 +1154,18 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 
 // dispatchChatbotTool executes one tool call and returns its result as a string ready
 // to hand back to the model. lastChart/lastNavigate are updated in place when
-// render_chart/navigate_to_page succeed.
-func dispatchChatbotTool(datasetID, managedClub, name, argsJSON string, lastChart **ChatChart, lastNavigate **ChatNavigate) string {
+// render_chart/navigate_to_page succeed. ctx is used only for the search_players
+// instrumentation below (tracing map ticket 04) — the only one of the 5 tools tracing.md
+// asks about.
+func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, argsJSON string, lastChart **ChatChart, lastNavigate **ChatNavigate) string {
 	switch name {
 	case "search_players":
 		var args chatSearchPlayersArgs
 		_ = json.Unmarshal([]byte(argsJSON), &args)
-		return renderChatPlayerTable(chatSearchPlayers(datasetID, args))
+		results := chatSearchPlayers(datasetID, args)
+		RecordToolCall(ctx, "search_players", argsJSON, len(results))
+		RecordChatbotSearchResults(ctx, len(results))
+		return renderChatPlayerTable(results)
 
 	case "compare_squads":
 		var args chatCompareSquadsArgs

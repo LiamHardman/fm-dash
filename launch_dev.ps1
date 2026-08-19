@@ -36,6 +36,11 @@ function Stop-DevServers {
     Remove-Item $script:frontendPidFile -ErrorAction SilentlyContinue
     Remove-Item $script:backendPidFile  -ErrorAction SilentlyContinue
 
+    if ($script:jaegerStarted) {
+        Write-Host "Stopping local Jaeger container (fmdash-jaeger)..."
+        docker stop fmdash-jaeger *>$null
+    }
+
     # Brief wait, then port-based sweep as a safety net
     Start-Sleep -Seconds 2
 
@@ -102,6 +107,58 @@ if (Get-Command kubectl -ErrorAction SilentlyContinue) {
 
 Write-Host ""
 
+# --- Start local Jaeger for OTEL trace visualization (tracing map ticket 06) ---
+# Always-on by default: warn and continue without tracing if Docker isn't available,
+# mirroring the kubectl/S3-credentials fallback above.
+$jaegerStarted = $false
+$otelEnabled = $null
+$otelEndpoint = $null
+$otelInsecure = $null
+
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+    docker info *>$null
+    if ($?) {
+        Write-Host "Starting local Jaeger (OTEL trace visualization)..."
+        $running = docker ps --filter "name=^fmdash-jaeger$" --filter "status=running" -q
+        if ($running) {
+            Write-Host "  fmdash-jaeger already running, reusing it."
+            $jaegerStarted = $true
+        } else {
+            $existing = docker ps -a --filter "name=^fmdash-jaeger$" -q
+            if ($existing) {
+                docker start fmdash-jaeger *>$null
+                $jaegerStarted = $?
+            } else {
+                docker run -d --name fmdash-jaeger `
+                    -p 4317:4317 -p 4318:4318 -p 16686:16686 `
+                    jaegertracing/all-in-one:1.60.0 *>$null
+                $jaegerStarted = $?
+            }
+        }
+
+        if ($jaegerStarted) {
+            # Brief readiness wait (~5s) so early backend spans aren't dropped -- proceed
+            # regardless once the timeout elapses, never block dev startup indefinitely.
+            for ($i = 0; $i -lt 25; $i++) {
+                $ready = Test-NetConnection -ComputerName localhost -Port 4317 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+                if ($ready) { break }
+                Start-Sleep -Milliseconds 200
+            }
+            $otelEnabled = "true"
+            $otelEndpoint = "localhost:4317"
+            $otelInsecure = "true"
+            Write-Host "  Jaeger UI: http://localhost:16686" -ForegroundColor Cyan
+        } else {
+            Write-Warning "Could not start Jaeger. Continuing without local tracing."
+        }
+    } else {
+        Write-Warning "Docker is installed but not running. Continuing without local tracing (Jaeger)."
+    }
+} else {
+    Write-Warning "Docker not found. Continuing without local tracing (Jaeger)."
+}
+Write-Host ""
+
 try {
     # --- Start Frontend ---
     try {
@@ -141,6 +198,11 @@ try {
                 $env:S3_SECRET_KEY             = $using:s3SecretKey
                 $env:S3_USE_SSL                = $using:s3UseSSL
                 $env:S3_BUCKET_NAME            = "v2fmdash"
+                if ($using:otelEnabled) {
+                    $env:OTEL_ENABLED               = $using:otelEnabled
+                    $env:OTEL_EXPORTER_OTLP_ENDPOINT = $using:otelEndpoint
+                    $env:OTEL_EXPORTER_OTLP_INSECURE = $using:otelInsecure
+                }
                 go run . *>&1
             } -ArgumentList $goApiDir, $backendPidFile
 

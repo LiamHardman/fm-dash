@@ -20,6 +20,12 @@ export const useChatStore = defineStore('chat', () => {
   const managedTeam = ref(null) // { club, division } | null
   const managedTeamChecked = ref(false)
 
+  // conversationId is telemetry-only (tracing map ticket 04) — sent as a header so the
+  // backend can group this chat's requests together in observability spans/metrics
+  // (messages/searches per chat). Never read by any backend behavior/routing logic, so
+  // regenerating it here on newChat() is safe with no effect on conversation state.
+  const conversationId = ref(crypto.randomUUID())
+
   const userTurnCount = computed(() => messages.value.filter((m) => m.role === 'user').length)
   const isTurnLimitReached = computed(() => userTurnCount.value >= CHATBOT_MAX_TURNS)
 
@@ -42,6 +48,7 @@ export const useChatStore = defineStore('chat', () => {
   function newChat() {
     messages.value = []
     statusLabel.value = ''
+    conversationId.value = crypto.randomUUID()
   }
 
   const sseHandlers = {
@@ -85,7 +92,10 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const res = await fetch(`/api/chatbot/${datasetId}`, {
         method: 'POST',
-        headers: llmRequestHeaders(uiStore),
+        headers: {
+          ...llmRequestHeaders(uiStore),
+          'X-Chat-Conversation-Id': conversationId.value,
+        },
         body: JSON.stringify({ history }),
       })
 
@@ -120,6 +130,7 @@ export const useChatStore = defineStore('chat', () => {
     managedTeam,
     managedTeamChecked,
     isTurnLimitReached,
+    conversationId,
     checkManagedTeam,
     newChat,
     sendMessage,
