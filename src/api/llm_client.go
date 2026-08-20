@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/openai/openai-go/v3"
@@ -35,40 +36,84 @@ func readLLMRequestConfig(r *http.Request) llmRequestConfig {
 	}
 }
 
-// resolveModel returns the request's override model if set, otherwise the caller's
-// hardcoded default (e.g. chatbotModel, whoToSignModel, scoutReportModel).
+// resolveModel returns the request's override model if set. Otherwise, when
+// LOCAL_LLM_BASE_URL is active (see localLLMBaseURL), it returns the local model name --
+// the caller's hardcoded default (e.g. "gpt-5.6-luna") would be meaningless to a local
+// Ollama server, which only knows the model name it was created with. With neither set,
+// it falls through to the caller's hardcoded default, i.e. real OpenAI.
 func (c llmRequestConfig) resolveModel(defaultModel string) string {
 	if c.model != "" {
 		return c.model
+	}
+	if localLLMBaseURL() != "" {
+		return localLLMModel()
 	}
 	return defaultModel
 }
 
 // newLLMClient builds the openai.Client used to talk to OpenAI or, when the caller has
 // configured one, a custom OpenAI-compatible endpoint (Azure OpenAI, a local proxy,
-// OpenRouter, etc.). When baseURL is empty this is identical to the SDK's own default
-// client construction. When baseURL is set, the underlying http.Client uses a hardened
-// Transport -- https-only, and every dial (including on redirect) is validated against
-// a private/loopback/link-local/reserved IP blocklist at actual connection time, not
-// just as a pre-request check, which defeats DNS rebinding between check and connect.
-// This app is deployed as public/multi-tenant, so a user-suppliable server-side base
-// URL is a real SSRF vector: without this, a malicious user could point the backend at
-// an internal service or a cloud metadata endpoint (e.g. 169.254.169.254) and read back
-// the response through the OpenAI-shaped API surface. There is deliberately no
-// hostname allowlist -- any public host clears validation, so legitimate custom
-// endpoints keep working without this app maintaining a curated list.
-func newLLMClient(apiKey, baseURL string) (*openai.Client, error) {
-	opts := []option.RequestOption{option.WithAPIKey(apiKey)}
-	if baseURL == "" {
-		client := openai.NewClient(opts...)
+// OpenRouter, etc.). cfg.baseURL comes from the per-request X-OpenAI-Base-URL header --
+// i.e. user-suppliable input -- and is routed through the SSRF-hardened client below.
+// When that header is absent, and only outside production, we fall back to
+// LOCAL_LLM_BASE_URL (see localLLMBaseURL) for pointing dev builds at a local model
+// server; that value is operator-set server config, not request input, so it uses a
+// plain client instead of the hardened one. With neither set, this is identical to the
+// SDK's own default client construction (talks to real OpenAI).
+func newLLMClient(apiKey string, cfg llmRequestConfig) (*openai.Client, error) {
+	if cfg.baseURL != "" {
+		return newHardenedLLMClient(apiKey, cfg.baseURL)
+	}
+	if local := localLLMBaseURL(); local != "" {
+		client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(local))
 		return &client, nil
 	}
+	client := openai.NewClient(option.WithAPIKey(apiKey))
+	return &client, nil
+}
 
+// localLLMBaseURL returns the operator-configured local LLM endpoint for development,
+// e.g. http://localhost:11434/v1 for a local Ollama server. Only honored outside
+// production (ENVIRONMENT defaults to "development", see otel_config.go) so this can
+// never activate on the deployed multi-tenant app even if the env var were somehow set
+// there. Unlike the header-based baseURL, this is not attacker-reachable input -- it's
+// a value the person running the server put in their own environment -- so it
+// deliberately skips the https-only/private-IP hardening below, which exists to stop a
+// malicious *request* from redirecting the backend at an internal service.
+func localLLMBaseURL() string {
+	if os.Getenv("ENVIRONMENT") == "production" {
+		return ""
+	}
+	return os.Getenv("LOCAL_LLM_BASE_URL")
+}
+
+// localLLMModel returns the model name to request from the local dev LLM endpoint,
+// read from LOCAL_LLM_MODEL (default "ornith" -- the name launch_dev.ps1/.sh create the
+// local model under). Only consulted by resolveModel when localLLMBaseURL is active.
+func localLLMModel() string {
+	if model := os.Getenv("LOCAL_LLM_MODEL"); model != "" {
+		return model
+	}
+	return "ornith"
+}
+
+// newHardenedLLMClient builds a client for a user-suppliable custom endpoint. The
+// underlying http.Client uses a hardened Transport -- https-only, and every dial
+// (including on redirect) is validated against a private/loopback/link-local/reserved
+// IP blocklist at actual connection time, not just as a pre-request check, which
+// defeats DNS rebinding between check and connect. This app is deployed as
+// public/multi-tenant, so a user-suppliable server-side base URL is a real SSRF vector:
+// without this, a malicious user could point the backend at an internal service or a
+// cloud metadata endpoint (e.g. 169.254.169.254) and read back the response through the
+// OpenAI-shaped API surface. There is deliberately no hostname allowlist -- any public
+// host clears validation, so legitimate custom endpoints keep working without this app
+// maintaining a curated list.
+func newHardenedLLMClient(apiKey, baseURL string) (*openai.Client, error) {
 	httpClient, err := hardenedHTTPClientForBaseURL(baseURL)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, option.WithBaseURL(baseURL), option.WithHTTPClient(httpClient))
+	opts := []option.RequestOption{option.WithAPIKey(apiKey), option.WithBaseURL(baseURL), option.WithHTTPClient(httpClient)}
 	client := openai.NewClient(opts...)
 	return &client, nil
 }

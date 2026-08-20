@@ -3,6 +3,14 @@
 # launch_dev.sh
 # Script to start both the Vue.js frontend and Go backend development servers.
 
+# --- Local LLM toggle ---
+# true  -> chatbot/who-to-sign/scout-report talk to the local Ollama "ornith" model
+#          (Ornith-1.0-35B-MTP-APEX, see ~/models/ornith). No API key or internet
+#          needed; requires Ollama installed with the model already created
+#          (ollama create ornith -f ~/models/ornith/Modelfile).
+# false -> normal behavior, talks to real OpenAI (gpt-5.6-luna / "Luna").
+USE_LOCAL_LLM=false
+
 # Function to clean up background processes on script exit (Ctrl+C)
 cleanup() {
     echo "" # Newline for cleaner exit messages
@@ -116,6 +124,57 @@ else
 fi
 echo ""
 
+# --- Start local LLM (Ollama) if USE_LOCAL_LLM is enabled above ---
+# Mirrors the docker/kubectl fallback style: never blocks dev startup, just warns and
+# falls back to gpt-5.6-luna if Ollama or the "ornith" model aren't available.
+#
+# Uses the HTTP API (not `ollama list`/`ollama ps`) for every readiness/model check: the
+# `ollama` CLI's own client can block far longer than its process has any business taking
+# when the daemon is down -- observed hanging 60s+ on this machine -- which would stall
+# dev startup instead of failing over. A closed port here also doesn't fail the connect
+# fast (looks like Windows Firewall blackholing rather than RST'ing it), so each failed
+# HTTP attempt can eat its full timeout too; per-attempt timeouts and attempt counts below
+# are kept short/bounded so a genuinely stuck Ollama still fails over well under a minute.
+LOCAL_LLM_READY=false
+if [ "$USE_LOCAL_LLM" = "true" ]; then
+    echo "Local LLM enabled -- checking Ollama (model: ornith)..."
+    if command -v ollama &>/dev/null; then
+        ollama_reachable() { curl -s -m 1 http://localhost:11434/api/version >/dev/null 2>&1; }
+
+        OLLAMA_UP=false
+        ollama_reachable && OLLAMA_UP=true
+
+        if [ "$OLLAMA_UP" = "false" ]; then
+            echo "  Starting Ollama server..."
+            nohup ollama serve >/dev/null 2>&1 &
+            for i in $(seq 1 15); do
+                ollama_reachable && { OLLAMA_UP=true; break; }
+                sleep 0.3
+            done
+        fi
+
+        if [ "$OLLAMA_UP" = "true" ]; then
+            if curl -s -m 2 http://localhost:11434/api/tags 2>/dev/null | grep -q '"name":"ornith'; then
+                LOCAL_LLM_READY=true
+                export ENVIRONMENT=development
+                export LOCAL_LLM_BASE_URL=http://localhost:11434/v1
+                echo "  Using local LLM: http://localhost:11434/v1 (model: ornith)"
+            else
+                echo "  Warning: Ollama is running but the 'ornith' model was not found. Falling back to gpt-5.6-luna. Run: ollama create ornith -f ~/models/ornith/Modelfile"
+            fi
+        else
+            echo "  Warning: Ollama did not come up in time. Falling back to gpt-5.6-luna."
+        fi
+    else
+        echo "  Warning: Ollama not found on PATH. Falling back to gpt-5.6-luna."
+    fi
+    # Deliberately not stopped in cleanup() -- Ollama is a shared system service (other
+    # models/tools may depend on it), unlike the fmdash-only observability stack.
+else
+    echo "Local LLM disabled (USE_LOCAL_LLM=false) -- using gpt-5.6-luna."
+fi
+echo ""
+
 # --- Start Frontend Server ---
 echo "Starting Vue.js frontend development server (npm run dev)..."
 # This command assumes 'npm' is in your PATH and 'package.json' is in the current directory.
@@ -152,6 +211,11 @@ else
     else
         echo "Backend server process started with PID: $BACKEND_PID"
         echo "Go API should be available at http://localhost:8091 (usually proxied by Vite)"
+        if [ "$LOCAL_LLM_READY" = "true" ]; then
+            echo "LLM features: local (ornith via Ollama)"
+        else
+            echo "LLM features: gpt-5.6-luna (OpenAI)"
+        fi
     fi
 fi
 echo ""

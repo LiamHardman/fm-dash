@@ -2,6 +2,14 @@
 # Starts the Vue.js frontend and Go backend dev servers as background jobs.
 # Press Enter at any time to stop all servers and exit.
 
+# --- Local LLM toggle ---
+# $true  -> chatbot/who-to-sign/scout-report talk to the local Ollama "ornith" model
+#           (Ornith-1.0-35B-MTP-APEX, see C:\Users\liam\models\ornith). No API key or
+#           internet needed; requires Ollama installed with the model already created
+#           (ollama create ornith -f C:\Users\liam\models\ornith\Modelfile).
+# $false -> normal behavior, talks to real OpenAI (gpt-5.6-luna / "Luna").
+$UseLocalLLM = $false
+
 Write-Host "Attempting to start development servers as background jobs..." -ForegroundColor Yellow
 Write-Host "Output from both servers will be streamed here."
 Write-Host "------------------------------------------------------------"
@@ -161,6 +169,64 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
 }
 Write-Host ""
 
+# --- Start local LLM (Ollama) if $UseLocalLLM is enabled above ---
+# Mirrors the docker/kubectl fallback style: never blocks dev startup, just warns and
+# falls back to gpt-5.6-luna if Ollama or the "ornith" model aren't available.
+#
+# Uses the HTTP API (not `ollama list`/`ollama ps`) for every readiness/model check: the
+# `ollama` CLI's own client can block far longer than its process has any business taking
+# when the daemon is down -- observed hanging 60s+ on this machine -- which would stall
+# dev startup instead of failing over. A closed port here also doesn't fail the connect
+# fast (looks like Windows Firewall blackholing rather than RST'ing it), so each failed
+# HTTP attempt can eat its full timeout too; per-attempt timeouts and attempt counts below
+# are kept short/bounded so a genuinely stuck Ollama still fails over well under a minute.
+$localLLMReady = $false
+if ($UseLocalLLM) {
+    Write-Host "Local LLM enabled -- checking Ollama (model: ornith)..." -ForegroundColor Yellow
+    if (Get-Command ollama -ErrorAction SilentlyContinue) {
+        function Test-OllamaReachable {
+            try {
+                Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/version" -TimeoutSec 1 -ErrorAction Stop | Out-Null
+                return $true
+            } catch { return $false }
+        }
+
+        $ollamaUp = Test-OllamaReachable
+        if (-not $ollamaUp) {
+            Write-Host "  Starting Ollama server..."
+            Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden
+            for ($i = 0; $i -lt 15; $i++) {
+                if (Test-OllamaReachable) { $ollamaUp = $true; break }
+                Start-Sleep -Milliseconds 300
+            }
+        }
+
+        if ($ollamaUp) {
+            $hasOrnith = $false
+            try {
+                $tags = Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -TimeoutSec 2 -ErrorAction Stop
+                $hasOrnith = [bool]($tags.models | Where-Object { $_.name -like 'ornith*' })
+            } catch { $hasOrnith = $false }
+
+            if ($hasOrnith) {
+                $localLLMReady = $true
+                Write-Host "  Using local LLM: http://localhost:11434/v1 (model: ornith)" -ForegroundColor Cyan
+            } else {
+                Write-Warning "Ollama is running but the 'ornith' model was not found. Falling back to gpt-5.6-luna. Run: ollama create ornith -f C:\Users\liam\models\ornith\Modelfile"
+            }
+        } else {
+            Write-Warning "Ollama did not come up in time. Falling back to gpt-5.6-luna."
+        }
+    } else {
+        Write-Warning "Ollama not found on PATH. Falling back to gpt-5.6-luna."
+    }
+    # Deliberately not stopped in Stop-DevServers -- Ollama is a shared system service
+    # (other models/tools may depend on it), unlike the fmdash-only observability stack.
+} else {
+    Write-Host "Local LLM disabled (`$UseLocalLLM = `$false) -- using gpt-5.6-luna." -ForegroundColor DarkGray
+}
+Write-Host ""
+
 try {
     # --- Start Frontend ---
     try {
@@ -205,12 +271,21 @@ try {
                     $env:OTEL_EXPORTER_OTLP_ENDPOINT = $using:otelEndpoint
                     $env:OTEL_EXPORTER_OTLP_INSECURE = $using:otelInsecure
                 }
+                if ($using:localLLMReady) {
+                    $env:ENVIRONMENT       = "development"
+                    $env:LOCAL_LLM_BASE_URL = "http://localhost:11434/v1"
+                }
                 go run . *>&1
             } -ArgumentList $goApiDir, $backendPidFile
 
             if ($backendJob) {
                 Write-Host "Backend job started (ID: $($backendJob.Id))." -ForegroundColor Green
                 Write-Host "Backend: http://localhost:8091" -ForegroundColor Cyan
+                if ($localLLMReady) {
+                    Write-Host "LLM features: local (ornith via Ollama)" -ForegroundColor Cyan
+                } else {
+                    Write-Host "LLM features: gpt-5.6-luna (OpenAI)" -ForegroundColor Cyan
+                }
             } else { Write-Warning "Failed to start backend job." }
         } catch { Write-Error "Exception starting backend: $($_.Exception.Message)"; $backendJob = $null }
     }

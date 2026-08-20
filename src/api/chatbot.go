@@ -897,7 +897,7 @@ func chatbotHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	client, clientErr := newLLMClient(apiKey, llmConfig.baseURL)
+	client, clientErr := newLLMClient(apiKey, llmConfig)
 	if clientErr != nil {
 		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(http.StatusBadRequest), "message": clientErr.Error()})
 		if canFlush {
