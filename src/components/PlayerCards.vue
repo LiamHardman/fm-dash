@@ -30,7 +30,14 @@
                         <img :src="effectiveNationFlagUrl" alt="Nation Flag" />
                     </div>
                     <div class="club-logo" v-if="player.club && player.club !== '-'">
-                        <TeamLogo :team-name="player.club" :size="40" class="player-club-logo" />
+                        <img
+                            v-if="clubImageUrl"
+                            :src="clubImageUrl"
+                            alt="Club Logo"
+                            class="player-club-logo"
+                            style="width: 100%; height: 100%; object-fit: cover"
+                        />
+                        <TeamLogo v-else :team-name="player.club" :size="40" class="player-club-logo" />
                     </div>
                 </div>
                 <div class="player-photo">

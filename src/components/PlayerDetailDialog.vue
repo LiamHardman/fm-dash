@@ -21,7 +21,8 @@
                 'max-height': '90vh',
                 'position': 'relative',
                 'background': isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#fff',
-                'color': isDarkMode ? '#fff' : '#222'
+                'color': isDarkMode ? '#fff' : '#222',
+                'pointer-events': showCardGenerator ? 'none' : 'auto'
             }"
             :data-dark-mode="isDarkMode"
         >
@@ -143,6 +144,19 @@
                                     :card-design-override="cardDisplayPlayer?.totsCardDesign"
                                     :position-override="cardDisplayPlayer?.totsDisplayPosition"
                                     class="player-detail-card"
+                                />
+
+                                <!-- Placed in normal document flow (not the absolutely-positioned
+                                     floating-actions cluster) — that cluster proved unreliable to
+                                     click reliably during development. -->
+                                <q-btn
+                                    outline
+                                    dense
+                                    icon="badge"
+                                    label="Card Generator"
+                                    color="secondary"
+                                    class="card-generator-trigger"
+                                    @click="showCardGenerator = true"
                                 />
 
                                 <!-- Logo correction UI shown below the card -->
@@ -1137,6 +1151,16 @@
             </q-card-section>
         </q-card>
     </q-dialog>
+
+    <!-- Mounted only once opened (not just toggled via :show) so nothing
+         sits in the DOM — and potentially intercepts clicks — while the
+         Card Generator hasn't been opened. -->
+    <CardGeneratorDialog
+        v-if="player && showCardGenerator"
+        :show="showCardGenerator"
+        :player="player"
+        @close="showCardGenerator = false"
+    />
 </template>
 
 <script>
@@ -1174,6 +1198,9 @@ const ProsCons = defineAsyncComponent(() => import('../components/ProsCons.vue')
 
 // Lazy load ScoutReportTab component for the AI Scout Report view
 const ScoutReportTab = defineAsyncComponent(() => import('../components/ScoutReportTab.vue'))
+
+// Lazy load CardGeneratorDialog component for the Card Generator feature
+const CardGeneratorDialog = defineAsyncComponent(() => import('./CardGeneratorDialog.vue'))
 
 const attributeFullNameMap = {
   Cor: 'Corners',
@@ -1514,6 +1541,7 @@ export default defineComponent({
     PlayerCards,
     ProsCons,
     ScoutReportTab,
+    CardGeneratorDialog,
   },
   props: {
     player: { type: Object, default: () => null },
@@ -1535,6 +1563,8 @@ export default defineComponent({
     const uiStore = useUiStore()
     const playerStore = usePlayerStore()
     const comparisonStore = useComparisonStore()
+
+    const showCardGenerator = ref(false)
 
     // Create a reactive ref for dark mode state
     const darkModeState = ref(false)
@@ -3279,6 +3309,7 @@ export default defineComponent({
 
     return {
       qInstance,
+      showCardGenerator,
       attributeCategories,
       attributeFullNameMap,
       attributeDescriptions,
