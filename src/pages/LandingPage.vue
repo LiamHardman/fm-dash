@@ -1,5 +1,9 @@
 <template>
-    <q-page class="landing-page">
+    <!-- Dataset-aware home: the marketing hero is a first-time/no-dataset
+         conversion page; once a dataset is loaded it hands off to the
+         dashboard, which didn't exist before this redesign. -->
+    <DashboardHome v-if="currentDatasetId" />
+    <q-page v-else class="landing-page">
         <div class="main-container">
             <!-- Left Content Panel -->
             <div class="content-panel">
@@ -74,6 +78,8 @@
 <script>
 import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import DashboardHome from '@/components/dashboard/DashboardHome.vue'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useUiStore } from '@/stores/uiStore'
 
 const ROTATING_WORDS = ['Scouting Approach', 'Transfer Strategy', 'Tactical Edge']
@@ -131,9 +137,12 @@ const FEATURES = [
 
 export default defineComponent({
   name: 'LandingPage',
+  components: { DashboardHome },
   setup() {
     const router = useRouter()
     const uiStore = useUiStore()
+    const playerStore = usePlayerStore()
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
     // Rotating headline
     const wordIndex = ref(0)
@@ -161,6 +170,7 @@ export default defineComponent({
     const openGitHub = () => window.open('https://github.com/LiamHardman/fm-dash', '_blank')
 
     return {
+      currentDatasetId,
       features: FEATURES,
       currentWord,
       isTransitioning,
@@ -209,8 +219,8 @@ export default defineComponent({
     min-height: 100vh;
     height: 100vh;
     overflow: hidden;
-    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-    color: white;
+    background: var(--brand-gradient);
+    color: var(--text-on-brand);
     position: relative;
 
     &::before {
@@ -228,7 +238,7 @@ export default defineComponent({
         width: 640px;
         height: 640px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(100,181,246,0.09) 0%, transparent 70%);
+        background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 70%);
         top: -120px;
         right: 8%;
         pointer-events: none;
@@ -236,8 +246,10 @@ export default defineComponent({
         animation: bgOrb 14s ease-in-out infinite;
     }
 
+    // Dark mode swaps the vivid brand hero for the app's neutral dark
+    // surface -- matches the rest of the app rather than staying vivid.
     .body--dark & {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        background: var(--surface-page);
     }
 }
 
@@ -270,7 +282,7 @@ export default defineComponent({
 
     .accent-block {
         padding-left: 1rem;
-        border-left: 3px solid #42a5f5;
+        border-left: 3px solid var(--accent);
         animation: slideInLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
         animation-delay: 0.05s;
     }
@@ -283,7 +295,7 @@ export default defineComponent({
 
         .gradient-text {
             display: block;
-            background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 55%, white) 0%, var(--accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -333,7 +345,7 @@ export default defineComponent({
 
             &:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 8px 28px rgba(66, 165, 245, 0.45);
+                box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 45%, transparent);
 
                 &::after { animation: shimmerSweep 0.55s ease forwards; }
             }
@@ -361,11 +373,11 @@ export default defineComponent({
         animation-delay: 0.48s;
 
         .hero-meta-link {
-            color: rgba(100, 181, 246, 0.7);
+            color: color-mix(in srgb, var(--accent) 65%, white);
             cursor: pointer;
             transition: color 0.2s ease;
 
-            &:hover { color: #64b5f6; }
+            &:hover { color: color-mix(in srgb, var(--accent) 85%, white); }
         }
     }
 }

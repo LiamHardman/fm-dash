@@ -13,6 +13,7 @@
     --card-shadow: rgba(111, 78, 49, 0.24);
     --card-scale: 1;
     --card-hover-lift: -6px;
+    --card-hover-scale: 1.012;
     --card-transform-origin: center center;
     --card-pointer-x: 50%;
     --card-pointer-y: 45%;
@@ -46,8 +47,12 @@
         );
     border: 2px solid var(--card-border);
     border-radius: 12px;
+    // Two-tier elevation (tight contact shadow + soft ambient falloff) reads
+    // more like a modern layered-shadow design system than a single flat
+    // drop-shadow, while keeping every theme's own accent-tinted glow intact.
     box-shadow:
-        0 18px 42px rgba(0, 0, 0, 0.42),
+        0 2px 6px rgba(0, 0, 0, 0.34),
+        0 18px 42px rgba(0, 0, 0, 0.4),
         inset 0 0 0 1px rgba(255, 235, 201, 0.2),
         inset 0 0 0 7px rgba(66, 32, 18, 0.24),
         0 0 18px var(--card-shadow);
@@ -62,21 +67,25 @@
         rotateY(0deg);
     transform-origin: var(--card-transform-origin);
     transform-style: preserve-3d;
+    // Ease-out-expo-style curve reads snappier/more current than the
+    // default "ease", and matches the timing already used by the newer
+    // TOTS foil-sweep animations (see _tots-season.scss).
     transition:
-        transform 180ms ease,
-        box-shadow 180ms ease;
+        transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
 
     &:hover,
     &:focus-within {
         transform:
             perspective(900px)
-            scale(var(--card-scale))
+            scale(calc(var(--card-scale) * var(--card-hover-scale)))
             translate3d(var(--card-shift-x), calc(var(--card-hover-lift) + var(--card-shift-y)), 0)
             rotateX(var(--card-tilt-x))
             rotateY(var(--card-tilt-y));
         box-shadow:
-            0 26px 56px rgba(0, 0, 0, 0.48),
+            0 3px 10px rgba(0, 0, 0, 0.4),
+            0 26px 56px rgba(0, 0, 0, 0.46),
             inset 0 0 0 1px rgba(255, 235, 201, 0.28),
             inset 0 0 0 7px rgba(66, 32, 18, 0.2),
             0 0 30px var(--card-shadow);

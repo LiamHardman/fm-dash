@@ -1,137 +1,96 @@
 <template>
     <q-page class="wishlist-page">
-        <div class="q-pa-md">
-            <q-banner
+        <div class="page-container">
+            <EmptyState
                 v-if="!currentDatasetId"
-                class="text-white bg-info q-mb-md"
-                rounded
+                icon="folder_off"
+                title="No dataset loaded"
+                description="Please upload a dataset first to use wishlists."
             >
-                <template v-slot:avatar>
-                    <q-icon name="info" />
+                <template #actions>
+                    <q-btn
+                        unelevated
+                        color="primary"
+                        icon="upload"
+                        label="Go to Upload Page"
+                        @click="router.push('/upload')"
+                    />
                 </template>
-                No dataset loaded. Please upload a dataset first to use wishlists.
-                <q-btn
-                    flat
-                    color="white"
-                    label="Go to Upload Page"
-                    @click="router.push('/upload')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </EmptyState>
 
             <div v-if="currentDatasetId">
-                <!-- Hero Section -->
-                <PageHero
-                    rounded
-                    icon="favorite"
-                    badge="Wishlist"
-                    title="Your Football Manager"
-                    highlight="Wishlist"
+                <PageHeader
+                    title="Wishlist"
                     subtitle="Keep track of players you're interested in scouting or signing. Your wishlist is automatically saved for this dataset."
+                    icon="favorite"
                 >
-                    <template #side>
-                        <div class="hero-stats">
-                            <div class="hero-stat">
-                                <div class="hero-stat-number">{{ wishlistPlayers.length }}</div>
-                                <div class="hero-stat-label">Wishlisted Players</div>
-                            </div>
-                            <div class="hero-stat">
-                                <div class="hero-stat-number">{{ uniqueClubsCount }}</div>
-                                <div class="hero-stat-label">Clubs</div>
-                            </div>
-                            <div class="hero-stat">
-                                <div class="hero-stat-number">{{ uniqueNationalitiesCount }}</div>
-                                <div class="hero-stat-label">Nations</div>
-                            </div>
-                        </div>
+                    <template #actions>
+                        <q-btn
+                            v-if="wishlistPlayers.length > 0"
+                            unelevated
+                            icon="clear_all"
+                            label="Clear Wishlist"
+                            color="negative"
+                            @click="confirmClearWishlist"
+                        >
+                            <q-tooltip>Remove all players from wishlist</q-tooltip>
+                        </q-btn>
+                        <q-btn
+                            unelevated
+                            icon="arrow_back"
+                            label="Back to Players"
+                            color="primary"
+                            @click="goToDataset"
+                        >
+                            <q-tooltip>Return to player dataset</q-tooltip>
+                        </q-btn>
                     </template>
-                </PageHero>
+                </PageHeader>
 
-                <!-- Action Buttons -->
-                <div class="actions-section q-mb-md">
-                    <q-btn
-                        v-if="wishlistPlayers.length > 0"
-                        unelevated
-                        icon="clear_all"
-                        label="Clear Wishlist"
-                        color="negative"
-                        @click="confirmClearWishlist"
-                        class="q-mr-md"
-                    >
-                        <q-tooltip>Remove all players from wishlist</q-tooltip>
-                    </q-btn>
-                    <q-btn
-                        unelevated
-                        icon="arrow_back"
-                        label="Back to Players"
-                        color="primary"
-                        @click="goToDataset"
-                    >
-                        <q-tooltip>Return to player dataset</q-tooltip>
-                    </q-btn>
+                <!-- Stats -->
+                <div v-if="wishlistPlayers.length > 0" class="wishlist-stats">
+                    <StatTile icon="favorite" label="Wishlisted Players" :value="wishlistPlayers.length" />
+                    <StatTile icon="shield" label="Clubs" :value="uniqueClubsCount" />
+                    <StatTile icon="flag" label="Nations" :value="uniqueNationalitiesCount" />
                 </div>
 
                 <!-- Wishlist Table -->
-                <q-card
+                <SectionCard
                     v-if="wishlistPlayers.length > 0"
-                    :class="
-                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
-                    "
+                    :title="`Wishlisted Players (${wishlistPlayers.length})`"
+                    icon="list"
                 >
-                    <q-card-section>
-                        <div class="text-h6 q-mb-sm">
-                            Wishlisted Players ({{ wishlistPlayers.length }})
-                        </div>
-                        <PlayerDataTable
-                            :players="wishlistPlayers"
-                            :loading="wishlistStore.loading"
-                            @player-selected="handlePlayerSelected"
-                            @team-selected="handleTeamSelected"
-                            :is-goalkeeper-view="false"
-                            :currency-symbol="detectedCurrencySymbol"
-                            :dataset-id="currentDatasetId"
-                            :show-wishlist-actions="true"
-                            @remove-from-wishlist="handleRemoveFromWishlist"
-                        />
-                    </q-card-section>
-                </q-card>
+                    <PlayerDataTable
+                        :players="wishlistPlayers"
+                        :loading="wishlistStore.loading"
+                        @player-selected="handlePlayerSelected"
+                        @team-selected="handleTeamSelected"
+                        :is-goalkeeper-view="false"
+                        :currency-symbol="detectedCurrencySymbol"
+                        :dataset-id="currentDatasetId"
+                        :show-wishlist-actions="true"
+                        @remove-from-wishlist="handleRemoveFromWishlist"
+                    />
+                </SectionCard>
 
                 <!-- Empty State -->
-                <q-card
+                <EmptyState
                     v-else
-                    class="q-pa-xl text-center"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
-                    flat
-                    bordered
+                    icon="favorite_border"
+                    title="Your wishlist is empty"
+                    description="Start adding players to your wishlist by right-clicking on them in the player tables and selecting &quot;Add to Wishlist&quot;."
                 >
-                    <q-icon 
-                        name="favorite_border" 
-                        size="4rem" 
-                        :color="quasarInstance.dark.isActive ? 'grey-6' : 'grey-5'"
-                        class="q-mb-md"
-                    />
-                    <h3 
-                        class="text-h5 q-mb-md" 
-                        :class="quasarInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
-                    >
-                        Your wishlist is empty
-                    </h3>
-                    <p 
-                        class="text-body1 q-mb-lg" 
-                        :class="quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-6'"
-                    >
-                        Start adding players to your wishlist by right-clicking on them in the player tables 
-                        and selecting "Add to Wishlist".
-                    </p>
-                    <q-btn
-                        unelevated
-                        icon="search"
-                        label="Browse Players"
-                        color="primary"
-                        @click="goToDataset"
-                        size="lg"
-                    />
-                </q-card>
+                    <template #actions>
+                        <q-btn
+                            unelevated
+                            icon="search"
+                            label="Browse Players"
+                            color="primary"
+                            @click="goToDataset"
+                            size="lg"
+                        />
+                    </template>
+                </EmptyState>
             </div>
         </div>
 
@@ -143,18 +102,18 @@
                 </q-card-section>
 
                 <q-card-section class="q-pt-none">
-                    Are you sure you want to remove all {{ wishlistPlayers.length }} players from your wishlist? 
+                    Are you sure you want to remove all {{ wishlistPlayers.length }} players from your wishlist?
                     This action cannot be undone.
                 </q-card-section>
 
                 <q-card-actions align="right">
                     <q-btn flat label="Cancel" color="primary" v-close-popup />
-                    <q-btn 
-                        flat 
-                        label="Clear Wishlist" 
-                        color="negative" 
+                    <q-btn
+                        flat
+                        label="Clear Wishlist"
+                        color="negative"
                         @click="clearWishlist"
-                        v-close-popup 
+                        v-close-popup
                     />
                 </q-card-actions>
             </q-card>
@@ -173,7 +132,10 @@
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import PageHero from '../components/PageHero.vue'
+import EmptyState from '../components/layout/EmptyState.vue'
+import PageHeader from '../components/layout/PageHeader.vue'
+import SectionCard from '../components/layout/SectionCard.vue'
+import StatTile from '../components/layout/StatTile.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerStore } from '../stores/playerStore'
@@ -182,9 +144,12 @@ import { useWishlistStore } from '../stores/wishlistStore'
 export default defineComponent({
   name: 'WishlistPage',
   components: {
-    PageHero,
     PlayerDataTable,
     PlayerDetailDialog,
+    PageHeader,
+    SectionCard,
+    EmptyState,
+    StatTile,
   },
   setup() {
     const router = useRouter()
@@ -307,12 +272,22 @@ export default defineComponent({
     min-height: 100vh;
 }
 
-// Hero styling comes from the shared PageHero component.
-
-.actions-section {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
+.page-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--page-gutter);
 }
-</style> 
+
+.wishlist-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--section-gap);
+    margin-bottom: var(--section-gap);
+}
+
+@media (max-width: 768px) {
+    .page-container {
+        padding: var(--page-gutter-sm);
+    }
+}
+</style>

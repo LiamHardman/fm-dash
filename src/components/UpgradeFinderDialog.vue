@@ -10,85 +10,82 @@
         <q-card
             class="upgrade-finder-dialog"
         >
-            <q-card-section
-                class="row items-center q-pb-none card-header"
-            >
-                <q-icon name="manage_search" size="md" class="q-mr-sm" />
-                <div class="text-h6">
-                    Upgrade Finder (Values in {{ currencySymbol }})
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog — an icon, a title, then a close button, all in
+                 normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="manage_search" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">
+                        Upgrade Finder (Values in {{ currencySymbol }})
+                    </div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            v-close-popup
+                            @click="$emit('close')"
+                        />
+                    </div>
                 </div>
-                <q-space />
-                <q-btn
-                    icon="close"
-                    flat
-                    round
-                    dense
-                    v-close-popup
-                    @click="$emit('close')"
-                />
-            </q-card-section>
+            </div>
 
             <q-card-section class="q-pt-md">
                 <!-- Dataset Configuration Row -->
                 <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
                     <div class="col-12 col-lg-8">
-                        <q-card class="dataset-config-card compact">
-                            <q-card-section class="q-pa-md">
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="storage" class="card-icon" />
-                                        Datasets
-                                    </h3>
+                        <SectionCard title="Datasets" icon="storage" class="dataset-config-card">
+                            <div class="row q-col-gutter-sm">
+                                <div class="col-12 col-md-6">
+                                    <div class="dataset-section">
+                                        <div class="dataset-info">
+                                            <q-icon name="search" size="sm" color="primary" />
+                                            <span class="dataset-label">Transfer Market</span>
+                                            <q-chip size="sm" color="positive" text-color="white" icon="check">
+                                                Main Dataset
+                                            </q-chip>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="row q-col-gutter-sm">
-                                    <div class="col-12 col-md-6">
-                                        <div class="dataset-section">
-                                            <div class="dataset-info">
-                                                <q-icon name="search" size="sm" color="primary" />
-                                                <span class="dataset-label">Transfer Market</span>
-                                                <q-chip size="sm" color="positive" text-color="white" icon="check">
-                                                    Main Dataset
+                                <div class="col-12 col-md-6">
+                                    <div class="dataset-section">
+                                        <div class="dataset-info">
+                                            <q-icon name="group" size="sm" color="primary" />
+                                            <span class="dataset-label">Team Data</span>
+                                            <div v-if="!teamDatasetId" class="dataset-actions">
+                                                <q-btn
+                                                    icon="cloud_upload"
+                                                    label="Upload"
+                                                    color="primary"
+                                                    size="sm"
+                                                    outline
+                                                    dense
+                                                    @click="$refs.teamDatasetFileInput.click()"
+                                                    :loading="teamDatasetUploading"
+                                                />
+                                                <input
+                                                    ref="teamDatasetFileInput"
+                                                    type="file"
+                                                    accept=".html"
+                                                    @change="uploadTeamDataset"
+                                                    style="display: none"
+                                                />
+                                            </div>
+                                            <div v-else class="dataset-actions">
+                                                <q-chip size="sm" color="positive" text-color="white" icon="check" removable @remove="clearTeamDataset">
+                                                    Custom Team Data
                                                 </q-chip>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="col-12 col-md-6">
-                                        <div class="dataset-section">
-                                            <div class="dataset-info">
-                                                <q-icon name="group" size="sm" color="primary" />
-                                                <span class="dataset-label">Team Data</span>
-                                                <div v-if="!teamDatasetId" class="dataset-actions">
-                                                    <q-btn
-                                                        icon="cloud_upload"
-                                                        label="Upload"
-                                                        color="primary"
-                                                        size="sm"
-                                                        outline
-                                                        dense
-                                                        @click="$refs.teamDatasetFileInput.click()"
-                                                        :loading="teamDatasetUploading"
-                                                    />
-                                                    <input
-                                                        ref="teamDatasetFileInput"
-                                                        type="file"
-                                                        accept=".html"
-                                                        @change="uploadTeamDataset"
-                                                        style="display: none"
-                                                    />
-                                                </div>
-                                                <div v-else class="dataset-actions">
-                                                    <q-chip size="sm" color="positive" text-color="white" icon="check" removable @remove="clearTeamDataset">
-                                                        Custom Team Data
-                                                    </q-chip>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
-                            </q-card-section>
-                        </q-card>
+                            </div>
+                        </SectionCard>
                     </div>
                 </div>
 
@@ -186,15 +183,7 @@
                     <!-- Left Side - Filters and Results -->
                     <div class="col-12 col-lg-6">
                         <!-- Filters Card -->
-                        <q-card class="filters-card q-mb-md">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="filter_list" class="card-icon" />
-                                        Search Filters
-                                    </h3>
-                                </div>
-
+                        <SectionCard title="Search Filters" icon="filter_list" class="filters-card q-mb-md">
                                 <div class="row q-col-gutter-y-md">
                                     <div class="col-12 col-md-6">
                                         <q-select
@@ -536,23 +525,11 @@
                                         />
                                     </div>
                                 </div>
-                            </q-card-section>
-                        </q-card>
-                        
+                        </SectionCard>
+
                         <!-- Player Cards Section -->
                         <div v-if="showResults && upgradePlayers.length > 0" class="q-mt-md">
-                            <q-card class="results-card">
-                                <q-card-section>
-                                    <div
-                                        class="text-h6 q-mb-md"
-                                        :class="
-                                            $q.dark.isActive ? 'text-grey-2' : 'text-grey-9'
-                                        "
-                                    >
-                                        <q-icon name="sports_soccer" class="q-mr-sm" />
-                                        Potential Upgrades ({{ upgradePlayers.length }} players found)
-                                    </div>
-                                    
+                            <SectionCard :title="`Potential Upgrades (${upgradePlayers.length} players found)`" icon="sports_soccer" class="results-card">
                                     <!-- Player Cards Grid -->
                                     <div class="player-cards-grid">
                                         <div 
@@ -598,10 +575,9 @@
                                             />
                                         </div>
                                     </div>
-                                </q-card-section>
-                            </q-card>
+                            </SectionCard>
                         </div>
-                        
+
                         <!-- No Results Banners -->
                         <div v-if="showResults && upgradePlayers.length === 0" class="q-mt-md">
                             <q-banner
@@ -671,16 +647,9 @@
                             </q-card>
 
                             <!-- Formation Display -->
-                            <q-card class="formation-card">
-                                <q-card-section>
-                                    <div class="card-header">
-                                        <h3 class="card-title">
-                                            <q-icon name="stadium" class="card-icon" />
-                                            Formation View
-                                        </h3>
-                                        <p class="card-subtitle">Click on any position to find upgrades</p>
-                                    </div>
-                                    
+                            <SectionCard title="Formation View" icon="stadium" class="formation-card">
+                                    <p class="card-subtitle">Click on any position to find upgrades</p>
+
                                     <div class="pitch-container">
                                         <PitchDisplay
                                             :formation="currentFormationLayout"
@@ -689,50 +658,32 @@
                                             @position-click="handlePositionClick"
                                         />
                                     </div>
-                                </q-card-section>
-                            </q-card>
+                            </SectionCard>
                         </div>
 
                         <!-- No Team/Formation State -->
                         <div v-else-if="!teamName" class="empty-state">
-                            <q-card class="empty-state-card">
-                                <q-card-section class="empty-state-content">
-                                    <div class="empty-state-icon">
-                                        <q-icon name="groups" size="4rem" />
-                                    </div>
-                                    <h3 class="empty-state-title">Select a Team</h3>
-                                    <p class="empty-state-description">
-                                        Choose a team to view their formation and find potential upgrades for each position.
-                                    </p>
-                                </q-card-section>
-                            </q-card>
+                            <EmptyState
+                                icon="groups"
+                                title="Select a Team"
+                                description="Choose a team to view their formation and find potential upgrades for each position."
+                            />
                         </div>
 
                         <!-- No Formation State -->
                         <div v-else-if="!selectedFormationKey" class="empty-state">
-                            <q-card class="empty-state-card">
-                                <q-card-section class="empty-state-content">
-                                    <div class="empty-state-icon">
-                                        <q-icon name="diagram" size="4rem" />
-                                    </div>
-                                    <h3 class="empty-state-title">Select a Formation</h3>
-                                    <p class="empty-state-description">
-                                        Choose a formation to see the team layout and identify positions for upgrades.
-                                    </p>
-                                </q-card-section>
-                            </q-card>
+                            <EmptyState
+                                icon="diagram"
+                                title="Select a Formation"
+                                description="Choose a formation to see the team layout and identify positions for upgrades."
+                            />
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Player Data Table Below Both Columns -->
                 <div v-if="showResults && upgradePlayers.length > 0" class="q-mt-lg">
-                    <q-card class="table-card">
-                        <q-card-section>
-                            <div class="text-h6 q-mb-md">
-                                <q-icon name="table_chart" class="q-mr-sm" />
-                                Detailed Player Comparison
-                            </div>
+                    <SectionCard title="Detailed Player Comparison" icon="table_chart" class="table-card">
                             <PlayerDataTable
                                 :players="processedUpgradePlayers"
                                 :loading="loading"
@@ -741,8 +692,7 @@
                                 :currency-symbol="currencySymbol"
                                 :dataset-id="datasetId"
                             />
-                        </q-card-section>
-                    </q-card>
+                    </SectionCard>
                 </div>
             </q-card-section>
 
@@ -763,11 +713,16 @@
     <!-- Stat Filters Modal -->
     <q-dialog v-model="showStatFiltersModal" persistent>
         <q-card class="stat-filters-modal" style="min-width: 600px; max-width: 800px;">
-            <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6">Stat Filters</div>
-                <q-space />
-                <q-btn icon="close" flat round dense v-close-popup />
-            </q-card-section>
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="tune" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">Stat Filters</div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn icon="close" flat round dense class="dialog-chrome__close" v-close-popup />
+                    </div>
+                </div>
+            </div>
 
             <q-card-section class="q-pt-none">
                 <div class="text-caption q-mb-md">
@@ -1003,6 +958,8 @@ import { formationCache } from '@/utils/formationCache'
 import { formations, getFormationLayout } from '@/utils/formations'
 import { getFlagUrl, getPlayerFaceUrl, getTeamLogoUrl } from '@/utils/imageOptimization'
 import { fetchFullPlayerStats, fetchTeamData, findPlayerUpgrades } from '../services/playerService'
+import EmptyState from './layout/EmptyState.vue'
+import SectionCard from './layout/SectionCard.vue'
 import PitchDisplay from './PitchDisplay.vue'
 import PlayerCards from './PlayerCards.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
@@ -1119,7 +1076,15 @@ const fmMatcherToRoleKeyPrefix = {
 
 export default {
   name: 'UpgradeFinderDialog',
-  components: { PlayerDataTable, PlayerDetailDialog, PlayerCards, PitchDisplay, TeamLogo },
+  components: {
+    PlayerDataTable,
+    PlayerDetailDialog,
+    PlayerCards,
+    PitchDisplay,
+    TeamLogo,
+    SectionCard,
+    EmptyState,
+  },
   props: {
     show: { type: Boolean, default: false },
     players: { type: Array, required: true },
@@ -3055,126 +3020,81 @@ export default {
 
 <style lang="scss" scoped>
 .upgrade-finder-dialog {
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    
-    .body--dark & {
-        background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    background: var(--surface-card);
+}
 
-    .card-header {
-        background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: $border-radius $border-radius 0 0;
-        
-        .q-icon {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .text-h6 {
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-        
-        .q-btn {
-            color: rgba(255, 255, 255, 0.8);
-            
-            &:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-            }
-        }
-    }
+// Dialog chrome: unified header convention shared with PlayerDetailDialog —
+// icon, title, actions, close, all in normal flow above the content.
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
 
-    .q-card-section {
-        &:not(.card-header) {
-            background: transparent;
-            
-            .body--dark & {
-                background: transparent;
-            }
-        }
-    }
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
 
-    // Dataset configuration styling
-    .dataset-config-card {
-        background: rgba(249, 250, 251, 0.8);
-        border: 1px solid rgba(229, 231, 235, 0.8);
-        
-        .body--dark & {
-            background: rgba(31, 41, 55, 0.8);
-            border: 1px solid rgba(75, 85, 99, 0.8);
-        }
-        
-        &.compact {
-            .q-card-section {
-                padding: 0.75rem !important;
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+}
+
+.upgrade-finder-dialog {
+    // Dataset row styling (the card chrome itself is now SectionCard's job).
+    .dataset-section {
+        .dataset-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            min-height: 32px;
+
+            .dataset-label {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--text-primary);
+                flex-shrink: 0;
             }
-        }
-        
-        .card-header {
-            background: none;
-            color: inherit;
-            padding: 0;
-            border-radius: 0;
-            margin-bottom: 0.75rem;
-            
-            .card-title {
-                font-size: 1rem;
-                font-weight: 600;
-                margin: 0;
+
+            .dataset-actions {
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
-                color: #374151;
-                
-                .body--dark & {
-                    color: #f3f4f6;
-                }
-                
-                .card-icon {
-                    color: #2e74b5;
-                    
-                    .body--dark & {
-                        color: #60a5fa;
-                    }
-                }
+                margin-left: auto;
             }
-        }
-        
-        .dataset-section {
-            .dataset-info {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                flex-wrap: wrap;
-                min-height: 32px;
-                
-                .dataset-label {
-                    font-size: 0.875rem;
-                    font-weight: 500;
-                    color: #374151;
-                    flex-shrink: 0;
-                    
-                    .body--dark & {
-                        color: #d1d5db;
-                    }
-                }
-                
-                .dataset-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    margin-left: auto;
-                }
-                
-                .q-chip {
-                    margin-left: auto;
-                }
+
+            .q-chip {
+                margin-left: auto;
             }
         }
     }
@@ -3182,14 +3102,10 @@ export default {
     // Slider styling
     .slider-label {
         font-weight: 500;
-        color: #374151;
+        color: var(--text-secondary);
         margin-bottom: 0.5rem;
-        
-        .body--dark & {
-            color: #d1d5db;
-        }
     }
-    
+
     .upgrade-control {
         height: 100%;
         display: flex;
@@ -3200,18 +3116,18 @@ export default {
     :deep(.q-slider) {
         .q-slider__track-container {
             .q-slider__track {
-                background: rgba(46, 116, 181, 0.2);
+                background: var(--accent-soft-strong);
             }
-            
+
             .q-slider__selection {
-                background: #2e74b5;
+                background: var(--accent);
             }
         }
-        
+
         .q-slider__thumb {
-            background: #2e74b5;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(46, 116, 181, 0.4);
+            background: var(--accent);
+            border: 2px solid var(--surface-card);
+            box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
         }
     }
 
@@ -3219,42 +3135,26 @@ export default {
     :deep(.q-field) {
         .q-field__control {
             border-radius: 8px;
-            
-            &:before {
-                border-color: rgba(0, 0, 0, 0.12);
-            }
-            
+
             &:hover:before {
-                border-color: #2e74b5;
+                border-color: var(--accent);
             }
         }
-        
+
         &.q-field--outlined {
             .q-field__control {
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                box-shadow: var(--shadow-1);
                 transition: all 0.2s ease;
-                
+
                 &:hover {
-                    box-shadow: 0 2px 6px rgba(46, 116, 181, 0.1);
+                    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 10%, transparent);
                 }
             }
         }
-        
+
         &.q-field--focused {
             .q-field__control {
-                box-shadow: 0 0 0 2px rgba(46, 116, 181, 0.2);
-            }
-        }
-        
-        .body--dark & {
-            .q-field__control {
-                background-color: rgba(255, 255, 255, 0.05);
-                border-color: rgba(255, 255, 255, 0.12);
-                
-                &:hover {
-                    border-color: #2e74b5;
-                    background-color: rgba(255, 255, 255, 0.08);
-                }
+                box-shadow: 0 0 0 2px var(--accent-soft-strong);
             }
         }
     }
@@ -3262,22 +3162,7 @@ export default {
     // Select dropdown styling
     :deep(.q-menu) {
         border-radius: 8px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-        
-        .body--dark & {
-            background-color: #374151 !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-            
-            .q-item {
-                color: #d1d5db;
-                
-                &:hover,
-                &.q-item--active {
-                    background-color: rgba(46, 116, 181, 0.2) !important;
-                    color: white;
-                }
-            }
-        }
+        box-shadow: var(--shadow-2);
     }
 
     // Button styling
@@ -3285,29 +3170,21 @@ export default {
         border-radius: 8px;
         font-weight: 500;
         text-transform: none;
-        
+
         &.q-btn--unelevated {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            
+            box-shadow: var(--shadow-1);
+
             &:hover {
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                box-shadow: var(--shadow-2);
                 transform: translateY(-1px);
             }
-            
-            .body--dark & {
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-                
-                &:hover {
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-                }
-            }
         }
-        
+
         &.q-btn--outline {
             border-width: 2px;
-            
+
             &:hover {
-                background-color: rgba(46, 116, 181, 0.1);
+                background-color: var(--accent-soft);
             }
         }
     }
@@ -3316,49 +3193,31 @@ export default {
     :deep(.q-table) {
         border-radius: 8px;
         overflow: hidden;
-        
+
         .q-table__top {
             padding: 1rem;
-            background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
-            
-            .body--dark & {
-                background: rgba(255, 255, 255, 0.02);
-            }
+            background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%);
         }
-        
+
         .q-table__container {
             border-radius: 0 0 8px 8px;
         }
-        
+
         thead {
             th {
-                background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-                color: #374151;
+                background: var(--surface-raised);
+                color: var(--text-primary);
                 font-weight: 600;
-                border-bottom: 2px solid #e5e7eb;
-                
-                .body--dark & {
-                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
-                    color: #d1d5db;
-                    border-bottom-color: rgba(255, 255, 255, 0.1);
-                }
+                border-bottom: 2px solid var(--surface-border-strong);
             }
         }
-        
+
         tbody {
             tr {
-                border-bottom: 1px solid #f3f4f6;
-                
+                border-bottom: 1px solid var(--surface-border);
+
                 &:hover {
-                    background-color: rgba(46, 116, 181, 0.04);
-                }
-                
-                .body--dark & {
-                    border-bottom-color: rgba(255, 255, 255, 0.05);
-                    
-                    &:hover {
-                        background-color: rgba(255, 255, 255, 0.03);
-                    }
+                    background-color: var(--accent-soft);
                 }
             }
         }
@@ -3366,77 +3225,29 @@ export default {
 
     // Card improvements
     .q-card {
-        border-radius: $border-radius;
-        box-shadow: $card-shadow;
-        border: 1px solid rgba(0, 0, 0, 0.04);
-        
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.02);
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-1);
+        border: 1px solid var(--surface-border);
     }
 
     // Banner styling
     .q-banner {
-        border-radius: $border-radius;
+        border-radius: var(--radius-md);
         margin-bottom: 1rem;
     }
 
     // Responsive design
     @media (max-width: 768px) {
-        .card-header {
-            padding: 1rem;
-            
-            .text-h6 {
-                font-size: 1.1rem;
-            }
-        }
-        
         .q-card-section {
             padding: 1rem;
-        }
-        
-        .dataset-config-card {
-            &.compact {
-                .dataset-section {
-                    .dataset-info {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 0.5rem;
-                        
-                        .dataset-actions,
-                        .q-chip {
-                            margin-left: 0;
-                            margin-top: 0.25rem;
-                        }
-                    }
-                }
-            }
         }
     }
 
     @media (max-width: 480px) {
-        .card-header {
-            padding: 0.75rem;
-        }
-        
         .q-card-section {
             padding: 0.75rem;
         }
-        
-        .dataset-config-card {
-            &.compact {
-                .q-card-section {
-                    padding: 0.5rem !important;
-                }
-                
-                .card-header {
-                    margin-bottom: 0.5rem;
-                }
-            }
-        }
-        
+
         .upgrade-control {
             .slider-label {
                 font-size: 0.8rem;
@@ -3449,12 +3260,8 @@ export default {
 .filter-item-container {
     .slider-label {
         font-weight: 500;
-        color: #374151;
+        color: var(--text-primary);
         margin-bottom: 0.5rem;
-        
-        .body--dark & {
-            color: #d1d5db;
-        }
     }
 }
 
@@ -3492,35 +3299,23 @@ export default {
                         margin: 0 0 0.5rem 0;
                         font-size: 1.5rem;
                         font-weight: 600;
-                        color: #374151;
-                        
-                        .body--dark & {
-                            color: #d1d5db;
-                        }
+                        color: var(--text-primary);
                     }
-                    
+
                     .team-rating {
                         display: flex;
                         align-items: center;
                         gap: 0.5rem;
-                        
+
                         .rating-value {
                             font-size: 1.25rem;
                             font-weight: 600;
-                            color: #2e74b5;
-                            
-                            .body--dark & {
-                                color: #60a5fa;
-                            }
+                            color: var(--accent);
                         }
-                        
+
                         .rating-label {
                             font-size: 0.875rem;
-                            color: #6b7280;
-                            
-                            .body--dark & {
-                                color: #9ca3af;
-                            }
+                            color: var(--text-secondary);
                         }
                     }
                 }
@@ -3555,32 +3350,20 @@ export default {
         .empty-state-content {
             .empty-state-icon {
                 margin-bottom: 1rem;
-                color: #9ca3af;
-                
-                .body--dark & {
-                    color: #6b7280;
-                }
+                color: var(--text-muted);
             }
-            
+
             .empty-state-title {
                 margin: 0 0 0.5rem 0;
                 font-size: 1.25rem;
                 font-weight: 600;
-                color: #374151;
-                
-                .body--dark & {
-                    color: #d1d5db;
-                }
+                color: var(--text-primary);
             }
-            
+
             .empty-state-description {
                 margin: 0;
-                color: #6b7280;
+                color: var(--text-secondary);
                 font-size: 0.875rem;
-                
-                .body--dark & {
-                    color: #9ca3af;
-                }
             }
         }
     }
@@ -3595,21 +3378,13 @@ export default {
             margin: 0;
             font-size: 1rem;
             font-weight: 600;
-            color: #374151;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            
-            .body--dark & {
-                color: #d1d5db;
-            }
-            
+
             .card-icon {
-                color: #2e74b5;
-                
-                .body--dark & {
-                    color: #60a5fa;
-                }
+                color: var(--accent);
             }
         }
     }
@@ -3618,12 +3393,8 @@ export default {
 // Player cards section styling
 .player-cards-section {
     .text-subtitle1 {
-        color: #374151;
+        color: var(--text-primary);
         font-weight: 600;
-        
-        .body--dark & {
-            color: #d1d5db;
-        }
     }
 }
 

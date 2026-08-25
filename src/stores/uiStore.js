@@ -22,6 +22,31 @@ export const useUiStore = defineStore('ui', () => {
   // Tutorial state
   const showFirstTimeTutorial = ref(false) // Control tutorial modal visibility
 
+  // Accent color override (hex string, e.g. '#1a237e'). Empty string means
+  // "use the brand default" -- see src/css/tokens.scss's --accent-user fallback.
+  const accentColor = ref('')
+
+  // Density mode governs component-internal spacing/row-height via the
+  // --density-* tokens in src/css/tokens.scss (body.density-compact).
+  const density = ref('comfortable') // 'comfortable' | 'compact'
+
+  // Sidebar nav customization: hidden route names and a custom order.
+  // Empty arrays mean "show everything, default order".
+  const sidebarHiddenItems = ref([])
+  const sidebarItemOrder = ref([])
+
+  // Dashboard home widget customization: hidden widget ids and a custom order.
+  const dashboardHiddenWidgets = ref([])
+  const dashboardWidgetOrder = ref([])
+
+  // Player table column customization: hidden column names and a custom order.
+  // The 'name' column is never included here -- it's always forced visible and
+  // first, so pinning it isn't a concept that needs storage. "Pinning" any other
+  // column is expressed by simply ordering it to the front of this list (right
+  // after 'name'); there's no separate pinned-ids array, see ticket 11's Answer.
+  const playerTableHiddenColumns = ref([])
+  const playerTableColumnOrder = ref([])
+
   // User's own OpenAI API key for the "Who to Sign" scouting feature (bring-your-own-key)
   const openaiApiKey = ref('')
 
@@ -165,6 +190,139 @@ export const useUiStore = defineStore('ui', () => {
     try {
       localStorage.setItem('showCA', showCAEnabled ? 'true' : 'false')
     } catch (_e) {}
+  }
+
+  // Apply the current accent color to the document root as a CSS custom
+  // property. tokens.scss's --accent falls back to the brand default via
+  // var(--accent-user, <default>), so an empty string here is a valid
+  // "use default" state -- just clear the property.
+  //
+  // Also mirrors the value onto Quasar's own --q-primary custom property
+  // (ticket 13 final-QA finding: Quasar's built CSS already themes every
+  // color="primary" component -- buttons, spinners, tabs, EmptyState
+  // actions, etc. -- via var(--q-primary), but nothing was ever writing to
+  // it, so the accent picker silently missed every native-Quasar-colored
+  // element app-wide even though app-authored CSS using var(--accent)
+  // picked it up correctly). Same "unset to fall back to the compiled
+  // default" behavior as --accent-user.
+  function applyAccentColor() {
+    if (typeof document === 'undefined') return
+    if (accentColor.value) {
+      document.documentElement.style.setProperty('--accent-user', accentColor.value)
+      document.documentElement.style.setProperty('--q-primary', accentColor.value)
+    } else {
+      document.documentElement.style.removeProperty('--accent-user')
+      document.documentElement.style.removeProperty('--q-primary')
+    }
+  }
+
+  function setAccentColor(hex) {
+    accentColor.value = hex || ''
+    applyAccentColor()
+    try {
+      localStorage.setItem('accentColor', accentColor.value)
+    } catch (_e) {}
+  }
+
+  function initAccentColor() {
+    try {
+      const stored = localStorage.getItem('accentColor')
+      if (stored !== null) {
+        accentColor.value = stored
+      }
+    } catch (_e) {}
+    applyAccentColor()
+  }
+
+  // Apply the current density to the document body as a class, matching the
+  // dark-mode pattern (body.density-compact toggles the --density-* tokens).
+  function applyDensity() {
+    if (typeof document === 'undefined') return
+    document.body.classList.toggle('density-compact', density.value === 'compact')
+  }
+
+  function setDensity(value) {
+    density.value = value === 'compact' ? 'compact' : 'comfortable'
+    applyDensity()
+    try {
+      localStorage.setItem('density', density.value)
+    } catch (_e) {}
+  }
+
+  function toggleDensity() {
+    setDensity(density.value === 'compact' ? 'comfortable' : 'compact')
+  }
+
+  function initDensity() {
+    try {
+      const stored = localStorage.getItem('density')
+      if (stored !== null) {
+        density.value = stored === 'compact' ? 'compact' : 'comfortable'
+      }
+    } catch (_e) {}
+    applyDensity()
+  }
+
+  // Generic persisted-list helpers backing sidebar and dashboard-widget
+  // customization (tickets 02 and 03 of the UI redesign map). Each pair
+  // stores a hidden-id array and an explicit order array as JSON.
+  function _loadJsonArray(key) {
+    try {
+      const stored = localStorage.getItem(key)
+      if (stored !== null) return JSON.parse(stored)
+    } catch (_e) {}
+    return []
+  }
+
+  function _saveJsonArray(key, arr) {
+    try {
+      localStorage.setItem(key, JSON.stringify(arr))
+    } catch (_e) {}
+  }
+
+  function setSidebarHiddenItems(ids) {
+    sidebarHiddenItems.value = ids || []
+    _saveJsonArray('sidebarHiddenItems', sidebarHiddenItems.value)
+  }
+
+  function setSidebarItemOrder(ids) {
+    sidebarItemOrder.value = ids || []
+    _saveJsonArray('sidebarItemOrder', sidebarItemOrder.value)
+  }
+
+  function initSidebarCustomization() {
+    sidebarHiddenItems.value = _loadJsonArray('sidebarHiddenItems')
+    sidebarItemOrder.value = _loadJsonArray('sidebarItemOrder')
+  }
+
+  function setDashboardHiddenWidgets(ids) {
+    dashboardHiddenWidgets.value = ids || []
+    _saveJsonArray('dashboardHiddenWidgets', dashboardHiddenWidgets.value)
+  }
+
+  function setDashboardWidgetOrder(ids) {
+    dashboardWidgetOrder.value = ids || []
+    _saveJsonArray('dashboardWidgetOrder', dashboardWidgetOrder.value)
+  }
+
+  function initDashboardCustomization() {
+    dashboardHiddenWidgets.value = _loadJsonArray('dashboardHiddenWidgets')
+    dashboardWidgetOrder.value = _loadJsonArray('dashboardWidgetOrder')
+  }
+
+  function setPlayerTableHiddenColumns(ids) {
+    playerTableHiddenColumns.value = ids || []
+    _saveJsonArray('playerTableHiddenColumns', playerTableHiddenColumns.value)
+  }
+
+  function setPlayerTableColumnOrder(ids) {
+    playerTableColumnOrder.value = ids || []
+    _saveJsonArray('playerTableColumnOrder', playerTableColumnOrder.value)
+  }
+
+  function initPlayerTableColumnCustomization() {
+    playerTableHiddenColumns.value = _loadJsonArray('playerTableHiddenColumns')
+    playerTableColumnOrder.value = _loadJsonArray('playerTableColumnOrder')
   }
 
   // Initialize dark mode from localStorage or system preference
@@ -322,6 +480,11 @@ export const useUiStore = defineStore('ui', () => {
     initOpenaiApiKey()
     initOpenaiBaseUrl()
     initOpenaiModel()
+    initAccentColor()
+    initDensity()
+    initSidebarCustomization()
+    initDashboardCustomization()
+    initPlayerTableColumnCustomization()
   }
 
   // Tutorial functions
@@ -377,5 +540,27 @@ export const useUiStore = defineStore('ui', () => {
     showTutorial,
     hideTutorial,
     initSettings,
+    accentColor,
+    setAccentColor,
+    initAccentColor,
+    density,
+    setDensity,
+    toggleDensity,
+    initDensity,
+    sidebarHiddenItems,
+    setSidebarHiddenItems,
+    sidebarItemOrder,
+    setSidebarItemOrder,
+    initSidebarCustomization,
+    dashboardHiddenWidgets,
+    setDashboardHiddenWidgets,
+    dashboardWidgetOrder,
+    setDashboardWidgetOrder,
+    initDashboardCustomization,
+    playerTableHiddenColumns,
+    setPlayerTableHiddenColumns,
+    playerTableColumnOrder,
+    setPlayerTableColumnOrder,
+    initPlayerTableColumnCustomization,
   }
 })

@@ -24,11 +24,20 @@
   <Teleport to="body">
   <div v-if="show" class="cardgen-backdrop" @click.self="$emit('close')">
     <div class="cardgen-panel">
-      <div class="cardgen-header">
-        <q-icon name="badge" size="md" class="q-mr-sm" />
-        <div class="text-h6">Card Generator</div>
-        <q-space />
-        <q-btn icon="close" flat round dense @click="$emit('close')" />
+      <!-- Dialog chrome: same header convention (icon/title/close) as
+           PlayerDetailDialog/UpgradeFinderDialog, in normal flow above the content.
+           Colors here are intentionally fixed-dark (not app-theme tokens) — this
+           panel is a "card studio" surface, matching the always-dark treatment of
+           WhoToSignDialog's results dossier. -->
+      <div class="dialog-chrome">
+        <div class="dialog-chrome__header">
+          <q-icon name="badge" class="dialog-chrome__icon" />
+          <div class="dialog-chrome__title">Card Generator</div>
+          <q-space />
+          <div class="dialog-chrome__actions">
+            <q-btn icon="close" flat round dense class="dialog-chrome__close" @click="$emit('close')" />
+          </div>
+        </div>
       </div>
 
       <div class="cardgen-body">
@@ -210,16 +219,47 @@ export default defineComponent({
   flex-direction: column;
   min-height: 0;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.cardgen-header {
+
+/* Dialog chrome, restyled to the panel's fixed-dark "studio" palette rather
+   than the app's light/dark-flipping tokens (see comment in the template). */
+.dialog-chrome {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.dialog-chrome__header {
   display: flex;
   align-items: center;
-  padding: 16px 16px 8px;
+  gap: 0.6rem;
+  padding: 16px 16px 12px;
+}
+.dialog-chrome__icon {
+  font-size: 1.3rem;
   color: #fff;
   flex-shrink: 0;
+}
+.dialog-chrome__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+.dialog-chrome__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.dialog-chrome__close {
+  color: #fff;
+  transition: transform 0.15s ease;
+}
+.dialog-chrome__close:hover {
+  transform: scale(1.08);
 }
 .cardgen-body {
   flex: 1;

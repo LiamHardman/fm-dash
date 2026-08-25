@@ -317,76 +317,58 @@ const generatePlayerHighlightAnnotations = () => {
 </script>
   
   <style scoped>
+  /* Note: chart marks/gridlines/labels below are drawn on a Chart.js <canvas>, so they can't
+     read CSS custom properties directly — lightThemeColors/darkThemeColors in the script stay
+     as plain JS color constants, switched by the isDarkMode prop (which callers already derive
+     from the same global dark-mode state the CSS tokens flip on). Only this wrapper chrome
+     (card/header/title/subtitle) is retokenized here. */
   .scatter-plot-card {
     display: flex;
     flex-direction: column;
     position: relative;
     height: 600px; /* Reduced from 1000px */
     transition: all 0.3s ease;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+    background-color: var(--surface-card);
+    color: var(--text-primary);
+    border: 1px solid var(--surface-border);
+
     &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        box-shadow: var(--shadow-3);
     }
   }
-  
-  /* Light Theme */
-  .theme-light {
-    background-color: #ffffff;
-    color: #333333;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+
+  .card-subtitle {
+    color: var(--text-secondary);
   }
-  .theme-light .card-subtitle { color: #666; }
-  .theme-light .no-data-overlay { 
-    background: rgba(255, 255, 255, 0.9); 
-    color: #666;
+  .no-data-overlay {
+    background: var(--surface-overlay);
+    color: var(--text-secondary);
     backdrop-filter: blur(10px);
   }
-  
-  /* Dark Theme */
-  .theme-dark {
-    background-color: #1e1e1e;
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .theme-dark .card-subtitle { color: rgba(255, 255, 255, 0.7); }
-  .theme-dark .no-data-overlay { 
-    background: rgba(30, 30, 30, 0.9); 
-    color: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-  }
-  
+
   .card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     padding: 1.5rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    
-    .theme-dark & {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    border-bottom: 1px solid var(--surface-border);
   }
-  
+
   .title-section {
     text-align: left;
   }
-  
+
   .card-title {
     font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.2;
     margin: 0;
-    color: #2d3436;
-    
-    .theme-dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
+    color: var(--text-primary);
   }
-  
+
   .card-subtitle {
     font-size: 0.9rem;
     font-weight: 500;

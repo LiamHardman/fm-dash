@@ -8,12 +8,19 @@
         transition-hide="slide-down"
     >
         <q-card class="who-to-sign-dialog">
-            <q-card-section class="row items-center q-pb-none card-header">
-                <q-icon name="person_search" size="md" class="q-mr-sm" />
-                <div class="text-h6">Who to Sign</div>
-                <q-space />
-                <q-btn icon="close" flat round dense v-close-popup @click="$emit('close')" />
-            </q-card-section>
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="person_search" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">Who to Sign</div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn icon="close" flat round dense class="dialog-chrome__close" v-close-popup @click="$emit('close')" />
+                    </div>
+                </div>
+            </div>
 
             <q-card-section class="q-pt-md who-to-sign-body">
                 <!-- Non-blocking hint: no key saved in this browser. Doesn't block submission —
@@ -569,8 +576,56 @@ export default {
 </script>
 
 <style scoped>
+/* Dialog chrome: unified header convention shared with PlayerDetailDialog /
+   UpgradeFinderDialog — icon, title, actions, close, all in normal flow. */
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+}
+
+.dialog-chrome__close:hover {
+    transform: scale(1.08);
+}
+
 .who-to-sign-dialog {
     max-width: 100%;
+    background: var(--surface-card);
 }
 .who-to-sign-body {
     max-width: 1100px;

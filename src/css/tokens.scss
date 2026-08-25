@@ -18,9 +18,13 @@
     --brand-gradient: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
 
     // ── Accent (interactive emphasis, links, icons) ──────────────────────
-    --accent: #1a237e;
-    --accent-soft: rgba(26, 35, 126, 0.08);
-    --accent-soft-strong: rgba(26, 35, 126, 0.12);
+    // --accent-user is set at runtime by customizationStore (accent color
+    // picker) via an inline custom property on <html>. Unset, it falls back
+    // to the brand indigo below. Soft variants are derived with color-mix()
+    // so any user accent gets correct tinted backgrounds for free.
+    --accent: var(--accent-user, #1a237e);
+    --accent-soft: color-mix(in srgb, var(--accent) 8%, transparent);
+    --accent-soft-strong: color-mix(in srgb, var(--accent) 12%, transparent);
 
     // ── Surfaces ─────────────────────────────────────────────────────────
     --surface-page: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -49,6 +53,33 @@
     // ── Motion ───────────────────────────────────────────────────────────
     --lift-sm: translateY(-1px); // rows, chips, small buttons
     --lift-md: translateY(-3px); // interactive cards
+
+    // ── Layout ───────────────────────────────────────────────────────────
+    // Page-level spacing, independent of density (which governs component-
+    // internal spacing/row-height, not page furniture gutters).
+    --page-gutter: 2rem;
+    --page-gutter-sm: 1rem;
+    --section-gap: 1.5rem;
+    --content-max-width: 1400px;
+    --sidebar-width: 248px;
+    --sidebar-width-collapsed: 72px;
+
+    // ── Density ──────────────────────────────────────────────────────────
+    // Component-internal spacing/row-height. Default is "comfortable";
+    // body.density-compact (set by customizationStore) switches these.
+    --density-row-height: 44px;
+    --density-cell-padding: 10px 12px;
+    --density-card-padding: 16px;
+    --density-gap: 12px;
+    --density-font-size: 0.875rem;
+}
+
+body.density-compact {
+    --density-row-height: 32px;
+    --density-cell-padding: 5px 10px;
+    --density-card-padding: 10px;
+    --density-gap: 8px;
+    --density-font-size: 0.8125rem;
 }
 
 body.body--dark {
@@ -57,9 +88,9 @@ body.body--dark {
     --brand-light: #3949ab;
     --brand-gradient: linear-gradient(135deg, #151c4f 0%, #1a237e 60%, #283593 100%);
 
-    --accent: #60a5fa;
-    --accent-soft: rgba(96, 165, 250, 0.12);
-    --accent-soft-strong: rgba(96, 165, 250, 0.18);
+    --accent: var(--accent-user, #60a5fa);
+    --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+    --accent-soft-strong: color-mix(in srgb, var(--accent) 18%, transparent);
 
     --surface-page: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     --surface-card: #1e293b;

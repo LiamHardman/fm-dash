@@ -1,55 +1,51 @@
 <template>
     <q-page class="performance-page">
-        <!-- Loading State -->
-        <div v-if="pageLoading" class="loading-state">
-            <q-spinner-orbit color="primary" size="4em" />
-            <div class="loading-text">Loading player database...</div>
-        </div>
+        <div class="page-container">
+            <!-- Loading State -->
+            <div v-if="pageLoading" class="loading-state">
+                <q-spinner-orbit color="primary" size="4em" />
+                <div class="loading-text">Loading player database...</div>
+            </div>
 
-        <!-- Error State -->
-        <div v-else-if="pageLoadingError" class="error-container">
-            <q-banner class="error-banner" rounded>
-                <template v-slot:avatar>
-                    <q-icon name="error" />
+            <!-- Error State -->
+            <EmptyState
+                v-else-if="pageLoadingError"
+                icon="error"
+                title="Couldn't load performance data"
+                :description="pageLoadingError"
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                 </template>
-                {{ pageLoadingError }}
-                <q-btn flat color="white" label="Go to Upload Page" @click="router.push('/')" class="q-ml-md" />
-            </q-banner>
-        </div>
+            </EmptyState>
 
-        <!-- No Data State -->
-        <div v-else-if="!currentDatasetId || allPlayersData.length === 0" class="no-data-container">
-             <q-banner class="no-data-banner">
-                <template v-slot:avatar>
-                    <q-icon name="warning" />
+            <!-- No Data State -->
+            <EmptyState
+                v-else-if="!currentDatasetId || allPlayersData.length === 0"
+                icon="warning"
+                title="No player data found"
+                description="Please upload a dataset first."
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                 </template>
-                No player data found. Please upload a dataset first.
-                <q-btn flat color="primary" label="Go to Upload Page" @click="router.push('/')" class="q-ml-md"/>
-            </q-banner>
-        </div>
+            </EmptyState>
 
-        <!-- Main Content -->
-        <div v-else class="main-content">
-            <!-- New Styled Hero Header -->
-            <div class="performance-hero-section">
-                <div class="hero-content">
-                    <div class="hero-left">
-                        <div class="hero-title-line">
-                            <q-icon name="trending_up" size="2.5rem" />
-                            <h1 class="hero-title">Performance Leaders</h1>
-                        </div>
-                        <p class="hero-subtitle">
-                            {{ formatNumber(filteredPlayers.length) }} players matching filters from {{ formatNumber(allPlayersData.length) }} total
-                        </p>
-                    </div>
-                    <div class="hero-right">
-                        <q-btn 
-                            unelevated 
-                            icon="download" 
-                            label="Export" 
-                            @click="_openExportOptions" 
+            <!-- Main Content -->
+            <div v-else>
+                <PageHeader
+                    title="Performance Leaders"
+                    :subtitle="`${formatNumber(filteredPlayers.length)} players matching filters from ${formatNumber(allPlayersData.length)} total`"
+                    icon="trending_up"
+                >
+                    <template #actions>
+                        <q-btn
+                            unelevated
+                            icon="download"
+                            label="Export"
+                            color="primary"
+                            @click="_openExportOptions"
                             :disable="filteredPlayers.length === 0"
-                            class="export-btn-modern q-mr-sm"
                         >
                             <q-tooltip v-if="filteredPlayers.length > 0">
                                 Export {{ filteredPlayers.length }} filtered players
@@ -58,106 +54,108 @@
                                 No players to export
                             </q-tooltip>
                         </q-btn>
-                        <q-btn unelevated icon="share" label="Share" @click="shareDataset" class="share-btn-modern"/>
-                    </div>
-                </div>
+                        <q-btn unelevated icon="share" label="Share" color="primary" @click="shareDataset" />
+                    </template>
+                </PageHeader>
 
-                <!-- Filter Bar Integrated into Hero -->
-                <PerformanceFilters
-                  :selected-divisions="selectedDivisions"
-                  :selected-positions="selectedPositions"
-                  :slider-value="sliderValue"
-                  :overall-slider-value="overallSliderValue"
-                  :division-options="divisionOptions"
-                  :position-options="positionOptions"
-                  :selected-divisions-display-text="selectedDivisionsDisplayText"
-                  :selected-positions-display-text="selectedPositionsDisplayText"
-                  :max-minutes="maxMinutes"
-                  :max-overall="maxOverall"
-                  :filter-divisions-fn="filterDivisionsFn"
-                  :filter-positions-fn="filterPositionsFn"
-                  :select-all-divisions="selectAllDivisions"
-                  :clear-all-divisions="clearAllDivisions"
-                  :select-all-positions="selectAllPositions"
-                  :clear-all-positions="clearAllPositions"
-                  @update:selectedDivisions="(v) => (selectedDivisions = v)"
-                  @update:selectedPositions="(v) => (selectedPositions = v)"
-                  @update:sliderValue="(v) => (sliderValue = v)"
-                  @update:overallSliderValue="(v) => (overallSliderValue = v)"
-                />
+                <!-- Filters -->
+                <SectionCard title="Filters" icon="filter_list" class="q-mb-md">
+                    <PerformanceFilters
+                      :selected-divisions="selectedDivisions"
+                      :selected-positions="selectedPositions"
+                      :slider-value="sliderValue"
+                      :overall-slider-value="overallSliderValue"
+                      :division-options="divisionOptions"
+                      :position-options="positionOptions"
+                      :selected-divisions-display-text="selectedDivisionsDisplayText"
+                      :selected-positions-display-text="selectedPositionsDisplayText"
+                      :max-minutes="maxMinutes"
+                      :max-overall="maxOverall"
+                      :filter-divisions-fn="filterDivisionsFn"
+                      :filter-positions-fn="filterPositionsFn"
+                      :select-all-divisions="selectAllDivisions"
+                      :clear-all-divisions="clearAllDivisions"
+                      :select-all-positions="selectAllPositions"
+                      :clear-all-positions="clearAllPositions"
+                      @update:selectedDivisions="(v) => (selectedDivisions = v)"
+                      @update:selectedPositions="(v) => (selectedPositions = v)"
+                      @update:sliderValue="(v) => (sliderValue = v)"
+                      @update:overallSliderValue="(v) => (overallSliderValue = v)"
+                    />
+                </SectionCard>
+
+                <!-- Tabbed Content Section -->
+                <SectionCard title="Performance Breakdown" icon="insights">
+                    <q-tabs
+                        v-model="currentTab"
+                        dense
+                        class="text-grey"
+                        active-color="primary"
+                        indicator-color="primary"
+                        align="justify"
+                        narrow-indicator
+                    >
+                        <q-tab name="attacking" icon="sports_soccer" label="Attacking" />
+                        <q-tab name="passing" icon="swap_horiz" label="Passing" />
+                        <q-tab name="defending" icon="shield" label="Defending" />
+                        <q-tab name="goalkeeping" icon="sports_hockey" label="Goalkeeping" />
+                    </q-tabs>
+
+                    <q-separator />
+
+                    <q-tab-panels v-model="currentTab" animated>
+                        <q-tab-panel name="attacking">
+                            <AttackingPanel
+                              :filtered-players="filteredPlayers"
+                              :is-dark-mode="isDarkMode"
+                              :top-players-by-stat="topPlayersByStat"
+                              :attacking-stats="attackingStats"
+                              :attacking-charts="attackingCharts"
+                              @player-click="openPlayerDetail"
+                            />
+                        </q-tab-panel>
+                        <q-tab-panel name="passing">
+                            <PassingPanel
+                              :filtered-players="filteredPlayers"
+                              :is-dark-mode="isDarkMode"
+                              :top-players-by-stat="topPlayersByStat"
+                              :passing-stats="passingStats"
+                              :passing-charts="passingCharts"
+                              @player-click="openPlayerDetail"
+                            />
+                        </q-tab-panel>
+                        <q-tab-panel name="defending">
+                            <DefendingPanel
+                              :filtered-players="filteredPlayers"
+                              :is-dark-mode="isDarkMode"
+                              :top-players-by-stat="topPlayersByStat"
+                              :defending-stats="defendingStats"
+                              :defending-charts="defendingCharts"
+                              @player-click="openPlayerDetail"
+                            />
+                        </q-tab-panel>
+                        <q-tab-panel name="goalkeeping">
+                            <GoalkeepingPanel
+                              :filtered-players="filteredPlayers"
+                              :is-dark-mode="isDarkMode"
+                              :top-players-by-stat="topPlayersByStat"
+                              :goalkeeping-stats="goalkeepingStats"
+                              :goalkeeping-charts="goalkeepingCharts"
+                              @player-click="openPlayerDetail"
+                            />
+                        </q-tab-panel>
+                    </q-tab-panels>
+                </SectionCard>
             </div>
-
-             <!-- Tabbed Content Section -->
-            <q-card class="tabs-card">
-                <q-tabs
-                    v-model="currentTab"
-                    dense
-                    class="text-grey"
-                    active-color="primary"
-                    indicator-color="primary"
-                    align="justify"
-                    narrow-indicator
-                >
-                    <q-tab name="attacking" icon="sports_soccer" label="Attacking" />
-                    <q-tab name="passing" icon="swap_horiz" label="Passing" />
-                    <q-tab name="defending" icon="shield" label="Defending" />
-                    <q-tab name="goalkeeping" icon="sports_hockey" label="Goalkeeping" />
-                </q-tabs>
-
-                <q-separator />
-
-                <q-tab-panels v-model="currentTab" animated>
-                    <q-tab-panel name="attacking">
-                    <AttackingPanel
-                      :filtered-players="filteredPlayers"
-                                            :is-dark-mode="isDarkMode" 
-                      :top-players-by-stat="topPlayersByStat"
-                      :attacking-stats="attackingStats"
-                      :attacking-charts="attackingCharts"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                </q-tab-panel>
-                    <q-tab-panel name="passing">
-                    <PassingPanel
-                      :filtered-players="filteredPlayers"
-                                            :is-dark-mode="isDarkMode" 
-                      :top-players-by-stat="topPlayersByStat"
-                      :passing-stats="passingStats"
-                      :passing-charts="passingCharts"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                </q-tab-panel>
-                    <q-tab-panel name="defending">
-                    <DefendingPanel
-                      :filtered-players="filteredPlayers"
-                                            :is-dark-mode="isDarkMode" 
-                      :top-players-by-stat="topPlayersByStat"
-                      :defending-stats="defendingStats"
-                      :defending-charts="defendingCharts"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                </q-tab-panel>
-                    <q-tab-panel name="goalkeeping">
-                    <GoalkeepingPanel
-                      :filtered-players="filteredPlayers"
-                                            :is-dark-mode="isDarkMode" 
-                      :top-players-by-stat="topPlayersByStat"
-                      :goalkeeping-stats="goalkeepingStats"
-                      :goalkeeping-charts="goalkeepingCharts"
-                                            @player-click="openPlayerDetail"
-                                        />
-                    </q-tab-panel>
-                </q-tab-panels>
-            </q-card>
         </div>
 
         <!-- Player Detail Dialog -->
-                <DynamicPlayerDetailDialog 
-            :player="playerForDetailView" 
-            :show="showPlayerDetailDialog" 
-            @close="showPlayerDetailDialog = false" 
-            :currency-symbol="detectedCurrencySymbol" 
-            :dataset-id="currentDatasetId" 
+        <DynamicPlayerDetailDialog
+            :player="playerForDetailView"
+            :show="showPlayerDetailDialog"
+            @close="showPlayerDetailDialog = false"
+            :currency-symbol="detectedCurrencySymbol"
+            :dataset-id="currentDatasetId"
         />
 
         <!-- Export Options Dialog -->
@@ -175,6 +173,12 @@
 import { debounce, useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import EmptyState from '../components/layout/EmptyState.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import PageHeader from '../components/layout/PageHeader.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import SectionCard from '../components/layout/SectionCard.vue'
 // Dynamic imports for better performance
 import { useDynamicComponents } from '../composables/useDynamicComponents.js'
 import { fetchPerformanceData } from '../services/playerService'
@@ -680,20 +684,21 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-// Modern Design System Variables
-$primary-gradient: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-$success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-$warning-gradient: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
-$danger-gradient: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
-$card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-$card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
-$border-radius: 16px;
-$border-radius-small: 8px;
-
 .performance-page {
-    background-color: #f4f6f8;
-    .body--dark & {
-        background-color: #121212;
+    min-height: 100vh;
+}
+
+.page-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: var(--page-gutter);
+
+    @media (max-width: 1200px) {
+        padding: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        padding: var(--page-gutter-sm);
     }
 }
 
@@ -707,447 +712,13 @@ $border-radius-small: 8px;
 
     .loading-text {
         font-size: 1.2rem;
-        color: #666;
-        .body--dark & {
-            color: #999;
-        }
+        color: var(--text-secondary);
     }
 }
 
-.main-content {
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-
-// Hero Section Styling
-.performance-hero-section {
-    background: $primary-gradient;
-    color: white;
-    border-radius: $border-radius;
-    padding: 2rem 2.5rem;
-    margin-bottom: 2rem;
-    box-shadow: $card-shadow;
-    position: relative;
-    overflow: hidden;
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image: 
-            radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-        animation: float 20s ease-in-out infinite;
-    }
-    
-    .hero-content {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1.5rem;
-
-        .hero-left {
-            .hero-title-line {
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-            }
-            .hero-title {
-                font-size: 2.25rem;
-                font-weight: 700;
-                margin: 0;
-                line-height: 1.2;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            }
-            .hero-subtitle {
-                font-size: 1rem;
-                margin: 0.5rem 0 0 0;
-                color: rgba(255, 255, 255, 0.8);
-            }
-        }
-        .share-btn-modern {
-            background: rgba(255,255,255,0.15);
-            color: white;
-            font-weight: 600;
-            border-radius: $border-radius-small;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-            &:hover {
-                background: rgba(255,255,255,0.25);
-                transform: translateY(-2px);
-            }
-        }
-
-        .export-btn-modern {
-            background: rgba(255,255,255,0.15);
-            color: white;
-            font-weight: 600;
-            border-radius: $border-radius-small;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-            &:hover {
-                background: rgba(255,255,255,0.25);
-                transform: translateY(-2px);
-            }
-        }
-    }
-
-    .filter-bar {
-        position: relative;
-        z-index: 2;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-        gap: 1.5rem;
-        align-items: center;
-        background: rgba(255,255,255,0.1);
-        padding: 1.5rem;
-        border-radius: $border-radius-small;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
-
-        .division-filter-container {
-            width: 100%;
-            
-            .division-filter-header {
-                display: flex;
-                gap: 0.5rem;
-                margin-bottom: 0.75rem;
-                
-                .division-action-btn {
-                    background: rgba(255,255,255,0.1);
-                    border-color: rgba(255,255,255,0.3);
-                    color: white;
-                    font-size: 0.8rem;
-                    
-                    &:hover {
-                        background: rgba(255,255,255,0.2);
-                        transform: translateY(-1px);
-                    }
-                    
-                    &.q-btn--outline {
-                        border-width: 1px;
-                    }
-                    
-                    // Override Quasar's color classes for dark theme
-                    &.text-primary {
-                        color: #90caf9 !important;
-                        border-color: rgba(144, 202, 249, 0.5) !important;
-                        
-                        &:hover {
-                            background: rgba(144, 202, 249, 0.1) !important;
-                        }
-                    }
-                    
-                    &.text-negative {
-                        color: #f48fb1 !important;
-                        border-color: rgba(244, 143, 177, 0.5) !important;
-                        
-                        &:hover {
-                            background: rgba(244, 143, 177, 0.1) !important;
-                        }
-                    }
-                }
-            }
-            
-            .division-filter {
-                :deep(.q-field__control) {
-                    background: rgba(255,255,255,0.15);
-                    border: 1px solid rgba(255,255,255,0.2);
-                    border-radius: $border-radius-small;
-                    color: white;
-                }
-                :deep(.q-field__label) {
-                    color: rgba(255,255,255,0.8);
-                }
-            }
-        }
-
-        .position-filter-container {
-            width: 100%;
-            
-            .position-filter-header {
-                display: flex;
-                gap: 0.5rem;
-                margin-bottom: 0.75rem;
-                
-                .position-action-btn {
-                    background: rgba(255,255,255,0.1);
-                    border-color: rgba(255,255,255,0.3);
-                    color: white;
-                    font-size: 0.8rem;
-                    
-                    &:hover {
-                        background: rgba(255,255,255,0.2);
-                        transform: translateY(-1px);
-                    }
-                    
-                    &.q-btn--outline {
-                        border-width: 1px;
-                    }
-                    
-                    // Override Quasar's color classes for dark theme
-                    &.text-primary {
-                        color: #90caf9 !important;
-                        border-color: rgba(144, 202, 249, 0.5) !important;
-                        
-                        &:hover {
-                            background: rgba(144, 202, 249, 0.1) !important;
-                        }
-                    }
-                    
-                    &.text-negative {
-                        color: #f48fb1 !important;
-                        border-color: rgba(244, 143, 177, 0.5) !important;
-                        
-                        &:hover {
-                            background: rgba(244, 143, 177, 0.1) !important;
-                        }
-                    }
-                }
-            }
-            
-            .position-filter {
-                :deep(.q-field__control) {
-                    background: rgba(255,255,255,0.15);
-                    border: 1px solid rgba(255,255,255,0.2);
-                    border-radius: $border-radius-small;
-                    color: white;
-                }
-                :deep(.q-field__label) {
-                    color: rgba(255,255,255,0.8);
-                }
-                
-                // Style for position group separators
-                :deep(.q-item--disabled) {
-                    font-weight: 600;
-                    color: rgba(255,255,255,0.6) !important;
-                    background: rgba(255,255,255,0.05);
-                    text-align: center;
-                    font-size: 0.8rem;
-                    pointer-events: none;
-                }
-            }
-        }
-
-        .minutes-filter {
-            .slider-label {
-                font-size: 0.9rem;
-                font-weight: 500;
-                color: rgba(255,255,255,0.9);
-                margin-bottom: 0.5rem;
-            }
-            :deep(.q-slider__track) {
-                background: rgba(255,255,255,0.2);
-            }
-            :deep(.q-slider__track--active) {
-                background: white;
-            }
-            :deep(.q-slider__thumb) {
-                background: white;
-                border: 2px solid rgba(255,255,255,0.5);
-            }
-        }
-
-        .overall-filter {
-            .slider-label {
-                font-size: 0.9rem;
-                font-weight: 500;
-                color: rgba(255,255,255,0.9);
-                margin-bottom: 0.5rem;
-            }
-            :deep(.q-slider__track) {
-                background: rgba(255,255,255,0.2);
-            }
-            :deep(.q-slider__track--active) {
-                background: white;
-            }
-            :deep(.q-slider__thumb) {
-                background: white;
-                border: 2px solid rgba(255,255,255,0.5);
-            }
-        }
-    }
-}
-
-// Tabs Styling
-.tabs-card {
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    overflow: hidden;
-    background: white;
-    transition: all 0.3s ease;
-
-    .body--dark & {
-        background: #1e1e1e;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    &:hover {
-        box-shadow: $card-shadow-hover;
-        transform: translateY(-2px);
-    }
-
-    .q-tabs {
-        padding: 0 1rem;
-        background: rgba(0,0,0,0.02);
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-
-        .body--dark & {
-            background: rgba(255,255,255,0.02);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .q-tab {
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-            transition: all 0.3s ease;
-
-            &:hover {
-                background: rgba(0,0,0,0.02);
-                .body--dark & {
-                    background: rgba(255,255,255,0.05);
-                }
-            }
-
-            &--active {
-                color: var(--accent);
-                .body--dark & {
-                    color: #90caf9;
-                }
-            }
-        }
-    }
-
-    .q-tab-panel {
-        padding: 2rem;
-    }
-}
-
-.tab-content-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.category-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #333;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--accent);
-    align-self: flex-start;
-    margin-bottom: 1rem;
-
-    .body--dark & {
-        color: #f5f5f5;
-        border-bottom-color: #90caf9;
-    }
-}
-
-.charts-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-}
-
-// Banners for error/no-data states
-.error-container, .no-data-container {
-    padding: 2rem;
-}
-
-.error-banner {
-    background: $danger-gradient;
-    color: white;
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-}
-
-.no-data-banner {
-    background: white;
-    border: 1px solid rgba(0,0,0,0.1);
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    
-    .body--dark & {
-        background: #1e1e1e;
-        color: #f5f5f5;
-        border-color: rgba(255,255,255,0.1);
-    }
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    33% { transform: translateY(-20px) rotate(1deg); }
-    66% { transform: translateY(-10px) rotate(-1deg); }
-}
-
-// Responsive Design
-@media (max-width: 1200px) {
-    .main-content {
-        padding: 1.5rem;
-    }
-    
-    .performance-hero-section {
-        padding: 1.5rem;
-    }
-    
-    .filter-bar {
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        padding: 1rem;
-    }
-    
-    .performance-hero-section {
-        padding: 1.25rem;
-        
-        .hero-content {
-            flex-direction: column;
-            gap: 1rem;
-            
-            .hero-left {
-                text-align: center;
-                
-                .hero-title-line {
-                    justify-content: center;
-                }
-            }
-        }
-    }
-    
-    .filter-bar {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .charts-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-// For goalkeeping, we want single column
-.goalkeeping .charts-grid {
-    grid-template-columns: 1fr;
+// Keep the active tab tied to the (user-repickable) accent token rather than
+// Quasar's static $primary compile-time color.
+.q-tab--active {
+    color: var(--accent);
 }
 </style>

@@ -1,132 +1,125 @@
 <template>
-    <q-page class="save-analysis-page q-pa-md">
-        <!-- Loading State -->
-        <div v-if="pageLoading" class="loading-state">
-            <q-spinner-orbit color="primary" size="4em" />
-            <div class="loading-text">Loading player database...</div>
-        </div>
-
-        <!-- Error State -->
-        <div v-else-if="pageLoadingError" class="error-container">
-            <q-banner class="error-banner" rounded>
-                <template v-slot:avatar>
-                    <q-icon name="error" />
-                </template>
-                {{ pageLoadingError }}
-                <q-btn flat color="primary" label="Go to Upload Page" @click="router.push('/')" class="q-ml-md" />
-            </q-banner>
-        </div>
-
-        <!-- Main Content -->
-        <div v-else>
-            <div class="row items-center justify-between q-mb-md">
-                <div>
-                    <div class="text-h5">Save Analysis</div>
-                    <div class="text-caption text-grey">
-                        CA vs. Overall across {{ formatNumber(filteredPlayers.length) }} of {{ formatNumber(allPlayersData.length) }} players
-                    </div>
-                </div>
-                <div class="row items-center q-gutter-sm">
-                    <q-select
-                        v-model="selectedPosition"
-                        :options="positionOptions"
-                        label="Position"
-                        dense
-                        outlined
-                        style="min-width: 180px"
-                    />
-                    <q-input
-                        v-model.number="minOverall"
-                        type="number"
-                        label="Min Overall"
-                        dense
-                        outlined
-                        clearable
-                        style="width: 130px"
-                    />
-                    <q-input
-                        v-model.number="maxOverall"
-                        type="number"
-                        label="Max Overall"
-                        dense
-                        outlined
-                        clearable
-                        style="width: 130px"
-                    />
-                </div>
+    <q-page class="save-analysis-page">
+        <div class="page-container">
+            <!-- Loading State -->
+            <div v-if="pageLoading" class="loading-state">
+                <q-spinner-orbit color="primary" size="4em" />
+                <div class="loading-text">Loading player database...</div>
             </div>
 
-            <q-card flat bordered class="q-mb-md">
-                <q-card-section>
+            <!-- Error State -->
+            <EmptyState
+                v-else-if="pageLoadingError"
+                icon="error"
+                title="Couldn't load save analysis"
+                :description="pageLoadingError"
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
+                </template>
+            </EmptyState>
+
+            <!-- Main Content -->
+            <div v-else>
+                <PageHeader
+                    title="Save Analysis"
+                    :subtitle="`CA vs. Overall across ${formatNumber(filteredPlayers.length)} of ${formatNumber(allPlayersData.length)} players`"
+                    icon="insights"
+                >
+                    <template #actions>
+                        <q-select
+                            v-model="selectedPosition"
+                            :options="positionOptions"
+                            label="Position"
+                            dense
+                            outlined
+                            style="min-width: 180px"
+                        />
+                        <q-input
+                            v-model.number="minOverall"
+                            type="number"
+                            label="Min Overall"
+                            dense
+                            outlined
+                            clearable
+                            style="width: 130px"
+                        />
+                        <q-input
+                            v-model.number="maxOverall"
+                            type="number"
+                            label="Max Overall"
+                            dense
+                            outlined
+                            clearable
+                            style="width: 130px"
+                        />
+                    </template>
+                </PageHeader>
+
+                <SectionCard class="q-mb-md">
                     <SaveAnalysisScatter
                         :players="filteredPlayers"
                         :is-dark-mode="isDarkMode"
                         @player-click="openPlayerDetail"
                     />
-                </q-card-section>
-            </q-card>
+                </SectionCard>
 
-            <div class="row q-col-gutter-md q-mb-md">
-                <div class="col-12 col-md-6">
-                    <q-card flat bordered class="full-height">
-                        <q-card-section>
-                            <div class="text-subtitle1">Rating Outliers</div>
-                            <div class="text-caption text-grey">
+                <div class="row q-col-gutter-md q-mb-md">
+                    <div class="col-12 col-md-6">
+                        <SectionCard title="Rating Outliers" icon="swap_vert" class="full-height">
+                            <div class="text-caption text-grey q-mb-sm">
                                 CA rescaled to Overall's 0-99 scale, then compared. Click a tab to see which direction.
                             </div>
-                        </q-card-section>
-                        <q-tabs v-model="outlierTab" dense align="justify" class="text-grey" active-color="primary" indicator-color="primary">
-                            <q-tab name="overrated" label="Overall > CA" />
-                            <q-tab name="underrated" label="CA > Overall" />
-                        </q-tabs>
-                        <q-separator />
-                        <q-table
-                            :rows="outlierTab === 'overrated' ? overratedOutliers : underratedOutliers"
-                            :columns="outlierColumns"
-                            row-key="uid"
-                            flat
-                            dense
-                            hide-pagination
-                            :rows-per-page-options="[0]"
-                            @row-click="(_evt, row) => openPlayerDetail(row)"
-                            class="save-analysis-table"
-                        />
-                    </q-card>
-                </div>
-                <div class="col-12 col-md-6">
-                    <q-card flat bordered class="full-height">
-                        <q-card-section>
-                            <div class="text-subtitle1">Best Role Distribution</div>
-                            <div class="text-caption text-grey">
+                            <q-tabs v-model="outlierTab" dense align="justify" class="text-grey" active-color="primary" indicator-color="primary">
+                                <q-tab name="overrated" label="Overall > CA" />
+                                <q-tab name="underrated" label="CA > Overall" />
+                            </q-tabs>
+                            <q-separator />
+                            <q-table
+                                :rows="outlierTab === 'overrated' ? overratedOutliers : underratedOutliers"
+                                :columns="outlierColumns"
+                                row-key="uid"
+                                flat
+                                dense
+                                hide-pagination
+                                :rows-per-page-options="[0]"
+                                @row-click="(_evt, row) => openPlayerDetail(row)"
+                                class="save-analysis-table"
+                            />
+                        </SectionCard>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <SectionCard title="Best Role Distribution" icon="workspaces" class="full-height">
+                            <div class="text-caption text-grey q-mb-sm">
                                 How many filtered players have each role as their single best role.
                             </div>
-                        </q-card-section>
-                        <q-separator />
-                        <q-table
-                            :rows="roleDistribution"
-                            :columns="roleDistributionColumns"
-                            row-key="role"
-                            flat
-                            dense
-                            :pagination="{ rowsPerPage: 10, sortBy: 'count', descending: true }"
-                            class="save-analysis-table"
-                        />
-                    </q-card>
+                            <q-separator />
+                            <q-table
+                                :rows="roleDistribution"
+                                :columns="roleDistributionColumns"
+                                row-key="role"
+                                flat
+                                dense
+                                :pagination="{ rowsPerPage: 10, sortBy: 'count', descending: true }"
+                                class="save-analysis-table"
+                            />
+                        </SectionCard>
+                    </div>
                 </div>
-            </div>
 
-            <q-card flat bordered>
-                <q-table
-                    :rows="filteredPlayers"
-                    :columns="tableColumns"
-                    row-key="uid"
-                    flat
-                    dense
-                    :pagination="{ rowsPerPage: 20, sortBy: 'overall', descending: true }"
-                    @row-click="(_evt, row) => openPlayerDetail(row)"
-                    class="save-analysis-table"
-                />
-            </q-card>
+                <SectionCard title="All filtered players" icon="table_rows">
+                    <q-table
+                        :rows="filteredPlayers"
+                        :columns="tableColumns"
+                        row-key="uid"
+                        flat
+                        dense
+                        :pagination="{ rowsPerPage: 20, sortBy: 'overall', descending: true }"
+                        @row-click="(_evt, row) => openPlayerDetail(row)"
+                        class="save-analysis-table"
+                    />
+                </SectionCard>
+            </div>
         </div>
 
         <!-- Player Detail Dialog -->
@@ -143,6 +136,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import EmptyState from '../components/layout/EmptyState.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import PageHeader from '../components/layout/PageHeader.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import SectionCard from '../components/layout/SectionCard.vue'
 // biome-ignore lint/correctness/noUnusedImports: used in template
 import SaveAnalysisScatter from '../components/SaveAnalysisScatter.vue'
 import { useDynamicComponents } from '../composables/useDynamicComponents.js'
@@ -392,8 +391,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.loading-state,
-.error-container {
+.page-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--page-gutter);
+}
+
+.loading-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -401,7 +405,14 @@ onMounted(async () => {
     min-height: 300px;
     gap: 1rem;
 }
+
 .save-analysis-table :deep(tbody tr) {
     cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .page-container {
+        padding: var(--page-gutter-sm);
+    }
 }
 </style>

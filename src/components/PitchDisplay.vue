@@ -440,6 +440,12 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// This entire component IS the pitch/turf graphic (green turf, white markings, rating-tier
+// colored player dots) — there is no separate wrapper/controls chrome around it to retokenize.
+// Its green/white palette and rating-tier colors are deliberately fixed regardless of app
+// light/dark mode (only the existing `.dark-mode`/`body--dark` turf-shade tweaks below apply),
+// matching the same "genuinely semantic/decorative, not app-theme" precedent already
+// documented on WhoToSignDialog's dossier panel and CardGeneratorDialog's studio palette.
 .pitch-container {
     width: 100%;
     max-width: 600px;

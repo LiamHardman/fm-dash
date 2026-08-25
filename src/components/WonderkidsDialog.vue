@@ -10,23 +10,29 @@
         <q-card
             class="wonderkids-dialog"
         >
-            <q-card-section
-                class="row items-center q-pb-none card-header"
-            >
-                <q-icon name="stars" size="md" class="q-mr-sm" />
-                <div class="text-h6">
-                    Find Wonderkids (Values in {{ currencySymbol }})
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="stars" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">
+                        Find Wonderkids (Values in {{ currencySymbol }})
+                    </div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            v-close-popup
+                            @click="$emit('close')"
+                        />
+                    </div>
                 </div>
-                <q-space />
-                <q-btn
-                    icon="close"
-                    flat
-                    round
-                    dense
-                    v-close-popup
-                    @click="$emit('close')"
-                />
-            </q-card-section>
+            </div>
 
             <q-card-section class="q-pt-md">
                 <!-- Filters Section -->
@@ -127,31 +133,25 @@
                     </div>
 
                     <!-- Age / Ability Scatter Plot -->
-                    <q-card class="wonderkids-chart-container q-mb-md">
-                        <q-card-section class="q-pa-sm q-pt-md">
-                            <WonderkidsScatterPlot
-                                :players="allWonderkids"
-                                :is-dark-mode="qInstance.dark.isActive"
-                                @player-click="handlePlayerSelected"
-                            />
-                        </q-card-section>
-                    </q-card>
+                    <SectionCard class="wonderkids-chart-container q-mb-md">
+                        <WonderkidsScatterPlot
+                            :players="allWonderkids"
+                            :is-dark-mode="qInstance.dark.isActive"
+                            @player-click="handlePlayerSelected"
+                        />
+                    </SectionCard>
 
-                    <q-card
-                        class="wonderkids-table-container"
-                    >
-                        <q-card-section>
-                            <PlayerDataTable
-                                :key="'wonderkids-all-ages'"
-                                :players="allWonderkids"
-                                :loading="loading"
-                                @player-selected="handlePlayerSelected"
-                                @team-selected="handleTeamSelected"
-                                :currency-symbol="currencySymbol"
-                                :dataset-id="datasetId"
-                            />
-                        </q-card-section>
-                    </q-card>
+                    <SectionCard class="wonderkids-table-container">
+                        <PlayerDataTable
+                            :key="'wonderkids-all-ages'"
+                            :players="allWonderkids"
+                            :loading="loading"
+                            @player-selected="handlePlayerSelected"
+                            @team-selected="handleTeamSelected"
+                            :currency-symbol="currencySymbol"
+                            :dataset-id="datasetId"
+                        />
+                    </SectionCard>
                 </div>
             </q-card-section>
         </q-card>
@@ -172,6 +172,7 @@ import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import SectionCard from './layout/SectionCard.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 import WonderkidsScatterPlot from './WonderkidsScatterPlot.vue'
@@ -211,6 +212,7 @@ export default defineComponent({
     PlayerDataTable,
     PlayerDetailDialog,
     WonderkidsScatterPlot,
+    SectionCard,
   },
   props: {
     show: {
@@ -471,89 +473,80 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .wonderkids-dialog {
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    
-    .body--dark & {
-        background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    background: var(--surface-card);
+}
 
-    .card-header {
-        background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: $border-radius $border-radius 0 0;
-        
-        .q-icon {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .text-h6 {
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-        
-        .q-btn {
-            color: rgba(255, 255, 255, 0.8);
-            
-            &:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-            }
-        }
-    }
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// UpgradeFinderDialog - icon, title, actions, close, all in normal flow.
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
 
-    .q-card-section {
-        &:not(.card-header) {
-            background: transparent;
-            
-            .body--dark & {
-                background: transparent;
-            }
-        }
-    }
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
 
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+}
+
+.wonderkids-dialog {
     // Slider styling
     .slider-label {
-        color: #334155;
+        color: var(--text-primary);
         font-weight: 600;
         font-size: 0.9rem;
         margin-bottom: 0.5rem;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.9);
-        }
     }
 
     :deep(.q-slider) {
         .q-slider__track {
-            background: rgba(46, 116, 181, 0.1);
-            
-            .body--dark & {
-                background: rgba(255, 255, 255, 0.1);
-            }
+            background: var(--accent-soft-strong);
         }
-        
+
         .q-slider__track-active {
-            background: #2e74b5;
-            
-            .body--dark & {
-                background: #60a5fa;
-            }
+            background: var(--accent);
         }
-        
+
         .q-slider__thumb {
-            background: #2e74b5;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            
-            .body--dark & {
-                background: #60a5fa;
-                border-color: rgba(255, 255, 255, 0.1);
-            }
+            background: var(--accent);
+            border: 2px solid var(--surface-card);
+            box-shadow: var(--shadow-1);
         }
     }
 
@@ -561,141 +554,74 @@ export default defineComponent({
     :deep(.q-select) {
         .q-field__control {
             border-radius: 8px;
-            background: rgba(46, 116, 181, 0.02);
-            border: 1px solid rgba(46, 116, 181, 0.1);
+            background: var(--accent-soft);
+            border: 1px solid var(--surface-border);
             transition: all 0.2s ease;
-            
-            .body--dark & {
-                background: rgba(96, 165, 250, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            
+
             &:hover {
-                border-color: rgba(46, 116, 181, 0.2);
-                background: rgba(46, 116, 181, 0.04);
-                
-                .body--dark & {
-                    border-color: rgba(255, 255, 255, 0.2);
-                    background: rgba(96, 165, 250, 0.08);
-                }
+                border-color: var(--surface-border-strong);
+                background: var(--accent-soft-strong);
             }
         }
-        
+
         .q-field__native,
         .q-field__input {
-            color: #334155;
+            color: var(--text-primary);
             font-weight: 500;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
-            }
         }
-        
+
         .q-field__label {
-            color: #64748b;
+            color: var(--text-secondary);
             font-weight: 600;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
         }
     }
 
     // Separator styling
     .q-separator {
-        background-color: rgba(0, 0, 0, 0.08);
-        
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
+        background-color: var(--surface-border);
     }
 
     // Loading state styling
     .loading-state {
         .q-spinner-dots {
-            color: #2e74b5;
+            color: var(--accent);
         }
-        
+
         .text-caption {
-            color: #6b7280;
-            
-            .body--dark & {
-                color: #9ca3af;
-            }
-        }
-    }
-
-    // Chart container styling
-    .wonderkids-chart-container {
-        border-radius: $border-radius;
-        box-shadow: $card-shadow;
-        border: 1px solid rgba(0, 0, 0, 0.04);
-
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.02);
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            color: var(--text-secondary);
         }
     }
 
     // Table container styling
     .wonderkids-table-container {
-        border-radius: $border-radius;
-        box-shadow: $card-shadow;
-        border: 1px solid rgba(0, 0, 0, 0.04);
-
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.02);
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
         :deep(.q-table) {
-            border-radius: $border-radius;
+            border-radius: var(--radius-md);
             overflow: hidden;
 
             .q-table__top {
                 padding: 1rem;
-                background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
-
-                .body--dark & {
-                    background: rgba(255, 255, 255, 0.02);
-                }
+                background: var(--accent-soft);
             }
 
             .q-table__container {
-                border-radius: 0 0 $border-radius $border-radius;
+                border-radius: 0 0 var(--radius-md) var(--radius-md);
             }
 
             thead {
                 th {
-                    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-                    color: #374151;
+                    background: var(--surface-raised);
+                    color: var(--text-secondary);
                     font-weight: 600;
-                    border-bottom: 2px solid #e5e7eb;
-
-                    .body--dark & {
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
-                        color: #d1d5db;
-                        border-bottom-color: rgba(255, 255, 255, 0.1);
-                    }
+                    border-bottom: 2px solid var(--surface-border-strong);
                 }
             }
 
             tbody {
                 tr {
-                    border-bottom: 1px solid #f3f4f6;
+                    border-bottom: 1px solid var(--surface-border);
 
                     &:hover {
-                        background-color: rgba(46, 116, 181, 0.04);
-                    }
-
-                    .body--dark & {
-                        border-bottom-color: rgba(255, 255, 255, 0.05);
-
-                        &:hover {
-                            background-color: rgba(255, 255, 255, 0.03);
-                        }
+                        background-color: var(--accent-soft);
                     }
                 }
             }
@@ -713,41 +639,33 @@ export default defineComponent({
     // Subtitle styling
     .text-subtitle1 {
         font-weight: 600;
-        color: #374151;
+        color: var(--text-primary);
         margin-bottom: 1rem;
-        
-        .body--dark & {
-            color: #d1d5db;
-        }
-        
+
         .text-caption {
             font-weight: 400;
-            color: #6b7280;
-            
-            .body--dark & {
-                color: #9ca3af;
-            }
+            color: var(--text-secondary);
         }
     }
 
     // Responsive design
     @media (max-width: 768px) {
-        .card-header {
-            padding: 1rem;
-            
-            .text-h6 {
-                font-size: 1.1rem;
-            }
+        .dialog-chrome__header {
+            padding: 10px 12px;
         }
-        
+
+        .dialog-chrome__title {
+            font-size: 1rem;
+        }
+
         .q-card-section {
             padding: 1rem;
-            
+
             &:last-child {
                 padding-bottom: 1rem;
             }
         }
-        
+
         .wonderkids-table-container {
             :deep(.q-table) {
                 max-height: max(150px, calc(100vh - 620px));
@@ -760,8 +678,9 @@ export default defineComponent({
     }
 
     @media (max-width: 480px) {
-        .card-header {
-            padding: 0.75rem;
+        .dialog-chrome__header {
+            padding: 8px 8px;
+            gap: 0.4rem;
         }
 
         .q-card-section {

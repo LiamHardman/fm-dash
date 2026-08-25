@@ -1,80 +1,40 @@
 <template>
     <q-layout view="hHh lpR fFf">
-        <q-header
-            flat
-            class="app-header"
-        >
+        <q-header flat class="app-header">
             <q-toolbar class="header-toolbar">
                 <q-btn
                     flat
                     round
                     icon="menu"
-                    @click="mobileMenuOpen = !mobileMenuOpen"
-                    class="mobile-menu-btn"
-                    aria-label="Open navigation menu"
+                    @click="toggleSidebar"
+                    class="sidebar-toggle-btn"
+                    aria-label="Toggle navigation"
                 />
                 <q-toolbar-title class="header-title">
                     <router-link to="/" class="app-title-link">
                         <q-icon name="sports_soccer" class="brand-icon" />FM-Dash
                     </router-link>
                 </q-toolbar-title>
-                
-                <div class="nav-links">
-                    <!-- Always show Upload, Progression, and Docs -->
-                    <router-link to="/upload" class="nav-link">Upload</router-link>
-                    <router-link to="/progression" class="nav-link">Progression</router-link>
-                    <router-link to="/save-import" class="nav-link">Save Import</router-link>
-                    <router-link to="/docs" class="nav-link">Docs</router-link>
-                    
-                    <!-- Only show these links when data is uploaded -->
-                    <template v-if="currentDatasetId">
-                        <router-link 
-                            :to="`/dataset/${currentDatasetId}`" 
-                            class="nav-link"
-                        >
-                            Players
-                        </router-link>
-                        <!-- <router-link to="/team-view" class="nav-link">Team View</router-link> -->
-                        <router-link to="/performance" class="nav-link">Performance</router-link>
-                        <router-link to="/nations" class="nav-link">Nations</router-link>
-                        <router-link to="/teams" class="nav-link">Teams</router-link>
-                        <router-link to="/leagues" class="nav-link">Leagues</router-link>
-                        <router-link 
-                            to="/wishlist" 
-                            class="nav-link wishlist-link"
-                        >
-                            <q-icon name="favorite" size="1rem" class="q-mr-xs" />
-                            Wishlist
-                            <q-badge 
-                                v-if="wishlistCount > 0" 
-                                :label="wishlistCount" 
-                                color="positive" 
-                                class="q-ml-xs"
-                            />
-                        </router-link>
-                    </template>
-                </div>
 
                 <!-- Universal Search Component - only show when data is uploaded -->
                 <div v-if="currentDatasetId" class="search-container">
                     <UniversalSearch />
                 </div>
-                
+
                 <q-space />
-                
-                <!-- Always show these buttons -->
+
                 <!-- Buy me a coffee button -->
                 <div class="bmc-button-wrapper">
-                    <a 
-                        href="https://www.buymeacoffee.com/LiamHardman" 
-                        target="_blank" 
+                    <a
+                        href="https://www.buymeacoffee.com/LiamHardman"
+                        target="_blank"
                         rel="noopener noreferrer"
                         class="bmc-button"
                     >
                         <span class="bmc-text">☕ Buy me a coffee</span>
                     </a>
                 </div>
-                
+
                 <!-- Settings button -->
                 <q-btn
                     flat
@@ -85,7 +45,7 @@
                 >
                     <q-tooltip>Settings</q-tooltip>
                 </q-btn>
-                
+
                 <!-- Dark mode toggle -->
                 <q-btn
                     flat
@@ -99,72 +59,76 @@
             </q-toolbar>
         </q-header>
 
-        <!-- Mobile navigation drawer (the inline nav links are hidden under 768px) -->
+        <!-- Persistent sidebar navigation: embedded panel above 768px (collapsible to
+             an icon rail via sidebarMini), overlay drawer below it (toggled by the
+             header's menu button via sidebarOpen). Replaces the old flat top-nav
+             link list, which had grown to 8+ links with no room to grow further. -->
         <q-drawer
-            v-model="mobileMenuOpen"
-            side="left"
-            overlay
-            behavior="mobile"
-            :width="260"
-            class="mobile-nav-drawer"
+            v-model="sidebarOpen"
+            show-if-above
+            :mini="sidebarMini"
+            :width="248"
+            :mini-width="72"
+            :breakpoint="SIDEBAR_BREAKPOINT"
+            bordered
+            class="app-sidebar"
         >
-            <q-list padding>
-                <q-item clickable v-ripple to="/" exact @click="mobileMenuOpen = false">
-                    <q-item-section avatar><q-icon name="home" /></q-item-section>
-                    <q-item-section>Home</q-item-section>
-                </q-item>
-                <q-item clickable v-ripple to="/upload" @click="mobileMenuOpen = false">
-                    <q-item-section avatar><q-icon name="upload" /></q-item-section>
-                    <q-item-section>Upload</q-item-section>
-                </q-item>
-                <q-item clickable v-ripple to="/progression" @click="mobileMenuOpen = false">
-                    <q-item-section avatar><q-icon name="trending_up" /></q-item-section>
-                    <q-item-section>Progression</q-item-section>
-                </q-item>
-                <q-item clickable v-ripple to="/save-import" @click="mobileMenuOpen = false">
-                    <q-item-section avatar><q-icon name="science" /></q-item-section>
-                    <q-item-section>Save Import</q-item-section>
-                </q-item>
-                <q-item clickable v-ripple to="/docs" @click="mobileMenuOpen = false">
-                    <q-item-section avatar><q-icon name="menu_book" /></q-item-section>
-                    <q-item-section>Docs</q-item-section>
-                </q-item>
-                <template v-if="currentDatasetId">
-                    <q-separator spaced />
-                    <q-item clickable v-ripple :to="`/dataset/${currentDatasetId}`" @click="mobileMenuOpen = false">
-                        <q-item-section avatar><q-icon name="groups" /></q-item-section>
-                        <q-item-section>Players</q-item-section>
-                    </q-item>
-                    <q-item clickable v-ripple to="/performance" @click="mobileMenuOpen = false">
-                        <q-item-section avatar><q-icon name="leaderboard" /></q-item-section>
-                        <q-item-section>Performance</q-item-section>
-                    </q-item>
-                    <q-item clickable v-ripple to="/nations" @click="mobileMenuOpen = false">
-                        <q-item-section avatar><q-icon name="flag" /></q-item-section>
-                        <q-item-section>Nations</q-item-section>
-                    </q-item>
-                    <q-item clickable v-ripple to="/teams" @click="mobileMenuOpen = false">
-                        <q-item-section avatar><q-icon name="shield" /></q-item-section>
-                        <q-item-section>Teams</q-item-section>
-                    </q-item>
-                    <q-item clickable v-ripple to="/leagues" @click="mobileMenuOpen = false">
-                        <q-item-section avatar><q-icon name="emoji_events" /></q-item-section>
-                        <q-item-section>Leagues</q-item-section>
-                    </q-item>
-                    <q-item clickable v-ripple to="/wishlist" @click="mobileMenuOpen = false">
-                        <q-item-section avatar><q-icon name="favorite" /></q-item-section>
-                        <q-item-section>
-                            Wishlist
+            <div class="sidebar-inner">
+                <q-list padding class="sidebar-nav-list">
+                    <q-item
+                        v-for="item in visibleNavItems"
+                        :key="item.id"
+                        clickable
+                        v-ripple
+                        :to="item.to"
+                        :exact="item.exact"
+                        active-class="sidebar-nav-item--active"
+                        class="sidebar-nav-item"
+                        @click="sidebarOpen = false"
+                    >
+                        <q-item-section avatar>
+                            <q-icon :name="item.icon" />
+                        </q-item-section>
+                        <q-item-section v-if="!sidebarMini">
+                            {{ item.label }}
                             <q-badge
-                                v-if="wishlistCount > 0"
-                                :label="wishlistCount"
+                                v-if="item.badge"
+                                :label="item.badge"
                                 color="positive"
                                 class="q-ml-xs"
                             />
                         </q-item-section>
+                        <q-tooltip v-if="sidebarMini" anchor="center right" self="center left">
+                            {{ item.label }}
+                        </q-tooltip>
                     </q-item>
-                </template>
-            </q-list>
+                </q-list>
+
+                <div class="sidebar-spacer" />
+
+                <div class="sidebar-footer">
+                    <q-btn
+                        flat
+                        dense
+                        no-caps
+                        :icon="sidebarMini ? 'tune' : undefined"
+                        :label="sidebarMini ? '' : 'Customize'"
+                        class="sidebar-footer-btn"
+                        @click="showCustomizeDialog = true"
+                    >
+                        <q-tooltip v-if="sidebarMini">Customize navigation</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                        flat
+                        dense
+                        round
+                        :icon="sidebarMini ? 'chevron_right' : 'chevron_left'"
+                        class="sidebar-collapse-btn gt-xs"
+                        aria-label="Collapse sidebar"
+                        @click="sidebarMini = !sidebarMini"
+                    />
+                </div>
+            </div>
         </q-drawer>
 
         <q-page-container>
@@ -173,9 +137,22 @@
 
         <!-- Settings Modal -->
         <SettingsModal v-model="showSettingsModal" />
-        
+
         <!-- First Time Tutorial Modal -->
         <FirstTimeTutorialModal v-model="showTutorialModal" />
+
+        <!-- Sidebar navigation customization (hide/reorder items) -->
+        <CustomizeListDialog
+            v-model="showCustomizeDialog"
+            title="Customize navigation"
+            hint="Reorder or hide sidebar items. Dataset-only items stay hidden until a dataset is loaded, regardless of this setting."
+            :items="allNavItemsMeta"
+            :hidden-ids="uiStore.sidebarHiddenItems"
+            :order-ids="uiStore.sidebarItemOrder"
+            @update:hidden="uiStore.setSidebarHiddenItems"
+            @update:order="uiStore.setSidebarItemOrder"
+            @reset="() => { uiStore.setSidebarHiddenItems([]); uiStore.setSidebarItemOrder([]) }"
+        />
 
         <!-- FM-Dash Chatbot — dataset-scoped, only mounted once a dataset is loaded -->
         <ChatWidget v-if="currentDatasetId" />
@@ -187,6 +164,7 @@ import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref } from 'vue'
 import ChatWidget from './components/ChatWidget.vue'
 import FirstTimeTutorialModal from './components/FirstTimeTutorialModal.vue'
+import CustomizeListDialog from './components/layout/CustomizeListDialog.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
 import { useAnalytics } from './composables/useAnalytics'
@@ -200,6 +178,7 @@ export default defineComponent({
     UniversalSearch,
     SettingsModal,
     FirstTimeTutorialModal,
+    CustomizeListDialog,
     ChatWidget,
   },
   setup() {
@@ -214,8 +193,28 @@ export default defineComponent({
     // Settings modal state
     const showSettingsModal = ref(false)
 
-    // Mobile navigation drawer state
-    const mobileMenuOpen = ref(false)
+    // Sidebar customization dialog state
+    const showCustomizeDialog = ref(false)
+
+    // Sidebar state: sidebarOpen controls the overlay drawer below the 768px
+    // breakpoint; sidebarMini controls the icon-rail collapse above it.
+    const sidebarOpen = ref(false)
+    const sidebarMini = ref(false)
+
+    // Must match the q-drawer's own :breakpoint="768" below -- using Quasar's
+    // $q.screen.lt.sm (600px) here instead left a 600-767px gap where the
+    // drawer was already in mobile-overlay mode (only responds to
+    // sidebarOpen) but this toggled sidebarMini instead, so the hamburger
+    // button did nothing visible in that width range.
+    const SIDEBAR_BREAKPOINT = 768
+
+    const toggleSidebar = () => {
+      if ($q.screen.width < SIDEBAR_BREAKPOINT) {
+        sidebarOpen.value = !sidebarOpen.value
+      } else {
+        sidebarMini.value = !sidebarMini.value
+      }
+    }
 
     // Tutorial modal state
     const showTutorialModal = computed({
@@ -239,14 +238,79 @@ export default defineComponent({
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
     const wishlistCount = computed(() => wishlistStore.getWishlistCount(currentDatasetId.value))
 
+    // Full nav metadata. requiresDataset items only render once a dataset is
+    // loaded; `to` is computed per-item since Players needs the current
+    // dataset id in its path.
+    const allNavItemsMeta = computed(() => [
+      { id: 'home', label: 'Home', icon: 'home', to: '/', exact: true },
+      { id: 'upload', label: 'Upload', icon: 'upload', to: '/upload' },
+      { id: 'progression', label: 'Progression', icon: 'trending_up', to: '/progression' },
+      { id: 'save-import', label: 'Save Import', icon: 'science', to: '/save-import' },
+      { id: 'docs', label: 'Docs', icon: 'menu_book', to: '/docs' },
+      {
+        id: 'players',
+        label: 'Players',
+        icon: 'groups',
+        to: currentDatasetId.value ? `/dataset/${currentDatasetId.value}` : '/upload',
+        requiresDataset: true,
+      },
+      {
+        id: 'performance',
+        label: 'Performance',
+        icon: 'leaderboard',
+        to: '/performance',
+        requiresDataset: true,
+      },
+      { id: 'nations', label: 'Nations', icon: 'flag', to: '/nations', requiresDataset: true },
+      { id: 'teams', label: 'Teams', icon: 'shield', to: '/teams', requiresDataset: true },
+      {
+        id: 'leagues',
+        label: 'Leagues',
+        icon: 'emoji_events',
+        to: '/leagues',
+        requiresDataset: true,
+      },
+      {
+        id: 'wishlist',
+        label: 'Wishlist',
+        icon: 'favorite',
+        to: '/wishlist',
+        requiresDataset: true,
+        badge: wishlistCount.value > 0 ? wishlistCount.value : null,
+      },
+    ])
+
+    const visibleNavItems = computed(() => {
+      const hidden = new Set(uiStore.sidebarHiddenItems)
+      const order = uiStore.sidebarItemOrder
+      let items = allNavItemsMeta.value.filter(
+        (item) => (!item.requiresDataset || currentDatasetId.value) && !hidden.has(item.id)
+      )
+      if (order.length) {
+        items = [...items].sort((a, b) => {
+          const ai = order.indexOf(a.id)
+          const bi = order.indexOf(b.id)
+          return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi)
+        })
+      }
+      return items
+    })
+
     return {
+      uiStore,
       isDarkModeActive: uiStore.isDarkModeActive,
       toggleDarkMode: uiStore.toggleDarkMode,
       currentDatasetId,
       wishlistCount,
       showSettingsModal,
       showTutorialModal,
-      mobileMenuOpen,
+      showCustomizeDialog,
+      sidebarOpen,
+      sidebarMini,
+      toggleSidebar,
+      SIDEBAR_BREAKPOINT,
+      allNavItemsMeta,
+      visibleNavItems,
     }
   },
 })
@@ -266,14 +330,13 @@ export default defineComponent({
 }
 
 .header-toolbar {
-    padding: 0 2rem;
+    padding: 0 1.25rem;
     min-height: 60px;
 }
 
-// Hamburger only appears when the inline nav links are hidden (≤768px).
-.mobile-menu-btn {
-    display: none;
+.sidebar-toggle-btn {
     color: var(--text-secondary);
+    margin-right: 0.25rem;
 }
 
 .header-title {
@@ -282,7 +345,7 @@ export default defineComponent({
 
 .app-title-link {
     text-decoration: none;
-    color: #1a237e;
+    color: var(--text-primary);
     font-weight: 400;
     font-size: 1.5rem;
     letter-spacing: 2px;
@@ -295,10 +358,6 @@ export default defineComponent({
     &:hover {
         opacity: 0.7;
     }
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
 }
 
 .brand-icon {
@@ -306,95 +365,37 @@ export default defineComponent({
     opacity: 0.85;
 }
 
-.nav-links {
-    display: flex;
-    gap: 0.25rem;
-    margin-left: 3rem;
-}
-
 .search-container {
-    margin-left: 2rem;
+    margin-left: 1.5rem;
     margin-right: 1rem;
 }
 
-.nav-link {
-    text-decoration: none;
-    color: #555;
-    font-weight: 400;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
-    padding: 0.4rem 0.75rem;
-    border-radius: 20px;
-    position: relative;
-    transition: color 0.2s ease, background-color 0.2s ease;
-    display: flex;
-    align-items: center;
-
-    &:hover {
-        color: #1a237e;
-        background-color: rgba(26, 35, 126, 0.06);
-    }
-
-    &.router-link-active {
-        color: #1a237e;
-        background-color: rgba(26, 35, 126, 0.1);
-        font-weight: 500;
-    }
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.65);
-
-        &:hover {
-            color: rgba(255, 255, 255, 0.9);
-            background-color: rgba(255, 255, 255, 0.08);
-        }
-
-        &.router-link-active {
-            color: rgba(255, 255, 255, 0.95);
-            background-color: rgba(255, 255, 255, 0.12);
-            font-weight: 500;
-        }
-    }
-}
-
-.wishlist-link {
-    .q-icon {
-        transition: color 0.2s ease;
-    }
-}
-
 .dark-mode-btn {
-    color: #666;
-    
+    color: var(--text-secondary);
+
     &:hover {
-        color: #1a237e;
-        background: rgba(26, 35, 126, 0.05);
+        color: var(--accent);
+        background: var(--accent-soft);
     }
-    
+
     .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
         &:hover {
-            color: rgba(255, 255, 255, 0.9);
             background: rgba(255, 255, 255, 0.1);
         }
     }
 }
 
 .settings-btn {
-    color: #666;
+    color: var(--text-secondary);
     margin-right: 0.5rem;
-    
+
     &:hover {
-        color: #1a237e;
-        background: rgba(26, 35, 126, 0.05);
+        color: var(--accent);
+        background: var(--accent-soft);
     }
-    
+
     .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
         &:hover {
-            color: rgba(255, 255, 255, 0.9);
             background: rgba(255, 255, 255, 0.1);
         }
     }
@@ -407,7 +408,7 @@ export default defineComponent({
 
     .bmc-button {
         background: transparent;
-        border: 1.5px solid #1a237e;
+        border: 1.5px solid var(--accent);
         border-radius: 8px;
         height: 36px;
         display: flex;
@@ -415,16 +416,16 @@ export default defineComponent({
         justify-content: center;
         padding: 0 1rem;
         text-decoration: none;
-        color: #1a237e;
+        color: var(--accent);
         font-size: 13px;
         font-weight: 500;
         transition: all 0.2s ease;
         white-space: nowrap;
 
         &:hover {
-            background: rgba(26, 35, 126, 0.08);
+            background: var(--accent-soft);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(26, 35, 126, 0.15);
+            box-shadow: 0 2px 8px var(--accent-soft-strong);
         }
 
         .body--dark & {
@@ -445,38 +446,101 @@ export default defineComponent({
     }
 }
 
+// ─── Sidebar ──────────────────────────────────────────────────────────────
 
+.app-sidebar {
+    background: var(--surface-card);
+
+    :deep(.q-drawer__content) {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+.sidebar-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.sidebar-nav-list {
+    flex: 0 0 auto;
+}
+
+.sidebar-nav-item {
+    border-radius: var(--radius-sm);
+    margin: 0 0.5rem 0.15rem 0.5rem;
+    color: var(--text-secondary);
+
+    .q-icon {
+        color: var(--text-secondary);
+    }
+
+    &:hover {
+        background: var(--accent-soft);
+        color: var(--text-primary);
+    }
+
+    &--active {
+        background: var(--accent-soft-strong);
+        color: var(--accent);
+        font-weight: 600;
+
+        .q-icon {
+            color: var(--accent);
+        }
+    }
+}
+
+.sidebar-spacer {
+    flex: 1 1 auto;
+}
+
+.sidebar-footer {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem;
+    border-top: 1px solid var(--surface-border);
+}
+
+.sidebar-footer-btn {
+    color: var(--text-secondary);
+}
+
+// ─── Responsive header ───────────────────────────────────────────────────
+// Ported forward from the pre-redesign top-nav's own 768px media query (see
+// git history), which shrank the header's chrome on narrow viewports. The
+// old rule also hid `.nav-links`/showed a `.mobile-menu-btn` -- both no
+// longer exist now that nav lives entirely in the q-drawer sidebar (which
+// has its own :breakpoint="768" prop) -- but the header padding/title/
+// bmc-button sizing adjustments still apply since those elements are still
+// in the top bar and were otherwise left un-migrated when the flat nav was
+// replaced.
 @media (max-width: 768px) {
     .header-toolbar {
-        padding: 0 1rem;
+        padding: 0 0.75rem;
         min-height: 56px;
     }
-    
-    .app-title-link {
-        font-size: 1.2rem;
-        letter-spacing: 1px;
-    }
-    
-    .nav-links {
-        display: none;
-    }
 
-    .mobile-menu-btn {
-        display: inline-flex;
-        margin-right: 0.25rem;
+    .app-title-link {
+        font-size: 1.15rem;
+        letter-spacing: 1px;
     }
 
     .search-container {
-        margin-left: 1rem;
+        margin-left: 0.75rem;
         margin-right: 0.5rem;
     }
-    
+
     .bmc-button-wrapper {
-        margin-right: 0.5rem;
+        margin-right: 0.25rem;
 
         .bmc-button {
-            height: 32px !important;
-            font-size: 12px !important;
+            height: 32px;
+            padding: 0 0.6rem;
+            font-size: 12px;
         }
     }
 }

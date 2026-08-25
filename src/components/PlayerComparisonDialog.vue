@@ -8,28 +8,35 @@
     transition-hide="slide-down"
   >
     <q-card class="comparison-dialog">
-      <!-- Header -->
-      <q-card-section class="row items-center q-pb-none card-header">
-        <q-icon name="compare_arrows" size="md" class="q-mr-sm" />
-        <div class="text-h6">Player Comparison</div>
-        <q-space />
-        <q-btn
-          icon="close"
-          flat
-          round
-          dense
-          v-close-popup
-          @click="$emit('close')"
-        />
-      </q-card-section>
+      <!-- Dialog chrome: header (icon/title/close), the same convention used by
+           PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+           button, all in normal flow. -->
+      <div class="dialog-chrome">
+        <div class="dialog-chrome__header">
+          <q-icon name="compare_arrows" class="dialog-chrome__icon" />
+          <div class="dialog-chrome__title">Player Comparison</div>
+          <q-space />
+          <div class="dialog-chrome__actions">
+            <q-btn
+              icon="close"
+              flat
+              round
+              dense
+              class="dialog-chrome__close"
+              v-close-popup
+              @click="$emit('close')"
+            />
+          </div>
+        </div>
+      </div>
 
       <!-- Empty state -->
-      <q-card-section v-if="players.length < 2" class="text-center q-pa-xl">
-        <q-icon name="compare_arrows" size="5rem" color="grey-5" class="q-mb-md" />
-        <div class="text-h6 text-grey-6">Add at least 2 players to compare</div>
-        <div class="text-caption text-grey-5 q-mt-sm">
-          Right-click any player in the table and select "Add to Comparison"
-        </div>
+      <q-card-section v-if="players.length < 2" class="q-pa-xl">
+        <EmptyState
+          icon="compare_arrows"
+          title="Add at least 2 players to compare"
+          description='Right-click any player in the table and select "Add to Comparison"'
+        />
       </q-card-section>
 
       <template v-else>
@@ -125,6 +132,8 @@ import { useQuasar } from 'quasar'
 import { computed } from 'vue'
 // biome-ignore lint/correctness/noUnusedImports: used in template
 import { Radar } from 'vue-chartjs'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import EmptyState from './layout/EmptyState.vue'
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
 
@@ -393,36 +402,57 @@ const radarOptions = computed(() => {
 </script>
 
 <style lang="scss" scoped>
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// UpgradeFinderDialog — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.dialog-chrome__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+  font-size: 1.3rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: scale(1.08);
+  }
+}
+
 .comparison-dialog {
-  border-radius: $border-radius;
-  box-shadow: $card-shadow;
-
-  .body--dark & {
-    background-color: #1e293b !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  // Gradient header matching other dialogs
-  .card-header {
-    background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
-    color: white;
-    padding: 1.5rem;
-    border-radius: $border-radius $border-radius 0 0;
-
-    .q-icon { color: rgba(255, 255, 255, 0.9); }
-    .text-h6 { font-weight: 600; font-size: 1.25rem; }
-    .q-btn {
-      color: rgba(255, 255, 255, 0.8);
-      &:hover { background-color: rgba(255, 255, 255, 0.1); color: white; }
-    }
-  }
-
-  // Player column header row
-  .player-columns-header {
-    background: transparent;
-
-    .body--dark & { background: transparent; }
-  }
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
+  background: var(--surface-card);
 
   .col-row {
     display: flex;
@@ -446,9 +476,7 @@ const radarOptions = computed(() => {
     border-radius: 6px;
     padding: 10px 12px;
     text-align: center;
-    background: rgba(0, 0, 0, 0.03);
-
-    .body--dark & { background: rgba(255, 255, 255, 0.04); }
+    background: var(--surface-raised);
   }
 
   .player-header-name {
@@ -466,7 +494,6 @@ const radarOptions = computed(() => {
   }
 
   // Radar
-  .radar-section { }
   .radar-wrapper {
     max-width: 460px;
     margin: 0 auto;
@@ -480,30 +507,24 @@ const radarOptions = computed(() => {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #64748b;
+    color: var(--text-secondary);
     padding-bottom: 4px;
-    border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+    border-bottom: 1px solid var(--surface-border-strong);
     margin-bottom: 2px;
-
-    .body--dark & { color: #94a3b8; border-bottom-color: rgba(148, 163, 184, 0.2); }
   }
 
   // Attribute rows
-  .section-body { }
-
   .attr-row {
     display: flex;
     gap: 10px;
     align-items: center;
     min-height: 30px;
-    border-bottom: 1px solid rgba(100, 116, 139, 0.06);
-
-    .body--dark & { border-bottom-color: rgba(148, 163, 184, 0.08); }
+    border-bottom: 1px solid var(--surface-border);
   }
 
   .attr-label {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--text-muted);
     font-weight: 500;
     padding: 3px 0;
     white-space: nowrap;

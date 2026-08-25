@@ -1,52 +1,48 @@
 <template>
     <q-page class="card-designs-page">
-        <section class="cards-preview-shell">
-            <div class="preview-header">
-                <div>
-                    <p class="preview-kicker">Card tier explorations</p>
-                    <h1>FM-Dash card surface studies</h1>
-                </div>
-                <p class="preview-summary">
-                    CSS-only card treatments grouped by standard rarity,
-                    performance events, legacy stories, and match moments. Each
-                    set keeps the shared player-card hierarchy: rating,
-                    position, name, vitals, identity marks, face area, and six
-                    footer stats.
-                </p>
-            </div>
+        <div class="page-container">
+            <PageHeader
+                title="Card Design Studio"
+                subtitle="Card tier explorations — CSS-only treatments grouped by standard rarity, performance events, legacy stories, and match moments. Each set keeps the shared card hierarchy: rating, position, name, vitals, identity marks, face area, and six footer stats."
+                icon="style"
+            />
 
-            <q-tabs
-                v-model="activeDesignTab"
-                class="design-tabs"
-                active-color="amber-3"
-                indicator-color="amber-4"
-                align="left"
-                dense
-            >
-                <q-tab name="all" label="All card designs" />
-                <q-tab name="rare-hover-effects" label="Rare hover effects" />
-                <q-tab name="tots-hover-effects" label="TOTS hover effects" />
-                <q-tab name="icon-hover-effects" label="Icon hover effects" />
-                <q-tab name="hero-hover-effects" label="Hero hover effects" />
-                <q-tab name="motm-hover-effects" label="MOTM hover effects" />
-            </q-tabs>
+            <SectionCard class="design-picker-card">
+                <q-tabs
+                    v-model="activeDesignTab"
+                    class="design-tabs"
+                    active-color="amber-3"
+                    indicator-color="amber-4"
+                    align="left"
+                    dense
+                >
+                    <q-tab name="all" label="All card designs" />
+                    <q-tab name="rare-hover-effects" label="Rare hover effects" />
+                    <q-tab name="tots-hover-effects" label="TOTS hover effects" />
+                    <q-tab name="icon-hover-effects" label="Icon hover effects" />
+                    <q-tab name="hero-hover-effects" label="Hero hover effects" />
+                    <q-tab name="motm-hover-effects" label="MOTM hover effects" />
+                </q-tabs>
+            </SectionCard>
 
             <div class="design-sections">
-                <section
+                <SectionCard
                     v-for="section in activeDesignSections"
                     :key="section.id"
                     class="design-section"
                     :aria-labelledby="`${section.id}-title`"
                 >
-                    <div class="design-section__header">
-                        <div>
-                            <p class="preview-kicker">{{ section.kicker }}</p>
-                            <h2 :id="`${section.id}-title`">
-                                {{ section.title }}
-                            </h2>
+                    <template #header>
+                        <div class="design-section__header">
+                            <div>
+                                <p class="preview-kicker">{{ section.kicker }}</p>
+                                <h2 :id="`${section.id}-title`">
+                                    {{ section.title }}
+                                </h2>
+                            </div>
+                            <p>{{ section.description }}</p>
                         </div>
-                        <p>{{ section.description }}</p>
-                    </div>
+                    </template>
 
                     <div
                         class="card-gallery"
@@ -161,14 +157,16 @@
                             </div>
                         </article>
                     </div>
-                </section>
+                </SectionCard>
             </div>
-        </section>
+        </div>
     </q-page>
 </template>
 
 <script>
 import { computed, defineComponent, ref } from 'vue'
+import PageHeader from '../components/layout/PageHeader.vue'
+import SectionCard from '../components/layout/SectionCard.vue'
 
 const bronzeNonRarePlayer = {
   overall: 62,
@@ -2294,6 +2292,10 @@ const updateCardPointer = (event) => {
 
 export default defineComponent({
   name: 'CardDesignsPage',
+  components: {
+    PageHeader,
+    SectionCard,
+  },
   setup() {
     const activeDesignTab = ref('all')
     const activeDesignSections = computed(() => {
@@ -2331,87 +2333,86 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+// This page is a permanent, dark "card museum" showroom — a deliberately
+// distinct visual system from the rest of the app (same precedent as the
+// pitch-turf gradient on TeamViewPage/NationsPage and the Team-of-the-Season
+// colors on LeaguesPage). Rather than force it onto the app's light-surface
+// token values, the shared design tokens are re-scoped locally to this page's
+// own dark palette — PageHeader/SectionCard below consume var(--text-primary),
+// var(--accent), var(--surface-card) etc. as usual, but resolve to the
+// showroom's cream/amber identity instead of the app default, so the shared
+// primitives render "in theme" without any component-level overrides.
 .card-designs-page {
     min-height: 100vh;
+    --text-primary: #fff8ef;
+    --text-secondary: rgba(246, 238, 230, 0.72);
+    --text-muted: rgba(246, 238, 230, 0.52);
+    --accent: #f0a35c;
+    --accent-soft: rgba(240, 163, 92, 0.14);
+    --accent-soft-strong: rgba(240, 163, 92, 0.24);
+    --surface-card: rgba(17, 21, 32, 0.72);
+    --surface-raised: rgba(24, 29, 42, 0.86);
+    --surface-border: rgba(255, 226, 150, 0.16);
+    --surface-border-strong: rgba(255, 226, 150, 0.28);
+    --shadow-1: 0 8px 20px rgba(0, 0, 0, 0.3);
+    --shadow-2: 0 16px 36px rgba(0, 0, 0, 0.32);
+    --shadow-3: 0 26px 56px rgba(0, 0, 0, 0.46);
     background:
         radial-gradient(
             circle at 20% 8%,
-            rgba(240, 163, 92, 0.18),
-            transparent 28rem
+            rgba(240, 163, 92, 0.2),
+            transparent 30rem
         ),
         radial-gradient(
-            circle at 82% 22%,
+            circle at 82% 18%,
             rgba(171, 204, 222, 0.16),
-            transparent 22rem
+            transparent 24rem
         ),
-        linear-gradient(135deg, #10141d 0%, #161b24 52%, #0d1118 100%);
-    color: #f6eee6;
+        radial-gradient(
+            ellipse at 50% 100%,
+            rgba(255, 205, 140, 0.07),
+            transparent 60%
+        ),
+        linear-gradient(135deg, #11151f 0%, #171c27 52%, #0d1118 100%);
+    color: var(--text-primary);
 }
 
-.cards-preview-shell {
-    width: min(1180px, calc(100% - 2rem));
+.page-container {
+    max-width: var(--content-max-width);
     margin: 0 auto;
-    padding: 4rem 0 5rem;
-}
+    padding: var(--page-gutter) var(--page-gutter) calc(var(--page-gutter) * 2);
 
-.preview-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 430px);
-    gap: 2rem;
-    align-items: end;
-    margin-bottom: 2.5rem;
-
-    h1 {
-        margin: 0;
-        font-size: 2.4rem;
-        line-height: 1.05;
-        font-weight: 800;
-        color: #fff8ef;
-        letter-spacing: 0;
+    @media (max-width: 768px) {
+        padding: var(--page-gutter-sm) var(--page-gutter-sm) calc(var(--page-gutter-sm) * 2);
     }
 }
 
-.preview-kicker,
-.preview-summary {
-    color: rgba(246, 238, 230, 0.72);
-    margin: 0;
+.design-picker-card {
+    margin-bottom: var(--section-gap);
 }
 
 .preview-kicker {
-    margin-bottom: 0.65rem;
+    margin: 0 0 0.65rem;
+    color: var(--text-secondary);
     font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
-.preview-summary {
-    font-size: 0.95rem;
-    line-height: 1.6;
-}
-
 .design-tabs {
     width: fit-content;
     max-width: 100%;
-    margin: -0.35rem 0 2.4rem;
-    padding: 0.18rem;
-    color: rgba(255, 250, 232, 0.72);
-    background: rgba(8, 13, 26, 0.66);
-    border: 1px solid rgba(255, 226, 150, 0.22);
-    border-radius: 8px;
-    box-shadow:
-        0 16px 36px rgba(0, 0, 0, 0.28),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
 }
 
 .design-sections {
     display: grid;
-    gap: 3.5rem;
+    gap: var(--section-gap);
 }
 
-.design-section {
-    display: grid;
-    gap: 1.25rem;
+.design-section :deep(.section-card__header) {
+    align-items: flex-start;
 }
 
 .design-section__header {
@@ -2419,10 +2420,11 @@ export default defineComponent({
     grid-template-columns: minmax(0, 1fr) minmax(260px, 430px);
     gap: 2rem;
     align-items: end;
+    width: 100%;
 
     h2 {
         margin: 0;
-        color: #fff4e6;
+        color: var(--text-primary);
         font-size: 1.45rem;
         line-height: 1.1;
         font-weight: 800;
@@ -2431,7 +2433,7 @@ export default defineComponent({
 
     p {
         margin: 0;
-        color: rgba(246, 238, 230, 0.68);
+        color: var(--text-secondary);
         font-size: 0.9rem;
         line-height: 1.55;
     }
@@ -2458,13 +2460,13 @@ export default defineComponent({
         margin: 0 0 0.35rem;
         font-size: 1rem;
         line-height: 1.2;
-        color: #fff4e6;
+        color: var(--text-primary);
         font-weight: 750;
     }
 
     p {
         margin: 0;
-        color: rgba(246, 238, 230, 0.68);
+        color: var(--text-secondary);
         font-size: 0.84rem;
         line-height: 1.45;
     }
@@ -7203,13 +7205,11 @@ export default defineComponent({
 }
 
 @media (max-width: 1024px) {
-    .preview-header,
     .design-section__header,
     .card-gallery {
         grid-template-columns: 1fr;
     }
 
-    .preview-header,
     .design-section__header {
         align-items: start;
     }
@@ -7226,16 +7226,8 @@ export default defineComponent({
 }
 
 @media (max-width: 640px) {
-    .cards-preview-shell {
-        padding: 2rem 0 3rem;
-    }
-
     .design-tabs {
         width: 100%;
-    }
-
-    .preview-header h1 {
-        font-size: 1.9rem;
     }
 
     .design-panel {

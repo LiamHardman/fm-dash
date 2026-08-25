@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from 'vue'
 import playerService from '../services/playerService.js'
 import { PerformanceTracker } from '../utils/performance.js'
 import uploadFlowProfiler from '../utils/performanceProfiler.js'
+import { useRecentDatasetsStore } from './recentDatasetsStore.js'
 
 export const usePlayerStore = defineStore('player', () => {
   const allPlayers = shallowRef([])
@@ -213,6 +214,17 @@ export const usePlayerStore = defineStore('player', () => {
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       uploadFlowProfiler.markStep('session_storage_end')
       tracker.checkpoint('Session storage updated')
+
+      // Record this upload in the cross-session recent-datasets history (used
+      // by the dashboard home) so users can jump back into a past save.
+      try {
+        const uploadedFile = formData.get('playerFile')
+        useRecentDatasetsStore().recordDataset({
+          datasetId: response.datasetId,
+          label: uploadedFile?.name || 'FM Save',
+          playerCount: response.players?.length || response.playerCount || 0,
+        })
+      } catch (_e) {}
 
       // OPTIMIZATION: Use data from enhanced upload response if available
       if (response.players && response.roles) {

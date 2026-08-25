@@ -20,96 +20,103 @@
                 'width': '95vw',
                 'max-height': '90vh',
                 'position': 'relative',
-                'background': isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#fff',
-                'color': isDarkMode ? '#fff' : '#222',
                 'pointer-events': showCardGenerator ? 'none' : 'auto'
             }"
             :data-dark-mode="isDarkMode"
         >
-            <!-- Floating action buttons -->
-            <div class="floating-actions">
-                <q-btn
-                    v-if="player"
-                    dense
-                    flat
-                    :icon="isCurrentPlayerInComparison ? 'compare_arrows' : 'add_to_queue'"
-                    :color="isCurrentPlayerInComparison ? 'warning' : 'primary'"
-                    @click="toggleComparison"
-                    class="floating-compare-btn"
-                >
-                    <q-tooltip :class="isDarkMode ? 'bg-grey-7' : 'bg-white text-primary'">
-                        {{ isCurrentPlayerInComparison ? 'Remove from Comparison' : 'Add to Comparison' }}
-                    </q-tooltip>
-                </q-btn>
-                <q-btn
-                    dense
-                    flat
-                    icon="close"
-                    @click="$emit('close')"
-                    class="floating-close-btn"
-                    :class="isDarkMode ? 'text-grey-4' : 'text-grey-7'"
-                >
-                    <q-tooltip
-                        :class="
-                            isDarkMode
-                                ? 'bg-grey-7'
-                                : 'bg-white text-primary'
-                        "
-                        >Close</q-tooltip
+            <!-- Dialog chrome: header (icon/title/actions/close) + tab strip(s), in
+                 normal flow (not overlaid). This is the shared chrome convention also
+                 used by UpgradeFinderDialog: a header row, then any tab navigation
+                 directly beneath it. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="person" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">
+                        {{ displayPlayer?.name || 'Player Details' }}
+                    </div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            v-if="player"
+                            dense
+                            flat
+                            round
+                            :icon="isCurrentPlayerInComparison ? 'compare_arrows' : 'add_to_queue'"
+                            :color="isCurrentPlayerInComparison ? 'warning' : 'primary'"
+                            @click="toggleComparison"
+                            class="dialog-chrome__action-btn"
+                        >
+                            <q-tooltip :class="isDarkMode ? 'bg-grey-7' : 'bg-white text-primary'">
+                                {{ isCurrentPlayerInComparison ? 'Remove from Comparison' : 'Add to Comparison' }}
+                            </q-tooltip>
+                        </q-btn>
+                        <q-btn
+                            dense
+                            flat
+                            round
+                            icon="close"
+                            @click="$emit('close')"
+                            class="dialog-chrome__close"
+                        >
+                            <q-tooltip
+                                :class="
+                                    isDarkMode
+                                        ? 'bg-grey-7'
+                                        : 'bg-white text-primary'
+                                "
+                                >Close</q-tooltip
+                            >
+                        </q-btn>
+                    </div>
+                </div>
+
+                <!-- Snapshot Navigation (only present when the caller passes 2+ snapshots, e.g. Progression) -->
+                <div v-if="snapshotTabs.length > 1" class="dialog-chrome__tabs dialog-chrome__tabs--snapshot">
+                    <q-tabs
+                        :model-value="activeSnapshotIndex"
+                        @update:model-value="(v) => $emit('update:activeSnapshotIndex', v)"
+                        dense
+                        class="snapshot-tabs"
+                        active-color="primary"
+                        indicator-color="primary"
+                        align="left"
                     >
-                </q-btn>
-            </div>
+                        <q-tab
+                            v-for="(tab, i) in snapshotTabs"
+                            :key="i"
+                            :name="i"
+                            :label="tab.label"
+                        />
+                    </q-tabs>
+                </div>
 
-            <!-- Snapshot Navigation (only present when the caller passes 2+ snapshots, e.g. Progression) -->
-            <div v-if="snapshotTabs.length > 1" class="snapshot-tab-navigation">
-                <q-tabs
-                    :model-value="activeSnapshotIndex"
-                    @update:model-value="(v) => $emit('update:activeSnapshotIndex', v)"
-                    dense
-                    class="snapshot-tabs"
-                    :class="isDarkMode ? 'tabs-dark' : 'tabs-light'"
-                    active-color="primary"
-                    indicator-color="primary"
-                    align="left"
-                >
-                    <q-tab
-                        v-for="(tab, i) in snapshotTabs"
-                        :key="i"
-                        :name="i"
-                        :label="tab.label"
-                    />
-                </q-tabs>
-            </div>
-
-            <!-- Tab Navigation -->
-            <div class="tab-navigation">
-                <q-tabs
-                    v-model="activeTab"
-                    dense
-                    class="view-tabs"
-                    :class="isDarkMode ? 'tabs-dark' : 'tabs-light'"
-                    active-color="primary"
-                    :indicator-color="'transparent'"
-                    align="left"
-                >
-                    <q-tab name="simple" label="Simple" icon="style" />
-                    <q-tab name="advanced" label="Advanced" icon="analytics" />
-                    <q-tab name="scoutReport" label="AI Scout Report" icon="travel_explore" />
-                </q-tabs>
+                <!-- Tab Navigation -->
+                <div class="dialog-chrome__tabs">
+                    <q-tabs
+                        v-model="activeTab"
+                        dense
+                        class="view-tabs"
+                        active-color="primary"
+                        :indicator-color="'transparent'"
+                        align="left"
+                    >
+                        <q-tab name="simple" label="Simple" icon="style" />
+                        <q-tab name="advanced" label="Advanced" icon="analytics" />
+                        <q-tab name="scoutReport" label="AI Scout Report" icon="travel_explore" />
+                    </q-tabs>
+                </div>
             </div>
 
             <!-- Player data not available -->
-            <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section"
-                :class="{ 'has-snapshot-tabs': snapshotTabs.length > 1 }">
-                <div class="text-center q-pa-lg">
-                    <q-icon name="person_off" size="4em" class="text-grey-4 q-mb-md" />
-                    <div class="text-h6 text-grey-6">Player data not available</div>
-                    <div class="text-caption text-grey-6 q-mt-sm">Unable to load player information</div>
-                </div>
+            <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section">
+                <EmptyState
+                    icon="person_off"
+                    title="Player data not available"
+                    description="Unable to load player information."
+                />
             </q-card-section>
 
-            <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section"
-                :class="{ 'has-snapshot-tabs': snapshotTabs.length > 1 }">
+            <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section">
                 <!-- Progressive loading indicator -->
                 <div v-if="isLoadingDetailedData" class="loading-indicator q-mb-md">
                     <div class="text-center">
@@ -146,9 +153,9 @@
                                     class="player-detail-card"
                                 />
 
-                                <!-- Placed in normal document flow (not the absolutely-positioned
-                                     floating-actions cluster) — that cluster proved unreliable to
-                                     click reliably during development. -->
+                                <!-- Placed in normal document flow here (not up in the dialog
+                                     header's action cluster) — a floating overlay button in this
+                                     spot proved unreliable to click reliably during development. -->
                                 <q-btn
                                     outline
                                     dense
@@ -1186,6 +1193,7 @@ import logger from '../utils/logger.js'
 import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
 import { deriveShortPositionsFromPositionString } from '../utils/playerUtils'
 import { ATTRIBUTE_NAME_TO_KEY, PLAYSTYLE_TAGLINES } from '../utils/playstyleTaglines.js'
+import EmptyState from './layout/EmptyState.vue'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -1542,6 +1550,7 @@ export default defineComponent({
     ProsCons,
     ScoutReportTab,
     CardGeneratorDialog,
+    EmptyState,
   },
   props: {
     player: { type: Object, default: () => null },
@@ -3400,109 +3409,112 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
-
-// Import Quasar SCSS variables
-$grey-1: #f5f5f5 !default;
-$grey-2: #eeeeee !default;
-$grey-3: #e0e0e0 !default;
-$grey-4: #bdbdbd !default;
-$grey-5: #9e9e9e !default;
-$grey-6: #757575 !default;
-$grey-7: #616161 !default;
-$grey-8: #424242 !default;
-$grey-9: #303030 !default;
-$grey-10: #212121 !default;
-$positive: #21ba45 !default;
-$primary: #1976d2 !default;
-$indigo-5: #3f51b5 !default;
-$breakpoint-sm-max: 1023px !default;
-$breakpoint-xs-max: 599px !default;
 
 // Modern Dialog Card
 .player-detail-dialog-card {
     display: flex;
     flex-direction: column;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
     overflow: hidden;
-    background: white;
-    
-    .body--dark & {
-        background: #1e293b;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    }
+    background: var(--surface-card);
 }
 
 // Dialog backdrop styling lives in the unscoped block at the end of this file.
+
+// Dialog chrome: unified header + tab-strip convention shared with
+// UpgradeFinderDialog's `.card-header` — icon, title, actions, close, all in
+// normal flow above the content (not overlaid).
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__action-btn,
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+}
+
+.dialog-chrome__tabs {
+    padding: 0 12px 8px;
+
+    &--snapshot {
+        padding-top: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--surface-border);
+    }
+}
 
 .main-content-section {
     flex-grow: 1;
     padding: 20px;
     background: transparent;
-    
-    .body--dark & {
-        background: transparent;
-    }
-    
-    &.no-header-section {
-        padding-top: 55px; // More room since tabs are positioned higher
-
-        &.has-snapshot-tabs {
-            padding-top: 95px; // Extra room for the snapshot tab row underneath
-        }
-    }
 }
 
 // Modern Select Styling
 .modern-select {
     :deep(.q-field__control) {
         border-radius: 8px;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .body--light & {
-            background: rgba(0, 0, 0, 0.02);
-        }
+        background: var(--surface-raised);
     }
 }
 
 // Performance Card
 .performance-percentiles-card {
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    background: white;
-    
-    .body--dark & {
-        background: #1e293b;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-2);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
 }
 
 .performance-card-header {
-    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
+    background: linear-gradient(135deg, var(--accent-soft-strong) 0%, var(--accent-soft) 100%);
     border-radius: 12px 12px 0 0;
     padding: 16px 20px;
-    
-    .body--dark & {
-        background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
-    }
 }
 
 .performance-header-title {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #1976d2;
+    color: var(--accent);
     display: flex;
     align-items: center;
-    
-    .body--dark & {
-        color: #90caf9;
-    }
 }
 
 .performance-category-header {
@@ -3512,23 +3524,15 @@ $breakpoint-xs-max: 599px !default;
 .performance-category-title {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #64748b;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 .performance-separator {
-    background: rgba(25, 118, 210, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     height: 1px;
     border: none;
-    
-    .body--dark & {
-        background: rgba(144, 202, 249, 0.15);
-    }
 }
 
 .modern-stat-item {
@@ -3536,23 +3540,14 @@ $breakpoint-xs-max: 599px !default;
     border-radius: 6px;
     margin: 2px 0;
     padding: 8px 12px;
-    
+
     &:hover {
-        background: rgba(25, 118, 210, 0.05);
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.05);
-        }
+        background: var(--accent-soft);
     }
-    
+
     &.average-rating-item {
-        background: rgba(25, 118, 210, 0.08);
-        border-left: 4px solid #1976d2;
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.08);
-            border-left-color: #90caf9;
-        }
+        background: var(--accent-soft-strong);
+        border-left: 4px solid var(--accent);
     }
 }
 
@@ -3580,11 +3575,7 @@ $breakpoint-xs-max: 599px !default;
 .stat-name-label {
     font-size: 0.8rem;
     font-weight: 500;
-    color: #334155;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.85);
-    }
+    color: var(--text-primary);
 }
 
 .stat-bar-container {
@@ -3596,14 +3587,10 @@ $breakpoint-xs-max: 599px !default;
 .stat-bar-track {
     flex-grow: 1;
     height: 10px;
-    background-color: #e5e7eb;
+    background-color: var(--surface-border-strong);
     border-radius: 5px;
     margin-right: 8px;
     overflow: hidden;
-    
-    .body--dark & {
-        background-color: #374151;
-    }
 }
 
 .stat-bar-fill {
@@ -3617,21 +3604,13 @@ $breakpoint-xs-max: 599px !default;
     font-weight: 600;
     min-width: 24px;
     text-align: right;
-    color: #64748b;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
+    color: var(--text-secondary);
 }
 
 .performance-stat-value {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #334155;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.85);
-    }
+    color: var(--text-primary);
 }
 
 .percentile-loading-area {
@@ -3661,28 +3640,18 @@ $breakpoint-xs-max: 599px !default;
     align-items: center;
     justify-content: center;
     padding: 24px;
-    color: #64748b;
+    color: var(--text-secondary);
     font-size: 0.9rem;
     gap: 0.5rem;
     text-align: center;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
 }
 
 // Profile Card
 .player-profile-card {
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    background: white;
-    
-    .body--dark & {
-        background: #1e293b;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-2);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
 }
 
 .player-profile-content {
@@ -3695,7 +3664,7 @@ $breakpoint-xs-max: 599px !default;
     align-items: flex-start;
     margin-bottom: 0;
     gap: 24px;
-    
+
     @media (max-width: 768px) {
         flex-direction: column;
         gap: 16px;
@@ -3716,48 +3685,30 @@ $breakpoint-xs-max: 599px !default;
 
 .player-face-image {
     border-radius: 50%;
-    border: 3px solid rgba(25, 118, 210, 0.2);
+    border: 3px solid var(--accent-soft-strong);
     object-fit: cover;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    
+    box-shadow: var(--shadow-2);
+
     &:hover {
         transform: scale(1.05);
-        border-color: rgba(25, 118, 210, 0.4);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-    
-    .body--dark & {
-        border-color: rgba(144, 202, 249, 0.2);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        
-        &:hover {
-            border-color: rgba(144, 202, 249, 0.4);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-        }
+        border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+        box-shadow: var(--shadow-3);
     }
 }
 
 .player-face-placeholder {
-    border: 3px solid rgba(25, 118, 210, 0.2);
+    border: 3px solid var(--accent-soft-strong);
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    
+
     &:hover {
         transform: scale(1.05);
-        border-color: rgba(25, 118, 210, 0.4);
+        border-color: color-mix(in srgb, var(--accent) 40%, transparent);
     }
-    
-    .body--dark & {
-        border-color: rgba(144, 202, 249, 0.2);
-        
-        &:hover {
-            border-color: rgba(144, 202, 249, 0.4);
-        }
-    }
-    
+
     .q-icon {
         margin: 0;
         line-height: 1;
@@ -3772,29 +3723,20 @@ $breakpoint-xs-max: 599px !default;
 }
 
 .player-flag {
-    border: 2px solid rgba(128, 128, 128, 0.3);
+    border: 1px solid var(--surface-border-strong);
     border-radius: 4px;
     object-fit: cover;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-1);
     transition: all 0.2s ease;
-    
+
     &:hover {
         transform: scale(1.05);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-    
-    .body--dark & {
-        border-color: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        box-shadow: var(--shadow-2);
     }
 }
 
 .player-flag-placeholder {
-    color: #9ca3af;
-    
-    .body--dark & {
-        color: #6b7280;
-    }
+    color: var(--text-muted);
 }
 
 .player-name-section {
@@ -3813,15 +3755,11 @@ $breakpoint-xs-max: 599px !default;
     font-size: 1.8rem;
     line-height: 1.2;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text-primary);
     margin-bottom: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.95);
-    }
 }
 
 .player-badges-row {
@@ -3875,36 +3813,22 @@ $breakpoint-xs-max: 599px !default;
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: rgba(25, 118, 210, 0.03);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
     border-radius: 8px;
-    border: 1px solid rgba(25, 118, 210, 0.1);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     transition: all 0.2s ease;
     flex: 1;
     min-width: 0;
-    
+
     &:hover {
-        background: rgba(25, 118, 210, 0.06);
-        border-color: rgba(25, 118, 210, 0.2);
+        background: var(--accent-soft);
+        border-color: var(--accent-soft-strong);
         transform: translateY(-1px);
-    }
-    
-    .body--dark & {
-        background: rgba(144, 202, 249, 0.05);
-        border-color: rgba(144, 202, 249, 0.1);
-        
-        &:hover {
-            background: rgba(144, 202, 249, 0.08);
-            border-color: rgba(144, 202, 249, 0.2);
-        }
     }
 }
 
 .detail-icon {
-    color: #1976d2;
-    
-    .body--dark & {
-        color: #90caf9;
-    }
+    color: var(--accent);
 }
 
 .detail-content {
@@ -3916,28 +3840,20 @@ $breakpoint-xs-max: 599px !default;
 
 .detail-label {
     font-size: 0.7rem;
-    color: #64748b;
+    color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 2px;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
 }
 
 .detail-value {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.85);
-    }
 }
 
 .financial-details-section {
@@ -4059,15 +3975,11 @@ $breakpoint-xs-max: 599px !default;
 
 .financial-label {
     font-size: 0.7rem;
-    color: #64748b;
+    color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 2px;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
 }
 
 .financial-value {
@@ -4093,13 +4005,9 @@ $breakpoint-xs-max: 599px !default;
 }
 
 .profile-separator {
-    background: linear-gradient(90deg, transparent 0%, rgba(25, 118, 210, 0.3) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--accent) 30%, transparent) 50%, transparent 100%);
     height: 2px;
     border: none;
-    
-    .body--dark & {
-        background: linear-gradient(90deg, transparent 0%, rgba(144, 202, 249, 0.3) 50%, transparent 100%);
-    }
 }
 
 // FIFA Stats Section
@@ -4116,11 +4024,7 @@ $breakpoint-xs-max: 599px !default;
 .section-title {
     font-size: 1.2rem;
     font-weight: 600;
-    color: #1976d2;
-    
-    .body--dark & {
-        color: #90caf9;
-    }
+    color: var(--accent);
 }
 
 .fifa-stats-grid {
@@ -4245,25 +4149,15 @@ $breakpoint-xs-max: 599px !default;
 }
 
 .attribute-card {
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
     transition: all 0.3s ease;
-    
+
     &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    }
-    
-    .body--dark & {
-        background: #1e293b;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-        }
+        box-shadow: var(--shadow-2);
     }
 }
 
@@ -4274,30 +4168,22 @@ $breakpoint-xs-max: 599px !default;
 }
 
 .attribute-card-header {
-    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
+    background: linear-gradient(135deg, var(--accent-soft-strong) 0%, var(--accent-soft) 100%);
     border-radius: 12px 12px 0 0;
     padding: 16px 20px;
-    
-    .body--dark & {
-        background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
-    }
 }
 
 .attribute-section-title {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #1976d2;
+    color: var(--accent);
     display: flex;
     align-items: center;
-    
-    .body--dark & {
-        color: #90caf9;
-    }
 }
 
 .attribute-list {
     flex-grow: 1;
-    
+
     .q-item {
         padding: 4px 12px;
         min-height: 32px;
@@ -4310,15 +4196,11 @@ $breakpoint-xs-max: 599px !default;
     margin: 1px 4px;
     padding: 4px 12px;
     min-height: 32px;
-    
+
     &:hover {
-        background: rgba(25, 118, 210, 0.05);
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.05);
-        }
+        background: var(--accent-soft);
     }
-    
+
     &.role-item {
         &.best-role-highlight {
             background: rgba(34, 197, 94, 0.1);
@@ -4339,15 +4221,11 @@ $breakpoint-xs-max: 599px !default;
 .attribute-name {
     font-size: 0.85rem;
     font-weight: 500;
-    color: #334155;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.85);
-    }
-    
+
     &.role-name {
         max-width: 180px;
     }
@@ -4436,32 +4314,28 @@ $breakpoint-xs-max: 599px !default;
 .no-attributes-item {
     opacity: 0.7;
     font-style: italic;
-    color: #64748b;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
+    color: var(--text-secondary);
 }
 
 .role-ratings-card {
     .role-specific-ratings-list {
         max-height: 280px;
         overflow-y: auto;
-        
+
         &::-webkit-scrollbar {
             width: 4px;
         }
-        
+
         &::-webkit-scrollbar-track {
             background: transparent;
         }
-        
+
         &::-webkit-scrollbar-thumb {
-            background: rgba(25, 118, 210, 0.3);
+            background: color-mix(in srgb, var(--accent) 30%, transparent);
             border-radius: 2px;
-            
+
             &:hover {
-                background: rgba(25, 118, 210, 0.5);
+                background: color-mix(in srgb, var(--accent) 50%, transparent);
             }
         }
     }
@@ -4470,8 +4344,8 @@ $breakpoint-xs-max: 599px !default;
 // Modern Tooltips
 .modern-tooltip {
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    
+    box-shadow: var(--shadow-2);
+
     .tooltip-header {
         font-weight: 600;
         margin-bottom: 6px;
@@ -4501,45 +4375,27 @@ $breakpoint-xs-max: 599px !default;
 }
 
 .loading-text {
-    color: #64748b;
+    color: var(--text-secondary);
     font-size: 1rem;
     font-weight: 500;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 // Responsive Design
 @media (max-width: 768px) {
     .main-content-section {
         padding: 16px;
-
-        &.no-header-section {
-            padding-top: 45px; // More room since tabs are positioned higher
-
-            &.has-snapshot-tabs {
-                padding-top: 80px;
-            }
-        }
     }
 
-    .snapshot-tab-navigation {
-        top: 44px;
-        left: 12px;
-        right: 12px;
+    .dialog-chrome__header {
+        padding: 10px 12px;
     }
 
-    .tab-navigation {
-        top: 6px;
-        left: 12px;
-        padding: 0;
-        min-width: 50px;
-        height: 36px;
-        
+    .dialog-chrome__tabs {
+        padding: 0 8px 6px;
+
         .view-tabs {
             gap: 3px;
-            
+
             .q-tab {
                 min-height: 32px;
                 height: 32px;
@@ -4549,7 +4405,7 @@ $breakpoint-xs-max: 599px !default;
             }
         }
     }
-    
+
     .player-profile-content {
         padding: 20px;
     }
@@ -4594,32 +4450,23 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 480px) {
     .main-content-section {
         padding: 12px;
-
-        &.no-header-section {
-            padding-top: 40px; // More room since tabs are positioned higher
-
-            &.has-snapshot-tabs {
-                padding-top: 74px;
-            }
-        }
     }
 
-    .snapshot-tab-navigation {
-        top: 38px;
-        left: 8px;
-        right: 8px;
+    .dialog-chrome__header {
+        padding: 8px 8px;
+        gap: 0.4rem;
     }
 
-    .tab-navigation {
-        top: 4px;
-        left: 8px;
-        padding: 0;
-        min-width: 45px;
-        height: 32px;
-        
+    .dialog-chrome__title {
+        font-size: 1rem;
+    }
+
+    .dialog-chrome__tabs {
+        padding: 0 6px 4px;
+
         .view-tabs {
             gap: 2px;
-            
+
             .q-tab {
                 min-height: 28px;
                 height: 28px;
@@ -4629,16 +4476,7 @@ $breakpoint-xs-max: 599px !default;
             }
         }
     }
-    
-    .floating-actions {
-        top: 8px;
-        right: 8px;
-    }
-    .floating-close-btn, .floating-compare-btn {
-        width: 32px;
-        height: 32px;
-    }
-    
+
     .player-profile-content {
         padding: 16px;
     }
@@ -4659,22 +4497,7 @@ $breakpoint-xs-max: 599px !default;
 }
 
 // Snapshot Navigation - a second row beneath the Simple/Advanced pill toggle, only present
-// when the caller (Progression) passes 2+ snapshots.
-.snapshot-tab-navigation {
-    position: absolute;
-    top: 52px;
-    left: 16px;
-    right: 16px;
-    z-index: 9;
-    background: rgba(255, 255, 255, 0.85);
-    border-radius: 10px;
-    padding: 0 4px;
-
-    .body--dark & {
-        background: rgba(30, 41, 59, 0.85);
-    }
-}
-
+// when the caller (Progression) passes 2+ snapshots. In-flow, part of .dialog-chrome.
 .snapshot-tabs {
     min-height: 32px;
 
@@ -4683,31 +4506,19 @@ $breakpoint-xs-max: 599px !default;
         font-size: 0.7rem;
         font-weight: 600;
         text-transform: none;
+        color: var(--text-secondary);
+
+        &:hover {
+            color: var(--text-primary);
+        }
     }
 }
 
-// Tab Navigation - Pill-shaped toggle style
-.tab-navigation {
-    position: absolute;
-    top: 8px;
-    left: 16px;
-    z-index: 10;
-    background: transparent;
-    border-radius: 20px;
-    box-shadow: none;
-    padding: 0;
-    transition: none;
-    min-width: 60px;
-    height: 40px; // Match X button height
-    display: flex;
-    justify-content: flex-start;
-}
-
+// View tabs (Simple/Advanced/AI Scout Report) - pill-shaped toggle style, in-flow.
 .view-tabs {
-    height: 100%;
     display: flex;
     gap: 4px;
-    
+
     .q-tab {
         min-height: 36px;
         height: 36px;
@@ -4720,58 +4531,19 @@ $breakpoint-xs-max: 599px !default;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        
-        .body--dark & {
-            background: rgba(30, 41, 59, 0.9);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        &:hover {
-            background: rgba(255, 255, 255, 1);
-            
-            .body--dark & {
-                background: rgba(30, 41, 59, 1);
-            }
-        }
-        
-        &.q-tab--active {
-            background: rgba(25, 118, 210, 0.9);
-            color: white;
-            
-            .body--dark & {
-                background: rgba(144, 202, 249, 0.9);
-                color: white;
-            }
-        }
-    }
-}
+        background: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        color: var(--text-secondary);
 
-.tabs-dark {
-    .q-tab {
-        color: rgba(255, 255, 255, 0.8);
-        
-        &.q-tab--active {
-            color: #90caf9;
-        }
-        
         &:hover {
-            color: rgba(255, 255, 255, 1);
+            background: var(--surface-raised);
+            color: var(--text-primary);
         }
-    }
-}
 
-.tabs-light {
-    .q-tab {
-        color: rgba(0, 0, 0, 0.7);
-        
         &.q-tab--active {
-            color: #1976d2;
-        }
-        
-        &:hover {
-            color: rgba(0, 0, 0, 0.9);
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--text-on-brand);
         }
     }
 }
@@ -4803,70 +4575,6 @@ $breakpoint-xs-max: 599px !default;
 }
 
 // (Advanced view specific styles removed - no empty ruleset)
-
-// Floating action buttons container
-.floating-actions {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    z-index: 10;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-
-.floating-compare-btn {
-    position: static;
-    z-index: 10;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s ease;
-
-    &:hover {
-        background: rgba(255, 255, 255, 1);
-        transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    .body--dark & {
-        background: rgba(30, 41, 59, 0.9);
-
-        &:hover {
-            background: rgba(30, 41, 59, 1);
-        }
-    }
-}
-
-// Floating Close Button
-.floating-close-btn {
-    position: static;
-    z-index: 10;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s ease;
-    
-    &:hover {
-        background: rgba(255, 255, 255, 1);
-        transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    
-    .body--dark & {
-        background: rgba(30, 41, 59, 0.9);
-        color: rgba(255, 255, 255, 0.8);
-        
-        &:hover {
-            background: rgba(30, 41, 59, 1);
-            color: rgba(255, 255, 255, 1);
-        }
-    }
-}
 
 .club-logo-container {
     display: flex;
@@ -5056,17 +4764,13 @@ $breakpoint-xs-max: 599px !default;
 .copy-name-btn {
     opacity: 0.7;
     transition: all 0.2s ease;
-    
+
     &:hover {
         opacity: 1;
         transform: scale(1.1);
-        background: rgba(25, 118, 210, 0.1);
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.1);
-        }
+        background: var(--accent-soft-strong);
     }
-    
+
     &:active {
         transform: scale(0.95);
     }

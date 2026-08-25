@@ -1,134 +1,121 @@
 <template>
   <q-page class="progression-page">
-    <PageHero
-      icon="trending_up"
-      badge="New"
-      title="Player"
-      highlight="Progression"
-      subtitle="Upload 2 or more exports from the same save to see how your players have developed
-        between snapshots. Order is detected automatically from average squad age."
-      compact
-    >
-      <template v-if="progressionStore.status === 'analyzed'" #side>
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <div class="hero-stat-number">{{ progressionStore.players.length }}</div>
-            <div class="hero-stat-label">Shared players</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-number">{{ progressionStore.order.length }}</div>
-            <div class="hero-stat-label">Snapshots</div>
-          </div>
-        </div>
-      </template>
-    </PageHero>
+    <div class="page-container">
+      <PageHeader
+        title="Player Progression"
+        subtitle="Upload 2 or more exports from the same save to see how your players have developed between snapshots. Order is detected automatically from average squad age."
+        icon="trending_up"
+      />
 
-    <div class="progression-container q-pa-md">
+      <div v-if="progressionStore.status === 'analyzed'" class="progression-stats">
+        <StatTile icon="groups" label="Shared players" :value="progressionStore.players.length" />
+        <StatTile icon="layers" label="Snapshots" :value="progressionStore.order.length" />
+      </div>
+
       <!-- Upload -->
-      <q-card flat bordered class="q-mb-md surface-card">
-        <q-card-section>
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle1 text-weight-medium">Snapshots ({{ slots.length }})</div>
-            <q-btn
-              unelevated
-              dense
-              color="primary"
-              icon="add"
-              label="Add another snapshot"
-              @click="triggerFilePicker"
-              :loading="anyUploading"
-            />
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".html,.csv"
-              class="hidden-file-input"
-              @change="onFileSelected"
-            />
-          </div>
+      <SectionCard :title="`Snapshots (${slots.length})`" icon="upload_file" class="q-mb-md">
+        <template #actions>
+          <q-btn
+            unelevated
+            dense
+            color="primary"
+            icon="add"
+            label="Add another snapshot"
+            @click="triggerFilePicker"
+            :loading="anyUploading"
+          />
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".html,.csv"
+            class="hidden-file-input"
+            @change="onFileSelected"
+          />
+        </template>
 
-          <q-list v-if="slots.length" bordered separator class="snapshot-list">
-            <q-item v-for="slot in slots" :key="slot.id">
-              <q-item-section avatar>
-                <q-spinner v-if="slot.status === 'uploading'" color="primary" size="20px" />
-                <q-icon
-                  v-else
-                  :name="slot.status === 'parsed' ? 'check_circle' : 'error'"
-                  :color="slot.status === 'parsed' ? 'positive' : 'negative'"
-                />
-              </q-item-section>
-              <q-item-section>
-                <div>{{ slot.filename }}</div>
-                <div v-if="slot.status === 'error'" class="text-caption text-negative">
-                  {{ slot.errorMessage }}
-                </div>
-              </q-item-section>
+        <q-list v-if="slots.length" bordered separator class="snapshot-list">
+          <q-item v-for="slot in slots" :key="slot.id">
+            <q-item-section avatar>
+              <q-spinner v-if="slot.status === 'uploading'" color="primary" size="20px" />
+              <q-icon
+                v-else
+                :name="slot.status === 'parsed' ? 'check_circle' : 'error'"
+                :color="slot.status === 'parsed' ? 'positive' : 'negative'"
+              />
+            </q-item-section>
+            <q-item-section>
+              <div>{{ slot.filename }}</div>
+              <div v-if="slot.status === 'error'" class="text-caption text-negative">
+                {{ slot.errorMessage }}
+              </div>
+            </q-item-section>
+            <q-item-section side>
+              <q-chip
+                dense
+                :color="slot.status === 'parsed' ? 'positive' : slot.status === 'error' ? 'negative' : 'grey-6'"
+                text-color="white"
+              >
+                {{ slot.status }}
+              </q-chip>
+            </q-item-section>
+            <q-item-section side>
+              <q-btn dense flat round icon="close" size="sm" @click="progressionStore.removeSlot(slot.id)" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <EmptyState
+          v-else
+          icon="upload_file"
+          title="No snapshots yet"
+          description="Add at least 2 snapshots to analyze."
+        />
+
+        <div class="row items-center q-mt-md q-gutter-sm">
+          <q-btn
+            unelevated
+            color="primary"
+            label="Analyze"
+            :disable="parsedCount < 2 || progressionStore.status === 'analyzing'"
+            :loading="progressionStore.status === 'analyzing'"
+            @click="progressionStore.analyze()"
+          />
+          <q-btn
+            v-if="progressionStore.status !== 'idle'"
+            flat
+            dense
+            label="Start over"
+            @click="startOver"
+          />
+        </div>
+
+        <q-banner v-if="progressionStore.status === 'ambiguous-order'" class="bg-warning text-dark q-mt-md" rounded>
+          <div class="text-weight-bold q-mb-xs">
+            Order ambiguous — these snapshots have the same average squad age
+          </div>
+          <div class="text-caption q-mb-sm">Drag isn't available yet — use the arrows to reorder.</div>
+          <q-list bordered separator class="surface-card">
+            <q-item v-for="(id, i) in reorderList" :key="id">
+              <q-item-section>{{ i + 1 }}. {{ filenameFor(id) }}</q-item-section>
               <q-item-section side>
-                <q-chip
+                <q-btn dense flat icon="arrow_upward" :disable="i === 0" @click="moveReorder(i, -1)" />
+                <q-btn
                   dense
-                  :color="slot.status === 'parsed' ? 'positive' : slot.status === 'error' ? 'negative' : 'grey-6'"
-                  text-color="white"
-                >
-                  {{ slot.status }}
-                </q-chip>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn dense flat round icon="close" size="sm" @click="progressionStore.removeSlot(slot.id)" />
+                  flat
+                  icon="arrow_downward"
+                  :disable="i === reorderList.length - 1"
+                  @click="moveReorder(i, 1)"
+                />
               </q-item-section>
             </q-item>
           </q-list>
+          <q-btn class="q-mt-sm" unelevated color="primary" label="Confirm order" @click="confirmReorder" />
+        </q-banner>
 
-          <div v-else class="empty-slots text-body2 text-grey-6 text-center">
-            <q-icon name="upload_file" size="2em" class="q-mb-sm" />
-            <div>No snapshots yet — add at least 2 to analyze.</div>
-          </div>
-
-          <div class="row items-center q-mt-md q-gutter-sm">
-            <q-btn
-              unelevated
-              color="primary"
-              label="Analyze"
-              :disable="parsedCount < 2 || progressionStore.status === 'analyzing'"
-              :loading="progressionStore.status === 'analyzing'"
-              @click="progressionStore.analyze()"
-            />
-            <q-btn
-              v-if="progressionStore.status !== 'idle'"
-              flat
-              dense
-              label="Start over"
-              @click="startOver"
-            />
-          </div>
-
-          <q-banner v-if="progressionStore.status === 'ambiguous-order'" class="bg-warning text-dark q-mt-md" rounded>
-            <div class="text-weight-bold q-mb-xs">
-              Order ambiguous — these snapshots have the same average squad age
-            </div>
-            <div class="text-caption q-mb-sm">Drag isn't available yet — use the arrows to reorder.</div>
-            <q-list bordered separator class="surface-card">
-              <q-item v-for="(id, i) in reorderList" :key="id">
-                <q-item-section>{{ i + 1 }}. {{ filenameFor(id) }}</q-item-section>
-                <q-item-section side>
-                  <q-btn dense flat icon="arrow_upward" :disable="i === 0" @click="moveReorder(i, -1)" />
-                  <q-btn
-                    dense
-                    flat
-                    icon="arrow_downward"
-                    :disable="i === reorderList.length - 1"
-                    @click="moveReorder(i, 1)"
-                  />
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <q-btn class="q-mt-sm" unelevated color="primary" label="Confirm order" @click="confirmReorder" />
-          </q-banner>
-
-          <q-banner v-if="progressionStore.status === 'error'" class="bg-negative text-white q-mt-md" rounded>
-            {{ progressionStore.errorMessage }}
-          </q-banner>
-        </q-card-section>
-      </q-card>
+        <q-banner v-if="progressionStore.status === 'error'" class="bg-negative text-white q-mt-md" rounded>
+          {{ progressionStore.errorMessage }}
+        </q-banner>
+      </SectionCard>
 
       <!-- Empty intersection -->
       <q-banner
@@ -175,8 +162,8 @@
         </div>
 
         <q-slide-transition>
-          <q-card v-show="showFilters" flat bordered class="q-mb-md surface-card">
-            <q-card-section class="row q-col-gutter-sm">
+          <SectionCard v-show="showFilters" class="q-mb-md">
+            <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-4">
                 <q-input dense outlined v-model="filters.name" label="Name" clearable />
               </div>
@@ -228,11 +215,11 @@
               <div class="col-12 col-sm-4">
                 <q-input dense outlined type="number" v-model.number="filters.minOverall" label="Min overall" />
               </div>
-            </q-card-section>
-          </q-card>
+            </div>
+          </SectionCard>
         </q-slide-transition>
 
-        <q-card flat bordered class="surface-card">
+        <SectionCard>
           <q-markup-table flat class="progression-table">
             <thead>
               <tr>
@@ -315,7 +302,7 @@
               </template>
             </tbody>
           </q-markup-table>
-        </q-card>
+        </SectionCard>
       </div>
     </div>
 
@@ -335,10 +322,21 @@
 <script setup>
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
-import PageHero from '../components/PageHero.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import EmptyState from '../components/layout/EmptyState.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import PageHeader from '../components/layout/PageHeader.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import SectionCard from '../components/layout/SectionCard.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
+import StatTile from '../components/layout/StatTile.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import ProgressionTrendChart from '../components/ProgressionTrendChart.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatGauge from '../components/player-table/StatGauge.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import TeamLogo from '../components/TeamLogo.vue'
 import { filterLatestSnapshotPlayers, uniqueValues } from '../composables/useLatestSnapshotFilters'
 import playerService from '../services/playerService'
@@ -348,6 +346,7 @@ import { formatCurrency } from '../utils/currencyUtils'
 const $q = useQuasar()
 const progressionStore = useProgressionStore()
 const fileInput = ref(null)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const showFilters = ref(false)
 const expandedUid = ref(null)
 const reorderList = ref([])
@@ -356,7 +355,9 @@ const activeSnapshotIndex = ref(0)
 const showPlayerDetail = ref(false)
 
 const slots = computed(() => progressionStore.slots)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const parsedCount = computed(() => slots.value.filter((s) => s.status === 'parsed').length)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const anyUploading = computed(() => slots.value.some((s) => s.status === 'uploading'))
 
 const ALL_FIELDS = [
@@ -381,9 +382,12 @@ const ALL_FIELDS = [
   },
 ]
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const overallField = ALL_FIELDS[0]
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const valueField = ALL_FIELDS[1]
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const sortFieldOptions = computed(() => {
   const attrKeys = new Set()
   for (const p of progressionStore.players) {
@@ -419,6 +423,7 @@ const latestSnapshotPlayers = computed(() =>
   }))
 )
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const filteredPlayers = computed(() => {
   const allowedUids = new Set(
     filterLatestSnapshotPlayers(latestSnapshotPlayers.value, filters.value).map(
@@ -428,9 +433,13 @@ const filteredPlayers = computed(() => {
   return progressionStore.players.filter((p) => allowedUids.has(p.uid))
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const clubOptions = computed(() => uniqueValues(latestSnapshotPlayers.value, 'club'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const nationalityOptions = computed(() => uniqueValues(latestSnapshotPlayers.value, 'nationality'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const divisionOptions = computed(() => uniqueValues(latestSnapshotPlayers.value, 'division'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const positionOptions = computed(() => {
   const set = new Set()
   for (const p of latestSnapshotPlayers.value) {
@@ -439,27 +448,33 @@ const positionOptions = computed(() => {
   return Array.from(set).sort()
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const snapshotDateLabels = computed(() => progressionStore.order.map((_, i) => `#${i + 1}`))
 
 // Snapshot-tab labels for PlayerDetailDialog: one per snapshot dataset, in chronological
 // order, labeled by the original upload filename so the tabs read like "barcajuly25.csv".
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const snapshotTabOptions = computed(() =>
   progressionStore.order.map((datasetId) => ({ label: filenameFor(datasetId) }))
 )
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const detailDialogPlayer = computed(
   () => detailPlayer.value?.snapshots[activeSnapshotIndex.value] ?? null
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const detailDialogDatasetId = computed(
   () => progressionStore.order[activeSnapshotIndex.value] ?? null
 )
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function openPlayerDetail(progressionPlayer) {
   detailPlayer.value = progressionPlayer
   activeSnapshotIndex.value = progressionPlayer.snapshots.length - 1 // default to the latest snapshot
   showPlayerDetail.value = true
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function latestOf(progressionPlayer) {
   return progressionPlayer.snapshots[progressionPlayer.snapshots.length - 1]
 }
@@ -470,17 +485,20 @@ function fieldDelta(progressionPlayer, field) {
   return last - first
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function deltaLabel(progressionPlayer, field) {
   const delta = fieldDelta(progressionPlayer, field)
   const sign = delta > 0 ? '+' : ''
   return `${sign}${field.format(delta)}`
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function deltaClass(progressionPlayer, field) {
   const delta = fieldDelta(progressionPlayer, field)
   return delta > 0 ? 'text-positive' : delta < 0 ? 'text-negative' : 'text-grey-6'
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function trendColor(progressionPlayer, field) {
   const delta = fieldDelta(progressionPlayer, field)
   if (delta > 0) return $q.dark.isActive ? '#4ade80' : '#21ba45'
@@ -488,14 +506,17 @@ function trendColor(progressionPlayer, field) {
   return $q.dark.isActive ? '#94a3b8' : '#9e9e9e'
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function toggleExpand(uid) {
   expandedUid.value = expandedUid.value === uid ? null : uid
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function triggerFilePicker() {
   fileInput.value?.click()
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 async function onFileSelected(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
@@ -522,6 +543,7 @@ async function onFileSelected(event) {
   }
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function startOver() {
   progressionStore.reset()
   expandedUid.value = null
@@ -531,15 +553,18 @@ function filenameFor(datasetId) {
   return slots.value.find((s) => s.datasetId === datasetId)?.filename || datasetId
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function moveReorder(i, dir) {
   const j = i + dir
   ;[reorderList.value[i], reorderList.value[j]] = [reorderList.value[j], reorderList.value[i]]
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 async function confirmReorder() {
   await progressionStore.confirmOrder(reorderList.value)
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function toggleSortDir() {
   progressionStore.setSort(
     progressionStore.sortField,
@@ -563,9 +588,17 @@ watch(
 </script>
 
 <style scoped>
-.progression-container {
-  max-width: 1200px;
+.page-container {
+  max-width: var(--content-max-width);
   margin: 0 auto;
+  padding: var(--page-gutter);
+}
+
+.progression-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--section-gap);
+  margin-bottom: var(--section-gap);
 }
 
 .surface-card {
@@ -579,10 +612,6 @@ watch(
 
 .snapshot-list {
   border-color: var(--surface-border);
-}
-
-.empty-slots {
-  padding: 2.5rem 1rem;
 }
 
 .results-toolbar {
@@ -661,5 +690,11 @@ watch(
 
 .money-na {
   color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: var(--page-gutter-sm);
+  }
 }
 </style>

@@ -71,12 +71,11 @@ const PLAYER_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f97316']
   right: 0;
   z-index: 3000;
   padding: 10px 20px;
-  background: #fff;
+  background: var(--surface-card);
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
 
   .body--dark & {
-    background: #1e293b;
     border-top-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
   }
@@ -99,15 +98,13 @@ const PLAYER_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f97316']
   flex-wrap: wrap;
 }
 
-.tray-icon { color: #64748b; }
+.tray-icon { color: var(--text-secondary); }
 
 .tray-label {
   font-size: 13px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-secondary);
   white-space: nowrap;
-
-  .body--dark & { color: #94a3b8; }
 }
 
 .tray-chips {

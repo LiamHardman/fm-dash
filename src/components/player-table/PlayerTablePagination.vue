@@ -71,11 +71,7 @@ export default {
 }
 
 .pagination-info {
-  color: #64748b !important;
+  color: var(--text-secondary) !important;
   font-weight: 500;
-  
-  .body--dark & {
-    color: rgba(255, 255, 255, 0.7) !important;
-  }
 }
 </style> 

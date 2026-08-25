@@ -191,16 +191,11 @@ export default defineComponent({
   padding: 0 16px;
 
   .pros-cons-card {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: var(--surface-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1);
     overflow: hidden;
     display: flex;
-
-    .body--dark & {
-      background: rgba(30, 41, 59, 0.95);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
   }
 
   .pros-section,
@@ -217,7 +212,7 @@ export default defineComponent({
       .section-title {
         font-size: 1rem;
         font-weight: 600;
-        .body--dark & { color: rgba(255, 255, 255, 0.9); }
+        color: var(--text-primary);
       }
     }
 
@@ -244,7 +239,7 @@ export default defineComponent({
   .category-name {
     font-size: 0.85rem;
     font-weight: 600;
-    .body--dark & { color: rgba(255, 255, 255, 0.85); }
+    color: var(--text-primary);
   }
 
   .attribute-value {
@@ -253,6 +248,8 @@ export default defineComponent({
     align-self: flex-end;
   }
 
+  // Pro/con and bar colors are semantic-tier (good/bad), kept hardcoded per established
+  // precedent — same treatment as rating-tier badge colors elsewhere in the app.
   .pro-value {
     color: #059669;
     .body--dark & { color: #34d399; }
@@ -272,10 +269,9 @@ export default defineComponent({
   .percentile-bar-container {
     flex-grow: 1;
     height: 6px;
-    background-color: #e2e8f0;
+    background-color: var(--surface-border-strong);
     border-radius: 3px;
     overflow: hidden;
-    .body--dark & { background-color: #475569; }
   }
 
   .percentile-bar {
@@ -293,12 +289,11 @@ export default defineComponent({
     font-variant-numeric: tabular-nums;
     min-width: 20px;
     text-align: right;
-    .body--dark & { color: #cbd5e1; }
+    color: var(--text-secondary);
   }
 
   .cons-section {
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
-    .body--dark & { border-left-color: rgba(255, 255, 255, 0.1); }
+    border-left: 1px solid var(--surface-border);
   }
 }
 
@@ -309,8 +304,7 @@ export default defineComponent({
 
     .cons-section {
       border-left: none;
-      border-top: 1px solid rgba(0, 0, 0, 0.1);
-      .body--dark & { border-top-color: rgba(255, 255, 255, 0.1); }
+      border-top: 1px solid var(--surface-border);
     }
   }
 }

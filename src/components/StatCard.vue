@@ -88,66 +88,49 @@ export default defineComponent({
   
   <style lang="scss" scoped>
   .stat-card {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     transition: all 0.3s ease;
-    border: 1px solid #e0e0e0;
-    background: #fff;
-  
-    .body--dark & {
-      background: #1e1e1e;
-      border: 1px solid #424242;
-    }
-  
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
+
     &:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      box-shadow: var(--shadow-2);
     }
   }
-  
+
   .stat-header {
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
     padding: 12px 16px;
-  
-    .body--dark & {
-      background: #2d2d2d;
-      border-bottom: 1px solid #424242;
-    }
-  
+
     .stat-name {
       font-weight: 600;
       font-size: 0.95rem;
-      color: #333;
-  
-      .body--dark & {
-        color: #f5f5f5;
-      }
+      color: var(--text-primary);
     }
   }
-  
+
   .stat-players {
     padding: 0;
-  
+
     .body--dark .q-list--separator > .q-item-type + .q-item-type {
-        border-top: 1px solid #424242;
+        border-top: 1px solid var(--surface-border-strong);
     }
   }
-  
+
   .player-item {
     transition: background-color 0.2s ease;
     padding: 12px 16px;
-  
+
     &:hover {
-      background: #f1f3f5;
-      .body--dark & {
-        background: #333;
-      }
+      background: var(--surface-raised);
     }
   }
-  
+
   .rank-badge {
-    background: linear-gradient(135deg, #1a237e, #3949ab);
-    color: white;
+    background: var(--accent);
+    color: var(--text-on-brand);
     border-radius: 50%;
     width: 28px;
     height: 28px;
@@ -156,45 +139,33 @@ export default defineComponent({
     justify-content: center;
     font-size: 0.8rem;
     font-weight: 700;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-1);
   }
-  
+
   .player-name {
     font-weight: 600;
-    color: #212529;
-  
-    .body--dark & {
-      color: #f5f5f5;
-    }
+    color: var(--text-primary);
   }
-  
+
   .q-item__label--caption {
-      color: #6c757d;
-  
-      .body--dark & {
-        color: #9e9e9e;
-      }
+      color: var(--text-secondary);
   }
-  
+
   .stat-value {
     font-weight: 700;
     color: var(--accent);
     font-size: 1rem;
   }
-  
+
   .no-data-message {
     padding: 24px 16px;
     text-align: center;
-    color: #6c757d;
+    color: var(--text-secondary);
     font-style: italic;
     min-height: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
-  
-    .body--dark & {
-      color: #9e9e9e;
-    }
   }
   </style>
   

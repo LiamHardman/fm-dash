@@ -344,7 +344,7 @@ export default defineComponent({
     gap: 6px;
 }
 .funny-message {
-    color: var(--text-secondary, #64748b);
+    color: var(--text-secondary);
     font-style: italic;
     font-size: 14px;
     margin-top: 8px;
@@ -360,9 +360,9 @@ export default defineComponent({
     grid-column: 1 / -1;
 }
 .cell {
-    background: var(--surface-card, #fff);
-    border: 1px solid var(--surface-border, rgba(0, 0, 0, 0.08));
-    border-radius: 10px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
     padding: 16px;
 }
 .verdict-cell {
@@ -371,11 +371,11 @@ export default defineComponent({
     align-items: center;
     text-align: center;
     gap: 6px;
-    background: var(--surface-raised, #f8fafc);
+    background: var(--surface-raised);
 }
 .verdict-name {
     font-weight: 700;
-    color: var(--text-primary, #1e293b);
+    color: var(--text-primary);
 }
 .verdict-stars {
     display: flex;
@@ -384,7 +384,7 @@ export default defineComponent({
 }
 .verdict-rationale {
     font-size: 12px;
-    color: var(--text-secondary, #64748b);
+    color: var(--text-secondary);
     line-height: 1.5;
 }
 .controls-cell {
@@ -396,7 +396,7 @@ export default defineComponent({
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-muted, #94a3b8);
+    color: var(--text-muted);
     margin-bottom: 10px;
 }
 .position-toggle {
@@ -412,12 +412,12 @@ export default defineComponent({
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: var(--text-secondary, #64748b);
-    border-bottom: 1px dashed var(--surface-border, rgba(0, 0, 0, 0.08));
+    color: var(--text-secondary);
+    border-bottom: 1px dashed var(--surface-border);
     padding-bottom: 4px;
 }
 .quick-facts strong {
-    color: var(--text-primary, #1e293b);
+    color: var(--text-primary);
 }
 .pc-heading {
     display: flex;
@@ -437,7 +437,7 @@ export default defineComponent({
     margin: 0;
     padding-left: 20px;
     font-size: 13px;
-    color: var(--text-secondary, #64748b);
+    color: var(--text-secondary);
     line-height: 1.6;
 }
 .comparable-table {
@@ -447,19 +447,19 @@ export default defineComponent({
 }
 .comparable-table th {
     text-align: left;
-    color: var(--text-muted, #94a3b8);
+    color: var(--text-muted);
     font-weight: 600;
     padding: 6px 8px;
-    border-bottom: 1px solid var(--surface-border, rgba(0, 0, 0, 0.08));
+    border-bottom: 1px solid var(--surface-border);
 }
 .comparable-table td {
     padding: 8px;
-    border-bottom: 1px solid var(--surface-border, rgba(0, 0, 0, 0.08));
-    color: var(--text-secondary, #64748b);
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-secondary);
     vertical-align: middle;
 }
 .name-cell {
-    color: var(--text-primary, #1e293b);
+    color: var(--text-primary);
     font-weight: 600;
 }
 .name-cell-link {
@@ -467,7 +467,7 @@ export default defineComponent({
 }
 .name-cell-link:hover {
     text-decoration: underline;
-    color: var(--q-primary, #1976d2);
+    color: var(--accent);
 }
 .grade-badge {
     display: inline-flex !important;

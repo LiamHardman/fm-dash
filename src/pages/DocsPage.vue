@@ -1,277 +1,266 @@
 <template>
     <q-page class="docs-page">
-        <!-- Hero Section -->
-        <PageHero
-            icon="menu_book"
-            badge="Documentation"
-            title="Complete Guide to"
-            highlight="FM-Dash"
-            subtitle="Everything you need to master Football Manager data analysis, from getting started to advanced team management strategies."
-            class="docs-hero"
-        >
-            <template #actions>
-                <q-btn
-                    unelevated
-                    size="lg"
-                    color="white"
-                    text-color="primary"
-                    label="Get Started"
-                    icon="play_arrow"
-                    @click="setActiveSection('getting-started')"
-                    class="hero-cta"
-                />
-                <q-btn
-                    outline
-                    size="lg"
-                    color="white"
-                    label="API Reference"
-                    icon="code"
-                    @click="setActiveSection('api-reference')"
-                    class="hero-secondary"
-                />
-                <q-btn
-                    outline
-                    size="lg"
-                    color="white"
-                    label="First Time Guide"
-                    icon="school"
-                    @click="showTutorial"
-                    class="hero-tutorial"
-                />
-            </template>
-            <template #side>
-                <div class="hero-visual">
-                    <div class="feature-grid">
-                        <div
-                            class="feature-card"
-                            v-for="feature in heroFeatures"
-                            :key="feature.id"
-                        >
-                            <q-icon
-                                :name="feature.icon"
-                                size="2rem"
-                                class="feature-icon"
-                            />
-                            <div class="feature-text">{{ feature.title }}</div>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </PageHero>
-
-        <div class="docs-container">
-            <div class="docs-sidebar">
-                <div class="sidebar-header">
-                    <h3>Navigation</h3>
+        <div class="page-container">
+            <PageHeader
+                title="Documentation"
+                subtitle="Everything you need to master Football Manager data analysis, from getting started to advanced team management strategies."
+                icon="menu_book"
+            >
+                <template #actions>
                     <q-btn
-                        flat
-                        round
-                        icon="close"
-                        size="sm"
-                        @click="mobileSidebarOpen = false"
-                        class="mobile-close q-ml-auto"
-                        v-if="$q.screen.lt.md"
+                        unelevated
+                        color="primary"
+                        label="Get Started"
+                        icon="play_arrow"
+                        @click="scrollToSection('getting-started')"
                     />
+                    <q-btn
+                        outline
+                        color="primary"
+                        label="API Reference"
+                        icon="code"
+                        @click="scrollToSection('api-reference')"
+                    />
+                    <q-btn
+                        outline
+                        color="primary"
+                        label="First-Time Guide"
+                        icon="school"
+                        @click="showTutorial"
+                    />
+                </template>
+            </PageHeader>
+
+            <div class="docs-highlights">
+                <div class="highlight-chip" v-for="feature in heroFeatures" :key="feature.id">
+                    <q-icon :name="feature.icon" size="1.1rem" />
+                    <span>{{ feature.title }}</span>
                 </div>
-
-                <q-list class="nav-list">
-                    <q-item
-                        v-for="section in docSections"
-                        :key="section.id"
-                        clickable
-                        v-ripple
-                        :active="activeSection === section.id"
-                        @click="setActiveSection(section.id)"
-                        class="doc-nav-item"
-                    >
-                        <q-item-section avatar>
-                            <q-icon :name="section.icon" size="1.2rem" />
-                        </q-item-section>
-                        <q-item-section>
-                            <q-item-label class="nav-title">{{
-                                section.title
-                            }}</q-item-label>
-                            <q-item-label caption class="nav-subtitle">{{
-                                section.subtitle
-                            }}</q-item-label>
-                        </q-item-section>
-                    </q-item>
-                </q-list>
-
-                <div class="sidebar-footer"></div>
             </div>
 
-            <!-- Mobile Menu Button -->
-            <q-btn
-                v-if="$q.screen.lt.md"
-                fab
-                icon="menu"
-                color="primary"
-                @click="mobileSidebarOpen = true"
-                class="mobile-menu-btn"
-                size="md"
-            />
+            <div class="docs-layout">
+                <!-- Sticky table of contents (desktop) -->
+                <nav class="docs-toc" aria-label="Table of contents">
+                    <div class="toc-inner">
+                        <div class="toc-title">On this page</div>
+                        <ul class="toc-list">
+                            <li v-for="section in docSections" :key="section.id" class="toc-item">
+                                <a
+                                    :href="`#${section.id}`"
+                                    class="toc-link"
+                                    :class="{ 'toc-link--active': activeAnchor === section.id }"
+                                    @click.prevent="scrollToSection(section.id)"
+                                >
+                                    <q-icon :name="section.icon" size="16px" />
+                                    <span>{{ section.title }}</span>
+                                </a>
+                                <ul v-if="section.subsections.length" class="toc-sublist">
+                                    <li v-for="sub in section.subsections" :key="sub.id">
+                                        <a
+                                            :href="`#${sub.id}`"
+                                            class="toc-sublink"
+                                            :class="{ 'toc-sublink--active': activeAnchor === sub.id }"
+                                            @click.prevent="scrollToSection(sub.id)"
+                                        >{{ sub.title }}</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
 
-            <div class="docs-content">
-                <!-- Getting Started Section -->
-                <div
-                    v-if="activeSection === 'getting-started'"
-                    class="content-section"
+                <!-- Mobile contents toggle -->
+                <q-btn
+                    v-if="$q.screen.lt.md"
+                    fab
+                    icon="menu_book"
+                    color="primary"
+                    class="mobile-toc-btn"
+                    @click="mobileTocOpen = true"
                 >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="hub" />
-                            <span>Documentation Hub</span>
-                        </div>
-                        <h1 class="section-title">Welcome to FM-Dash</h1>
-                        <p class="section-subtitle">
-                            Choose your path to get the most out of Football Manager data analysis. 
-                            Whether you're analyzing players, hosting your own instance, or building 
-                            integrations, we've got you covered.
-                        </p>
-                    </div>
+                    <q-tooltip>Contents</q-tooltip>
+                </q-btn>
 
-                    <div class="hub-cards">
-                        <q-card class="hub-card use-card">
-                            <q-card-section class="hub-card-content">
-                                <div class="hub-icon">
-                                    <q-icon name="sports_soccer" size="3rem" />
-                                </div>
-                                <h2>Use FM-Dash</h2>
-                                <p class="hub-description">
-                                    Learn how to export your Football Manager 24 data and start 
-                                    analyzing players, teams, and formations with our powerful tools.
-                                </p>
-                                <div class="hub-features">
-                                    <div class="feature-item">
-                                        <q-icon name="upload" size="1rem" />
-                                        <span>Export data from FM24</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <q-icon name="analytics" size="1rem" />
-                                        <span>Analyze player performance</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <q-icon name="groups" size="1rem" />
-                                        <span>Build optimal teams</span>
-                                    </div>
-                                </div>
-                                <q-btn
-                                    unelevated
-                                    color="primary"
-                                    label="Get Started"
-                                    icon="play_arrow"
-                                    @click="setActiveSection('data-export')"
-                                    class="hub-btn"
-                                    size="lg"
-                                />
-                            </q-card-section>
-                        </q-card>
-
-                        <q-card class="hub-card host-card">
-                            <q-card-section class="hub-card-content">
-                                <div class="hub-icon">
-                                    <q-icon name="cloud_download" size="3rem" />
-                                </div>
-                                <h2>Host FM-Dash</h2>
-                                <p class="hub-description">
-                                    Set up your own FM-Dash instance locally. Perfect for privacy, 
-                                    customization, or when you need full control over your data.
-                                </p>
-                                <div class="hub-features">
-                                    <div class="feature-item">
-                                        <q-icon name="smart_toy" size="1rem" />
-                                        <span>Docker deployment</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <q-icon name="construction" size="1rem" />
-                                        <span>Manual installation</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <q-icon name="security" size="1rem" />
-                                        <span>Private & secure</span>
-                                    </div>
-                                </div>
-                                <q-btn
-                                    unelevated
-                                    color="secondary"
-                                    label="Deploy Now"
-                                    icon="rocket_launch"
-                                    @click="setActiveSection('local-deployment')"
-                                    class="hub-btn"
-                                    size="lg"
-                                />
-                            </q-card-section>
-                        </q-card>
-
-                        <q-card class="hub-card hack-card">
-                            <q-card-section class="hub-card-content">
-                                <div class="hub-icon">
-                                    <q-icon name="code" size="3rem" />
-                                </div>
-                                <h2>Hack FM-Dash</h2>
-                                <p class="hub-description">
-                                    Build integrations, create custom tools, or contribute to the project. 
-                                    Explore our API and extend FM-Dash's capabilities.
-                                </p>
-                                <div class="hub-features">
-                                    <div class="feature-item">
-                                        <q-icon name="api" size="1rem" />
-                                        <span>REST API endpoints</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <q-icon name="integration_instructions" size="1rem" />
-                                        <span>Integration guides</span>
-                                    </div>
-                                    <div class="feature-item">
-                                        <q-icon name="source" size="1rem" />
-                                        <span>Open source</span>
-                                    </div>
-                                </div>
-                                <q-btn
-                                    unelevated
-                                    color="positive"
-                                    label="Explore API"
-                                    icon="terminal"
-                                    @click="setActiveSection('api-reference')"
-                                    class="hub-btn"
-                                    size="lg"
-                                />
-                            </q-card-section>
-                        </q-card>
-                    </div>
-
-                </div>
-
-                <!-- Data Export Guide Section -->
-                <div
-                    v-if="activeSection === 'data-export'"
-                    class="content-section"
-                >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="upload" />
-                            <span>Data Export</span>
-                        </div>
-                        <h1 class="section-title">Export Data from FM24</h1>
-                        <p class="section-subtitle">
-                            Learn how to export your Football Manager 24 player data 
-                            for analysis in FM-Dash. This guide will walk you through 
-                            the complete process from setup to export.
-                        </p>
-                    </div>
-
-                    <!-- Overview Card -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="info"
-                                    size="1.5rem"
-                                    color="primary"
-                                />
-                                <h3>What You'll Need</h3>
+                <div class="docs-content">
+                    <!-- Getting Started -->
+                    <section id="getting-started" class="doc-section">
+                        <div class="doc-section-header">
+                            <div class="doc-section-badge">
+                                <q-icon name="hub" />
+                                <span>Documentation Hub</span>
                             </div>
+                            <h2 class="doc-section-title">Welcome to FM-Dash</h2>
+                            <p class="doc-section-subtitle">
+                                Choose your path to get the most out of Football Manager data analysis.
+                                Whether you're analyzing players, hosting your own instance, or building
+                                integrations, we've got you covered.
+                            </p>
+                        </div>
+
+                        <div class="hub-cards">
+                            <q-card class="hub-card use-card">
+                                <q-card-section class="hub-card-content">
+                                    <div class="hub-icon">
+                                        <q-icon name="sports_soccer" size="3rem" />
+                                    </div>
+                                    <h3>Use FM-Dash</h3>
+                                    <p class="hub-description">
+                                        Learn how to export your Football Manager 24 data and start
+                                        analyzing players, teams, and formations with our powerful tools.
+                                    </p>
+                                    <div class="hub-features">
+                                        <div class="feature-item">
+                                            <q-icon name="upload" size="1rem" />
+                                            <span>Export data from FM24</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <q-icon name="analytics" size="1rem" />
+                                            <span>Analyze player performance</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <q-icon name="groups" size="1rem" />
+                                            <span>Build optimal teams</span>
+                                        </div>
+                                    </div>
+                                    <q-btn
+                                        unelevated
+                                        color="primary"
+                                        label="Get Started"
+                                        icon="play_arrow"
+                                        @click="scrollToSection('data-export')"
+                                        class="hub-btn"
+                                        size="lg"
+                                    />
+                                </q-card-section>
+                            </q-card>
+
+                            <q-card class="hub-card host-card">
+                                <q-card-section class="hub-card-content">
+                                    <div class="hub-icon">
+                                        <q-icon name="cloud_download" size="3rem" />
+                                    </div>
+                                    <h3>Host FM-Dash</h3>
+                                    <p class="hub-description">
+                                        Set up your own FM-Dash instance locally. Perfect for privacy,
+                                        customization, or when you need full control over your data.
+                                    </p>
+                                    <div class="hub-features">
+                                        <div class="feature-item">
+                                            <q-icon name="smart_toy" size="1rem" />
+                                            <span>Docker deployment</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <q-icon name="construction" size="1rem" />
+                                            <span>Manual installation</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <q-icon name="security" size="1rem" />
+                                            <span>Private &amp; secure</span>
+                                        </div>
+                                    </div>
+                                    <q-btn
+                                        unelevated
+                                        color="secondary"
+                                        label="Deploy Now"
+                                        icon="rocket_launch"
+                                        @click="scrollToSection('local-deployment')"
+                                        class="hub-btn"
+                                        size="lg"
+                                    />
+                                </q-card-section>
+                            </q-card>
+
+                            <q-card class="hub-card hack-card">
+                                <q-card-section class="hub-card-content">
+                                    <div class="hub-icon">
+                                        <q-icon name="code" size="3rem" />
+                                    </div>
+                                    <h3>Hack FM-Dash</h3>
+                                    <p class="hub-description">
+                                        Build integrations, create custom tools, or contribute to the project.
+                                        Explore our API and extend FM-Dash's capabilities.
+                                    </p>
+                                    <div class="hub-features">
+                                        <div class="feature-item">
+                                            <q-icon name="api" size="1rem" />
+                                            <span>REST API endpoints</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <q-icon name="integration_instructions" size="1rem" />
+                                            <span>Integration guides</span>
+                                        </div>
+                                        <div class="feature-item">
+                                            <q-icon name="source" size="1rem" />
+                                            <span>Open source</span>
+                                        </div>
+                                    </div>
+                                    <q-btn
+                                        unelevated
+                                        color="positive"
+                                        label="Explore API"
+                                        icon="terminal"
+                                        @click="scrollToSection('api-reference')"
+                                        class="hub-btn"
+                                        size="lg"
+                                    />
+                                </q-card-section>
+                            </q-card>
+                        </div>
+
+                        <div class="getting-started-grid">
+                            <SectionCard title="Quick Start" icon="rocket_launch">
+                                <ol class="quick-start-list">
+                                    <li v-for="(step, index) in quickStartSteps" :key="step.title">
+                                        <div class="quick-start-number">{{ index + 1 }}</div>
+                                        <div>
+                                            <h4>{{ step.title }}</h4>
+                                            <p>{{ step.description }}</p>
+                                        </div>
+                                    </li>
+                                </ol>
+                            </SectionCard>
+
+                            <SectionCard title="System Requirements" icon="checklist">
+                                <ul class="requirements-list">
+                                    <li v-for="requirement in systemRequirements" :key="requirement.id">
+                                        <q-icon :name="requirement.icon" size="1.3rem" color="primary" />
+                                        <div>
+                                            <h4>{{ requirement.title }}</h4>
+                                            <p>{{ requirement.description }}</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <div class="format-chips">
+                                    <span class="format-chip" v-for="format in dataFormats" :key="format">
+                                        <q-icon name="description" size="0.9rem" />
+                                        {{ format }}
+                                    </span>
+                                </div>
+                            </SectionCard>
+                        </div>
+                    </section>
+
+                    <!-- Data Export Guide -->
+                    <section id="data-export" class="doc-section">
+                        <div class="doc-section-header">
+                            <div class="doc-section-badge">
+                                <q-icon name="upload" />
+                                <span>Data Export</span>
+                            </div>
+                            <h2 class="doc-section-title">Export Data from FM24</h2>
+                            <p class="doc-section-subtitle">
+                                Learn how to export your Football Manager 24 player data
+                                for analysis in FM-Dash. This guide will walk you through
+                                the complete process from setup to export.
+                            </p>
+                        </div>
+
+                        <SectionCard
+                            id="data-export-requirements"
+                            title="What You'll Need"
+                            icon="info"
+                            class="q-mb-md"
+                        >
                             <div class="requirement-grid">
                                 <div class="requirement-item">
                                     <q-icon name="sports_soccer" size="1.5rem" color="primary" />
@@ -295,29 +284,17 @@
                                     </div>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Step-by-Step Guide -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="list_alt"
-                                    size="1.5rem"
-                                    color="primary"
-                                />
-                                <h3>Step-by-Step Export Process</h3>
-                            </div>
+                        <SectionCard
+                            id="data-export-steps"
+                            title="Step-by-Step Export Process"
+                            icon="list_alt"
+                            class="q-mb-md"
+                        >
                             <div class="export-steps">
-                                <div
-                                    class="export-step"
-                                    v-for="(step, index) in exportSteps"
-                                    :key="index"
-                                >
-                                    <div class="step-number">
-                                        {{ index + 1 }}
-                                    </div>
+                                <div class="export-step" v-for="(step, index) in exportSteps" :key="step.title">
+                                    <div class="step-number">{{ index + 1 }}</div>
                                     <div class="step-content">
                                         <h4>{{ step.title }}</h4>
                                         <p>{{ step.description }}</p>
@@ -343,20 +320,14 @@
                                     </div>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Performance Tips -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="speed"
-                                    size="1.5rem"
-                                    color="orange"
-                                />
-                                <h3>Performance Tips</h3>
-                            </div>
+                        <SectionCard
+                            id="data-export-performance"
+                            title="Performance Tips"
+                            icon="speed"
+                            class="q-mb-md"
+                        >
                             <div class="performance-tips">
                                 <div class="tip-item">
                                     <q-icon name="filter_list" size="1.2rem" color="orange" />
@@ -380,20 +351,14 @@
                                     </div>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Troubleshooting -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="help_outline"
-                                    size="1.5rem"
-                                    color="negative"
-                                />
-                                <h3>Troubleshooting</h3>
-                            </div>
+                        <SectionCard
+                            id="data-export-troubleshooting"
+                            title="Troubleshooting"
+                            icon="help_outline"
+                            class="q-mb-md"
+                        >
                             <div class="troubleshooting-items">
                                 <div class="trouble-item">
                                     <h4>Export seems stuck or frozen</h4>
@@ -408,23 +373,17 @@
                                     <p>Consider filtering your dataset further before export. Focus on specific leagues, age ranges, or positions to reduce file size.</p>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Next Steps -->
-                    <q-card class="info-card success-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="check_circle"
-                                    size="1.5rem"
-                                    color="positive"
-                                />
-                                <h3>Ready to Analyze!</h3>
-                            </div>
+                        <SectionCard
+                            id="data-export-next-steps"
+                            title="Ready to Analyze!"
+                            icon="check_circle"
+                            class="success-card"
+                        >
                             <p class="success-description">
-                                Once you've successfully exported your data, you're ready to upload it to FM-Dash 
-                                and start analyzing your players. The exported HTML file contains all the player 
+                                Once you've successfully exported your data, you're ready to upload it to FM-Dash
+                                and start analyzing your players. The exported HTML file contains all the player
                                 data needed for comprehensive analysis.
                             </p>
                             <div class="next-actions">
@@ -441,99 +400,62 @@
                                     color="primary"
                                     label="Getting Started Guide"
                                     icon="rocket_launch"
-                                    @click="setActiveSection('getting-started')"
+                                    @click="scrollToSection('getting-started')"
                                     class="action-btn"
                                 />
                             </div>
-                        </q-card-section>
-                    </q-card>
-                </div>
+                        </SectionCard>
+                    </section>
 
-                <!-- API Reference Section -->
-                <div
-                    v-if="activeSection === 'api-reference'"
-                    class="content-section"
-                >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="code" />
-                            <span>Developer Tools</span>
+                    <!-- API Reference -->
+                    <section id="api-reference" class="doc-section">
+                        <div class="doc-section-header">
+                            <div class="doc-section-badge">
+                                <q-icon name="code" />
+                                <span>Developer Tools</span>
+                            </div>
+                            <h2 class="doc-section-title">API Reference</h2>
+                            <p class="doc-section-subtitle">
+                                Technical documentation for developers working with
+                                FM-Dash's API endpoints and data structures.
+                            </p>
                         </div>
-                        <h1 class="section-title">API Reference</h1>
-                        <p class="section-subtitle">
-                            Technical documentation for developers working with
-                            FM-Dash's API endpoints and data structures.
-                        </p>
-                    </div>
 
-                    <div class="content-cards">
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="api"
-                                        size="1.5rem"
-                                        color="primary"
-                                    />
-                                    <h3>Available Endpoints</h3>
-                                </div>
-                                <div class="api-endpoints">
-                                    <div
-                                        class="endpoint-item"
-                                        v-for="endpoint in apiEndpoints"
-                                        :key="endpoint.id"
-                                    >
-                                        <div
-                                            class="endpoint-method"
-                                            :class="
-                                                endpoint.method.toLowerCase()
-                                            "
-                                        >
-                                            {{ endpoint.method }}
-                                        </div>
-                                        <div class="endpoint-details">
-                                            <code class="endpoint-path">{{
-                                                endpoint.path
-                                            }}</code>
-                                            <p class="endpoint-description">
-                                                {{ endpoint.description }}
-                                            </p>
-                                        </div>
+                        <SectionCard title="Available Endpoints" icon="api">
+                            <div class="api-endpoints">
+                                <div class="endpoint-item" v-for="endpoint in apiEndpoints" :key="endpoint.id">
+                                    <div class="endpoint-method" :class="endpoint.method.toLowerCase()">
+                                        {{ endpoint.method }}
+                                    </div>
+                                    <div class="endpoint-details">
+                                        <code class="endpoint-path">{{ endpoint.path }}</code>
+                                        <p class="endpoint-description">{{ endpoint.description }}</p>
                                     </div>
                                 </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
-                </div>
-
-                <!-- Local Deployment Section -->
-                <div
-                    v-if="activeSection === 'local-deployment'"
-                    class="content-section"
-                >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="cloud_download" />
-                            <span>Self-Hosting</span>
-                        </div>
-                        <h1 class="section-title">Local Deployment</h1>
-                        <p class="section-subtitle">
-                            Run FM-Dash on your own computer for personal use. 
-                            Choose between Docker (easiest) or manual setup.
-                        </p>
-                    </div>
-
-                    <!-- Prerequisites -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="download"
-                                    size="1.5rem"
-                                    color="orange"
-                                />
-                                <h3>Prerequisites</h3>
                             </div>
+                        </SectionCard>
+                    </section>
+
+                    <!-- Local Deployment -->
+                    <section id="local-deployment" class="doc-section">
+                        <div class="doc-section-header">
+                            <div class="doc-section-badge">
+                                <q-icon name="cloud_download" />
+                                <span>Self-Hosting</span>
+                            </div>
+                            <h2 class="doc-section-title">Local Deployment</h2>
+                            <p class="doc-section-subtitle">
+                                Run FM-Dash on your own computer for personal use.
+                                Choose between Docker (easiest) or manual setup.
+                            </p>
+                        </div>
+
+                        <SectionCard
+                            id="local-deployment-prerequisites"
+                            title="Prerequisites"
+                            icon="download"
+                            class="q-mb-md"
+                        >
                             <p class="card-description">
                                 Choose your deployment method and install the required tools:
                             </p>
@@ -551,160 +473,142 @@
                                     />
                                     <h4>{{ requirement.title }}</h4>
                                     <p>{{ requirement.description }}</p>
-                                    <a v-if="requirement.downloadUrl" :href="requirement.downloadUrl" target="_blank" class="download-link">
+                                    <a
+                                        v-if="requirement.downloadUrl"
+                                        :href="requirement.downloadUrl"
+                                        target="_blank"
+                                        class="download-link"
+                                    >
                                         Download {{ requirement.shortName }}
                                     </a>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Option 1: Docker -->
-                    <q-card class="info-card method-card docker-method">
-                        <q-card-section>
-                            <div class="method-header">
+                        <SectionCard
+                            id="local-deployment-docker"
+                            class="method-card docker-method q-mb-md"
+                        >
+                            <template #header>
                                 <div class="method-badge recommended">
                                     <q-icon name="smart_toy" size="1.5rem" />
                                     <div>
-                                        <h2>Option 1: Docker (Recommended)</h2>
+                                        <h3>Option 1: Docker (Recommended)</h3>
                                         <p>The easiest way to run FM-Dash. Everything is pre-configured.</p>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="method-content">
-                                <div class="setup-steps">
-                                    <div
-                                        class="setup-step"
-                                        v-for="(step, index) in dockerSteps"
-                                        :key="index"
-                                    >
-                                        <div class="step-number">
-                                            {{ index + 1 }}
+                            </template>
+
+                            <div class="setup-steps">
+                                <div class="setup-step" v-for="(step, index) in dockerSteps" :key="step.title">
+                                    <div class="step-number">{{ index + 1 }}</div>
+                                    <div class="step-content">
+                                        <h4>{{ step.title }}</h4>
+                                        <p>{{ step.description }}</p>
+                                        <div v-if="step.commands" class="command-list">
+                                            <div
+                                                v-for="command in step.commands"
+                                                :key="command"
+                                                class="command-block"
+                                            >
+                                                <code>{{ command }}</code>
+                                                <q-btn
+                                                    flat
+                                                    round
+                                                    icon="content_copy"
+                                                    size="sm"
+                                                    @click="copyToClipboard(command)"
+                                                    class="copy-btn"
+                                                    dense
+                                                />
+                                            </div>
                                         </div>
-                                        <div class="step-content">
-                                            <h4>{{ step.title }}</h4>
-                                            <p>{{ step.description }}</p>
-                                            <div v-if="step.commands" class="command-list">
-                                                <div v-for="(command, cmdIndex) in step.commands" :key="cmdIndex" class="command-block">
-                                                    <code>{{ command }}</code>
-                                                    <q-btn
-                                                        flat
-                                                        round
-                                                        icon="content_copy"
-                                                        size="sm"
-                                                        @click="copyToClipboard(command)"
-                                                        class="copy-btn"
-                                                        dense
-                                                    />
-                                                </div>
+                                        <div v-if="step.fileContent" class="file-content">
+                                            <div class="file-header">
+                                                <span class="file-name">{{ step.fileName }}</span>
+                                                <q-btn
+                                                    flat
+                                                    round
+                                                    icon="content_copy"
+                                                    size="sm"
+                                                    @click="copyToClipboard(step.fileContent)"
+                                                    class="copy-btn"
+                                                    dense
+                                                />
                                             </div>
-                                            <div v-if="step.fileContent" class="file-content">
-                                                <div class="file-header">
-                                                    <span class="file-name">{{ step.fileName }}</span>
-                                                    <q-btn
-                                                        flat
-                                                        round
-                                                        icon="content_copy"
-                                                        size="sm"
-                                                        @click="copyToClipboard(step.fileContent)"
-                                                        class="copy-btn"
-                                                        dense
-                                                    />
-                                                </div>
-                                                <pre class="file-code">{{ step.fileContent }}</pre>
-                                            </div>
-                                            <div v-if="step.note" class="step-note">
-                                                <q-icon name="info" size="1rem" />
-                                                {{ step.note }}
-                                            </div>
+                                            <pre class="file-code">{{ step.fileContent }}</pre>
+                                        </div>
+                                        <div v-if="step.note" class="step-note">
+                                            <q-icon name="info" size="1rem" />
+                                            {{ step.note }}
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="final-step">
-                                    <h4>✅ Access Your Application</h4>
-                                    <p>Once the container is running, open your web browser and go to:</p>
-                                    <div class="access-url">
-                                        <strong>http://localhost:3000</strong>
-                                    </div>
-                                    <p class="access-note">You should see the FM-Dash interface. You can now upload your Football Manager data and start analyzing!</p>
-                                </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
 
-                    <!-- Option 2: Manual -->
-                    <q-card class="info-card method-card manual-method">
-                        <q-card-section>
-                            <div class="method-header">
+                            <div class="final-step">
+                                <h4><q-icon name="check_circle" color="positive" size="1.1rem" /> Access Your Application</h4>
+                                <p>Once the container is running, open your web browser and go to:</p>
+                                <div class="access-url"><strong>http://localhost:3000</strong></div>
+                                <p class="access-note">You should see the FM-Dash interface. You can now upload your Football Manager data and start analyzing!</p>
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard
+                            id="local-deployment-manual"
+                            class="method-card manual-method q-mb-md"
+                        >
+                            <template #header>
                                 <div class="method-badge">
                                     <q-icon name="construction" size="1.5rem" />
                                     <div>
-                                        <h2>Option 2: Manual Installation</h2>
+                                        <h3>Option 2: Manual Installation</h3>
                                         <p>For users who prefer to build and run the application manually.</p>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="method-content">
-                                <div class="setup-steps">
-                                    <div
-                                        class="setup-step"
-                                        v-for="(step, index) in setupSteps"
-                                        :key="index"
-                                    >
-                                        <div class="step-number">
-                                            {{ index + 1 }}
+                            </template>
+
+                            <div class="setup-steps">
+                                <div class="setup-step" v-for="(step, index) in setupSteps" :key="step.title">
+                                    <div class="step-number">{{ index + 1 }}</div>
+                                    <div class="step-content">
+                                        <h4>{{ step.title }}</h4>
+                                        <p>{{ step.description }}</p>
+                                        <div v-if="step.commands" class="command-list">
+                                            <div
+                                                v-for="command in step.commands"
+                                                :key="command"
+                                                class="command-block"
+                                            >
+                                                <code>{{ command }}</code>
+                                                <q-btn
+                                                    flat
+                                                    round
+                                                    icon="content_copy"
+                                                    size="sm"
+                                                    @click="copyToClipboard(command)"
+                                                    class="copy-btn"
+                                                    dense
+                                                />
+                                            </div>
                                         </div>
-                                        <div class="step-content">
-                                            <h4>{{ step.title }}</h4>
-                                            <p>{{ step.description }}</p>
-                                            <div v-if="step.commands" class="command-list">
-                                                <div v-for="(command, cmdIndex) in step.commands" :key="cmdIndex" class="command-block">
-                                                    <code>{{ command }}</code>
-                                                    <q-btn
-                                                        flat
-                                                        round
-                                                        icon="content_copy"
-                                                        size="sm"
-                                                        @click="copyToClipboard(command)"
-                                                        class="copy-btn"
-                                                        dense
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div v-if="step.note" class="step-note">
-                                                <q-icon name="info" size="1rem" />
-                                                {{ step.note }}
-                                            </div>
+                                        <div v-if="step.note" class="step-note">
+                                            <q-icon name="info" size="1rem" />
+                                            {{ step.note }}
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="final-step">
-                                    <h4>✅ Access Your Application</h4>
-                                    <p>Once both servers are running, open your web browser and go to:</p>
-                                    <div class="access-url">
-                                        <strong>http://localhost:3000</strong>
-                                    </div>
-                                    <p class="access-note">You should see the FM-Dash interface. You can now upload your Football Manager data and start analyzing!</p>
-                                </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
 
-                    <!-- Help Section -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="help"
-                                    size="1.5rem"
-                                    color="primary"
-                                />
-                                <h3>Need More Help?</h3>
+                            <div class="final-step">
+                                <h4><q-icon name="check_circle" color="positive" size="1.1rem" /> Access Your Application</h4>
+                                <p>Once both servers are running, open your web browser and go to:</p>
+                                <div class="access-url"><strong>http://localhost:3000</strong></div>
+                                <p class="access-note">You should see the FM-Dash interface. You can now upload your Football Manager data and start analyzing!</p>
                             </div>
+                        </SectionCard>
+
+                        <SectionCard id="local-deployment-help" title="Need More Help?" icon="help">
                             <div class="resource-links">
                                 <q-btn
                                     outline
@@ -728,96 +632,65 @@
                             <p class="resource-note">
                                 If you're having issues, check the GitHub repository for detailed documentation and community support.
                             </p>
-                        </q-card-section>
-                    </q-card>
-                </div>
+                        </SectionCard>
+                    </section>
 
-                <!-- Rating Calculations Section -->
-                <div
-                    v-if="activeSection === 'rating-calculations'"
-                    class="content-section"
-                >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="calculate" />
-                            <span>Rating System</span>
-                        </div>
-                        <h1 class="section-title">How Ratings Are Calculated</h1>
-                        <p class="section-subtitle">
-                            Understanding how FM-Dash calculates different player ratings and what they mean for player analysis.
-                        </p>
-                    </div>
-
-                    <!-- Overview -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="info"
-                                    size="1.5rem"
-                                    color="primary"
-                                />
-                                <h3>Rating System Overview</h3>
+                    <!-- Rating Calculations -->
+                    <section id="rating-calculations" class="doc-section">
+                        <div class="doc-section-header">
+                            <div class="doc-section-badge">
+                                <q-icon name="calculate" />
+                                <span>Rating System</span>
                             </div>
+                            <h2 class="doc-section-title">How Ratings Are Calculated</h2>
+                            <p class="doc-section-subtitle">
+                                Understanding how FM-Dash calculates different player ratings and what they mean for player analysis.
+                            </p>
+                        </div>
+
+                        <SectionCard id="rating-overview" title="Rating System Overview" icon="info" class="q-mb-md">
                             <p class="card-description">
-                                FM-Dash uses a sophisticated rating system that combines Football Manager's raw attributes 
+                                FM-Dash uses a sophisticated rating system that combines Football Manager's raw attributes
                                 into meaningful categories. Each rating type serves a different purpose in player analysis.
                             </p>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- FIFA-Style Ratings -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="sports_soccer"
-                                    size="1.5rem"
-                                    color="primary"
-                                />
-                                <h3>FIFA-Style Category Ratings</h3>
-                            </div>
+                        <SectionCard
+                            id="rating-fifa"
+                            title="FIFA-Style Category Ratings"
+                            icon="sports_soccer"
+                            class="q-mb-md"
+                        >
                             <p class="card-description">
-                                These ratings convert Football Manager's 1-20 attribute system into FIFA-style 0-99 ratings 
+                                These ratings convert Football Manager's 1-20 attribute system into FIFA-style 0-99 ratings
                                 that are easier to understand and compare.
                             </p>
-                            
-                                                         <div class="rating-categories">
-                                 <div class="rating-category" v-for="category in fifaCategories" :key="category.name">
-                                     <div class="category-header">
-                                         <h4>{{ category.name }}</h4>
-                                         <span class="category-description">{{ category.description }}</span>
-                                     </div>
-                                     <div class="weights-explanation">
-                                         <p class="weights-note">
-                                             <q-icon name="info" size="1rem" />
-                                             <span>The numbers below are <strong>weights</strong> that determine how much each attribute contributes to the final rating. Higher weights = more important attributes.</span>
-                                         </p>
-                                     </div>
-                                     <div class="attribute-weights">
-                                         <div class="weight-item" v-for="weight in category.weights" :key="weight.attribute">
-                                             <span class="attribute-name">{{ weight.attribute }}</span>
-                                             <span class="weight-value">Weight: {{ weight.weight }}</span>
-                                         </div>
-                                     </div>
-                                 </div>
-                             </div>
-                        </q-card-section>
-                    </q-card>
 
-                    <!-- Overall Rating -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="star"
-                                    size="1.5rem"
-                                    color="orange"
-                                />
-                                <h3>Overall Rating</h3>
+                            <div class="rating-categories">
+                                <div class="rating-category" v-for="category in fifaCategories" :key="category.name">
+                                    <div class="category-header">
+                                        <h4>{{ category.name }}</h4>
+                                        <span class="category-description">{{ category.description }}</span>
+                                    </div>
+                                    <div class="weights-explanation">
+                                        <p class="weights-note">
+                                            <q-icon name="info" size="1rem" />
+                                            <span>The numbers below are <strong>weights</strong> that determine how much each attribute contributes to the final rating. Higher weights = more important attributes.</span>
+                                        </p>
+                                    </div>
+                                    <div class="attribute-weights">
+                                        <div class="weight-item" v-for="weight in category.weights" :key="weight.attribute">
+                                            <span class="attribute-name">{{ weight.attribute }}</span>
+                                            <span class="weight-value">Weight: {{ weight.weight }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                        </SectionCard>
+
+                        <SectionCard id="rating-overall" title="Overall Rating" icon="star" class="q-mb-md">
                             <p class="card-description">
-                                The Overall rating represents a player's best performance across all possible roles. 
+                                The Overall rating represents a player's best performance across all possible roles.
                                 It's calculated by evaluating the player in every applicable position and taking the highest score.
                             </p>
                             <div class="overall-calculation">
@@ -833,22 +706,11 @@
                                     <span>This ensures the Overall rating represents the player's peak potential rather than an average.</span>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Total Stats -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="summarize"
-                                    size="1.5rem"
-                                    color="green"
-                                />
-                                <h3>Total Stats</h3>
-                            </div>
+                        <SectionCard id="rating-total-stats" title="Total Stats" icon="summarize" class="q-mb-md">
                             <p class="card-description">
-                                Total Stats is the sum of all physical, mental, and technical attributes. This provides a raw 
+                                Total Stats is the sum of all physical, mental, and technical attributes. This provides a raw
                                 measure of a player's total attribute points.
                             </p>
                             <div class="total-stats-breakdown">
@@ -872,22 +734,11 @@
                                     <span>Only attributes with values greater than 0 are included in the total.</span>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Moneyball Rating -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="trending_up"
-                                    size="1.5rem"
-                                    color="purple"
-                                />
-                                <h3>Moneyball Rating (MBR)</h3>
-                            </div>
+                        <SectionCard id="rating-mbr" title="Moneyball Rating (MBR)" icon="trending_up" class="q-mb-md">
                             <p class="card-description">
-                                The Moneyball Rating evaluates a player's value for money, considering their ability, age, 
+                                The Moneyball Rating evaluates a player's value for money, considering their ability, age,
                                 personality, and transfer value relative to market expectations.
                             </p>
                             <div class="mbr-calculation">
@@ -923,22 +774,11 @@
                                     <span>Higher MBR indicates better value for money. Perfect for finding undervalued players!</span>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Scaling Information -->
-                    <q-card class="info-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="tune"
-                                    size="1.5rem"
-                                    color="blue"
-                                />
-                                <h3>Rating Scaling</h3>
-                            </div>
+                        <SectionCard id="rating-scaling" title="Rating Scaling" icon="tune" class="q-mb-md">
                             <p class="card-description">
-                                FM-Dash uses sophisticated scaling to convert Football Manager's 1-20 attributes into more 
+                                FM-Dash uses sophisticated scaling to convert Football Manager's 1-20 attributes into more
                                 intuitive 0-99 ratings while maintaining meaningful differentiation between players.
                             </p>
                             <div class="scaling-info">
@@ -953,20 +793,14 @@
                                     <span>This scaling makes it easier to distinguish between players while maintaining realistic rating distributions.</span>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
 
-                    <!-- Usage Tips -->
-                    <q-card class="info-card success-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="tips_and_updates"
-                                    size="1.5rem"
-                                    color="positive"
-                                />
-                                <h3>How to Use These Ratings</h3>
-                            </div>
+                        <SectionCard
+                            id="rating-usage"
+                            title="How to Use These Ratings"
+                            icon="tips_and_updates"
+                            class="success-card"
+                        >
                             <div class="usage-tips">
                                 <div class="tip-item">
                                     <h4>Overall Rating</h4>
@@ -985,74 +819,63 @@
                                     <p>Use to find undervalued players and make smart transfer decisions based on value for money.</p>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                        </SectionCard>
+                    </section>
                 </div>
             </div>
         </div>
 
-        <!-- Mobile Sidebar Overlay -->
-        <q-dialog
-            v-model="mobileSidebarOpen"
-            position="left"
-            class="mobile-sidebar-dialog"
-        >
-            <div class="docs-sidebar mobile-sidebar">
-                <div class="sidebar-header">
-                    <h3>Navigation</h3>
-                    <q-btn
-                        flat
-                        round
-                        icon="close"
-                        size="sm"
-                        @click="mobileSidebarOpen = false"
-                        class="mobile-close q-ml-auto"
-                    />
+        <!-- Mobile table-of-contents dialog -->
+        <q-dialog v-model="mobileTocOpen" position="left">
+            <div class="mobile-toc">
+                <div class="toc-inner">
+                    <div class="mobile-toc-header">
+                        <div class="toc-title">On this page</div>
+                        <q-btn flat round dense icon="close" size="sm" @click="mobileTocOpen = false" />
+                    </div>
+                    <ul class="toc-list">
+                        <li v-for="section in docSections" :key="section.id" class="toc-item">
+                            <a
+                                :href="`#${section.id}`"
+                                class="toc-link"
+                                :class="{ 'toc-link--active': activeAnchor === section.id }"
+                                @click.prevent="scrollToSection(section.id)"
+                            >
+                                <q-icon :name="section.icon" size="16px" />
+                                <span>{{ section.title }}</span>
+                            </a>
+                            <ul v-if="section.subsections.length" class="toc-sublist">
+                                <li v-for="sub in section.subsections" :key="sub.id">
+                                    <a
+                                        :href="`#${sub.id}`"
+                                        class="toc-sublink"
+                                        :class="{ 'toc-sublink--active': activeAnchor === sub.id }"
+                                        @click.prevent="scrollToSection(sub.id)"
+                                    >{{ sub.title }}</a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
                 </div>
-
-                <q-list class="nav-list">
-                    <q-item
-                        v-for="section in docSections"
-                        :key="section.id"
-                        clickable
-                        v-ripple
-                        :active="activeSection === section.id"
-                        @click="
-                            setActiveSection(section.id);
-                            mobileSidebarOpen = false;
-                        "
-                        class="doc-nav-item"
-                    >
-                        <q-item-section avatar>
-                            <q-icon :name="section.icon" size="1.2rem" />
-                        </q-item-section>
-                        <q-item-section>
-                            <q-item-label class="nav-title">{{
-                                section.title
-                            }}</q-item-label>
-                            <q-item-label caption class="nav-subtitle">{{
-                                section.subtitle
-                            }}</q-item-label>
-                        </q-item-section>
-                    </q-item>
-                </q-list>
             </div>
         </q-dialog>
     </q-page>
 </template>
 
 <script>
-import { defineComponent, ref } from 'vue'
-import PageHero from '@/components/PageHero.vue'
+import { defineComponent, onBeforeUnmount, onMounted, ref } from 'vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import SectionCard from '@/components/layout/SectionCard.vue'
 import { useUiStore } from '@/stores/uiStore'
 
 export default defineComponent({
   name: 'DocsPage',
-  components: { PageHero },
+  components: { PageHeader, SectionCard },
   setup() {
-    const activeSection = ref('getting-started')
-    const mobileSidebarOpen = ref(false)
+    const mobileTocOpen = ref(false)
+    const activeAnchor = ref('getting-started')
     const uiStore = useUiStore()
+    let observer = null
 
     const docSections = [
       {
@@ -1060,30 +883,54 @@ export default defineComponent({
         title: 'Getting Started',
         subtitle: 'Setup and basics',
         icon: 'rocket_launch',
+        subsections: [],
       },
       {
         id: 'data-export',
         title: 'Data Export Guide',
         subtitle: 'Export from FM24',
         icon: 'upload',
+        subsections: [
+          { id: 'data-export-requirements', title: "What You'll Need" },
+          { id: 'data-export-steps', title: 'Step-by-Step Process' },
+          { id: 'data-export-performance', title: 'Performance Tips' },
+          { id: 'data-export-troubleshooting', title: 'Troubleshooting' },
+          { id: 'data-export-next-steps', title: 'Ready to Analyze' },
+        ],
       },
       {
         id: 'api-reference',
         title: 'API Reference',
         subtitle: 'Developer docs',
         icon: 'code',
+        subsections: [],
       },
       {
         id: 'local-deployment',
         title: 'Local Deployment',
         subtitle: 'Self-hosting',
         icon: 'cloud_download',
+        subsections: [
+          { id: 'local-deployment-prerequisites', title: 'Prerequisites' },
+          { id: 'local-deployment-docker', title: 'Docker Setup' },
+          { id: 'local-deployment-manual', title: 'Manual Setup' },
+          { id: 'local-deployment-help', title: 'Need Help?' },
+        ],
       },
       {
         id: 'rating-calculations',
         title: 'Rating Calculations',
         subtitle: 'How ratings work',
         icon: 'calculate',
+        subsections: [
+          { id: 'rating-overview', title: 'Overview' },
+          { id: 'rating-fifa', title: 'FIFA-Style Ratings' },
+          { id: 'rating-overall', title: 'Overall Rating' },
+          { id: 'rating-total-stats', title: 'Total Stats' },
+          { id: 'rating-mbr', title: 'Moneyball Rating' },
+          { id: 'rating-scaling', title: 'Rating Scaling' },
+          { id: 'rating-usage', title: 'Usage Tips' },
+        ],
       },
     ]
 
@@ -1467,17 +1314,59 @@ volumes:
       } catch (_err) {}
     }
 
-    const setActiveSection = (sectionId) => {
-      activeSection.value = sectionId
+    const scrollToSection = (sectionId) => {
+      mobileTocOpen.value = false
+      const el = document.getElementById(sectionId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
     }
 
     const showTutorial = () => {
       uiStore.showTutorial()
     }
 
+    // Scroll-spy: highlight the TOC entry for whichever anchor is currently
+    // nearest the top of the viewport. rootMargin trims the observation zone
+    // to the top ~20% of the viewport (below the fixed app header) so only
+    // one heading is "current" at a time as the page is scrolled.
+    onMounted(() => {
+      const allAnchorIds = docSections.flatMap((section) => [
+        section.id,
+        ...section.subsections.map((sub) => sub.id),
+      ])
+      const targets = allAnchorIds
+        .map((id) => document.getElementById(id))
+        .filter((el) => el !== null)
+
+      if (targets.length === 0) return
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              activeAnchor.value = entry.target.id
+            }
+          }
+        },
+        { rootMargin: '-96px 0px -75% 0px', threshold: 0 }
+      )
+
+      for (const target of targets) {
+        observer.observe(target)
+      }
+    })
+
+    onBeforeUnmount(() => {
+      if (observer) {
+        observer.disconnect()
+        observer = null
+      }
+    })
+
     return {
-      activeSection,
-      mobileSidebarOpen,
+      mobileTocOpen,
+      activeAnchor,
       docSections,
       heroFeatures,
       quickStartSteps,
@@ -1490,7 +1379,7 @@ volumes:
       exportSteps,
       fifaCategories,
       copyToClipboard,
-      setActiveSection,
+      scrollToSection,
       showTutorial,
     }
   },
@@ -1499,1167 +1388,634 @@ volumes:
 
 <style lang="scss" scoped>
 .docs-page {
-    padding: 0;
-    background: var(--q-page);
     min-height: 100vh;
+    background: var(--surface-page);
 }
 
-// Hero layout/colors come from the shared PageHero component; the styles
-// below only cover the slotted content (buttons + feature grid).
-.docs-hero {
-    // Let .docs-container's negative margin overlap the hero gradient.
-    margin-bottom: 0;
-}
-
-.hero-cta {
-    padding: 0.75rem 2rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    text-transform: none;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    }
-}
-
-.hero-secondary,
-.hero-tutorial {
-    padding: 0.75rem 2rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    text-transform: none;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.1);
-        transform: translateY(-2px);
-    }
-}
-
-.hero-visual {
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5rem;
-
-        @media (max-width: 768px) {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-    }
-
-    .feature-card {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        text-align: center;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: all 0.3s ease;
-
-        &:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .feature-icon {
-            color: #ffd700;
-            margin-bottom: 0.5rem;
-        }
-
-        .feature-text {
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-    }
-}
-
-// Main Content Area
-.docs-container {
-    display: flex;
-    min-height: calc(100vh - 400px);
-    background: var(--q-page);
-    border-radius: 2rem 2rem 0 0;
-    margin-top: -2rem;
-    position: relative;
-    z-index: 2;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+.page-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--page-gutter);
 
     @media (max-width: 768px) {
-        flex-direction: column;
-        margin-top: -1rem;
-        border-radius: 1rem 1rem 0 0;
+        padding: var(--page-gutter-sm);
     }
 }
 
-// Sidebar
-.docs-sidebar {
-    width: 320px;
-    background: var(--q-dark-page);
-    border-radius: 2rem 0 0 0;
-    border-right: 1px solid var(--q-separator-color);
+// ── Highlight chip row (preserves the original hero feature callouts) ─────
+.docs-highlights {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: var(--section-gap);
+}
 
-    .body--light & {
-        background: #f8fafc;
+.highlight-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.825rem;
+    font-weight: 600;
+}
+
+// ── Layout: sticky TOC + content column ────────────────────────────────
+.docs-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+
+    @media (max-width: 1024px) {
+        gap: 1rem;
     }
+}
 
-    &.mobile-sidebar {
-        width: 280px;
-        border-radius: 0;
-    }
+.docs-toc {
+    flex: 0 0 240px;
+    position: sticky;
+    top: calc(60px + var(--page-gutter));
+    max-height: calc(100vh - 60px - 2 * var(--page-gutter));
+    overflow-y: auto;
 
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         display: none;
     }
 }
 
-.sidebar-header {
-    padding: 2rem 1.5rem 1rem;
+.toc-inner {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1);
+    padding: 1rem;
+}
+
+.toc-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    padding: 0 0.5rem;
+}
+
+.toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.toc-item {
+    margin-bottom: 0.2rem;
+}
+
+.toc-link {
     display: flex;
     align-items: center;
-    border-bottom: 1px solid var(--q-separator-color);
+    gap: 0.5rem;
+    padding: 0.45rem 0.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
 
-    h3 {
-        margin: 0;
-        color: var(--q-primary);
-        font-weight: 700;
-        font-size: 1.25rem;
+    .q-icon {
+        color: var(--text-muted);
+        flex-shrink: 0;
     }
-
-    .mobile-close {
-        margin-left: auto;
-    }
-}
-
-.nav-list {
-    flex: 1;
-    padding: 1rem;
-}
-
-.doc-nav-item {
-    border-radius: 12px;
-    margin-bottom: 0.5rem;
-    transition: all 0.3s ease;
 
     &:hover {
-        background: rgba(25, 118, 210, 0.08);
-        transform: translateX(4px);
+        background: var(--accent-soft);
+        color: var(--accent);
     }
 
-    &.q-item--active {
-        background: linear-gradient(135deg, var(--q-primary), #3949ab);
-        color: white;
-        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+    &--active {
+        background: var(--accent-soft-strong);
+        color: var(--accent);
+        font-weight: 700;
 
-        .nav-title,
-        .nav-subtitle {
-            color: white;
+        .q-icon {
+            color: var(--accent);
         }
     }
+}
 
-    .nav-title {
+.toc-sublist {
+    list-style: none;
+    margin: 0.1rem 0 0.4rem 1.75rem;
+    padding: 0;
+    border-left: 1px solid var(--surface-border);
+}
+
+.toc-sublink {
+    display: block;
+    padding: 0.3rem 0 0.3rem 0.75rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    transition: color 0.15s ease;
+
+    &:hover {
+        color: var(--accent);
+    }
+
+    &--active {
+        color: var(--accent);
         font-weight: 600;
-        font-size: 0.95rem;
-    }
-
-    .nav-subtitle {
-        font-size: 0.8rem;
-        opacity: 0.7;
     }
 }
 
-.sidebar-footer {
-    padding: 1rem;
-    border-top: 1px solid var(--q-separator-color);
-
-    .help-card {
-        background: linear-gradient(135deg, var(--q-primary), #3949ab);
-        color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.2);
-    }
-}
-
-// Mobile Menu
-.mobile-menu-btn {
+// ── Mobile TOC ──────────────────────────────────────────────────────────
+.mobile-toc-btn {
+    display: none;
     position: fixed;
-    bottom: 2rem;
-    right: 2rem;
+    bottom: 1.5rem;
+    right: 1.5rem;
     z-index: 1000;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-3);
 
-    @media (min-width: 768px) {
-        display: none !important;
+    @media (max-width: 1024px) {
+        display: inline-flex;
     }
 }
 
-.mobile-sidebar-dialog {
-    .q-dialog__inner {
+.mobile-toc {
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    background: var(--surface-card);
+    padding: 1rem;
+    overflow-y: auto;
+
+    .toc-inner {
+        border: none;
+        box-shadow: none;
         padding: 0;
     }
 }
 
-// Content Section
-.docs-content {
-    flex: 1;
-    padding: 2rem;
-    max-width: none;
-    overflow-y: auto;
+.mobile-toc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
 
-    @media (max-width: 768px) {
-        padding: 1rem;
+    .toc-title {
+        margin-bottom: 0;
     }
 }
 
-.content-section {
+// ── Content column ──────────────────────────────────────────────────────
+.docs-content {
+    flex: 1;
+    min-width: 0;
     max-width: 900px;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--section-gap) * 2);
 }
 
-.section-header {
-    margin-bottom: 3rem;
+.doc-section {
+    scroll-margin-top: 96px;
+}
 
-    .section-badge {
+.docs-content :deep(.section-card) {
+    scroll-margin-top: 96px;
+}
+
+.doc-section-header {
+    margin-bottom: var(--section-gap);
+
+    .doc-section-badge {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        background: rgba(25, 118, 210, 0.1);
-        color: var(--q-primary);
-        padding: 0.5rem 1rem;
-        border-radius: 2rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 0.4rem 0.9rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-bottom: 0.85rem;
     }
 
-    .section-title {
-        font-size: 2.5rem;
+    .doc-section-title {
+        font-size: 2rem;
         font-weight: 700;
-        color: var(--accent);
-        margin-bottom: 1rem;
+        color: var(--text-primary);
+        margin: 0 0 0.6rem 0;
         line-height: 1.2;
 
-        .body--dark & {
-            color: #64b5f6;
-        }
-
         @media (max-width: 768px) {
-            font-size: 2rem;
+            font-size: 1.6rem;
         }
     }
 
-    .section-subtitle {
-        font-size: 1.25rem;
+    .doc-section-subtitle {
+        font-size: 1.05rem;
         line-height: 1.6;
-        color: #424242;
+        color: var(--text-secondary);
         margin: 0;
-
-        .body--dark & {
-            color: #b0b0b0;
-        }
     }
 }
 
-.content-cards {
+.card-description {
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+// ── Getting Started: hub cards ──────────────────────────────────────────
+.hub-cards {
     display: grid;
-    gap: 2rem;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    }
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: var(--section-gap);
 }
 
-.info-card {
-    border-radius: 16px;
-    border: 1px solid var(--q-separator-color);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    background: var(--q-card);
+.hub-card {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-1);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 
     &:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: var(--lift-md);
+        box-shadow: var(--shadow-2);
     }
 
-    .card-header {
+    .hub-card-content {
+        text-align: center;
+        padding: 1.75rem 1.5rem;
+    }
+
+    .hub-icon {
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+    }
+
+    h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .hub-description {
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin: 0 0 1.1rem 0;
+        font-size: 0.9rem;
+    }
+
+    .hub-features {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        text-align: left;
+    }
+
+    .feature-item {
         display: flex;
         align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
 
-        h3 {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 700;
+        .q-icon {
             color: var(--accent);
-
-            .body--dark & {
-                color: #64b5f6;
-            }
+            flex-shrink: 0;
         }
     }
 
-    .card-description {
-        line-height: 1.6;
-        color: var(--q-secondary);
-        margin: 0;
+    .hub-btn {
+        width: 100%;
+        border-radius: var(--radius-md);
+        text-transform: none;
+        font-weight: 600;
     }
 }
 
-// Step List
-.step-list {
+.getting-started-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.quick-start-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-}
-
-.step-item {
-    display: flex;
-    align-items: flex-start;
     gap: 1rem;
 
-    .step-number {
-        background: linear-gradient(135deg, var(--q-primary), #3949ab);
-        color: white;
-        width: 2rem;
-        height: 2rem;
-        border-radius: 50%;
+    li {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 0.875rem;
-        flex-shrink: 0;
-        margin-top: 0.25rem;
+        align-items: flex-start;
+        gap: 0.85rem;
     }
-
-    .step-content {
-        h4 {
-            margin: 0 0 0.5rem 0;
-            font-weight: 600;
-            color: var(--accent);
-
-            .body--dark & {
-                color: #64b5f6;
-            }
-        }
-
-        p {
-            margin: 0;
-            line-height: 1.5;
-            color: var(--q-secondary);
-        }
-    }
-}
-
-// Feature Grid Content
-.feature-grid-content {
-    display: grid;
-    gap: 1.5rem;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-.feature-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
 
     h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: var(--accent);
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
+        margin: 0 0 0.2rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
     p {
         margin: 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
         line-height: 1.5;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
     }
 }
 
-// API Endpoints
-.api-endpoints {
+.quick-start-number {
+    flex-shrink: 0;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--text-on-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.requirements-list {
+    list-style: none;
+    margin: 0 0 1rem 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-}
+    gap: 0.85rem;
 
-.endpoint-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 8px;
-    border-left: 3px solid var(--q-primary);
+    li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
 
-    .endpoint-method {
-        padding: 0.25rem 0.75rem;
-        border-radius: 4px;
+    h4 {
+        margin: 0 0 0.15rem 0;
+        font-size: 0.875rem;
         font-weight: 700;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        color: white;
-        flex-shrink: 0;
-
-        &.post {
-            background: #4caf50;
-        }
-
-        &.get {
-            background: var(--accent);
-        }
-
-        &.put {
-            background: #ff9800;
-        }
-
-        &.delete {
-            background: #f44336;
-        }
+        color: var(--text-primary);
     }
 
-    .endpoint-details {
-        .endpoint-path {
-            font-family: "Courier New", monospace;
-            background: var(--q-dark-page);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            display: inline-block;
-            margin-bottom: 0.5rem;
-
-            .body--light & {
-                background: #f0f0f0;
-            }
-        }
-
-        .endpoint-description {
-            margin: 0;
-            line-height: 1.5;
-            color: var(--q-secondary);
-            font-size: 0.875rem;
-        }
+    p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
     }
 }
 
-// Format Badges
-.format-badges {
+.format-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--surface-border);
 }
 
-// Requirement List
-.requirement-list {
-    .q-item {
-        padding: 0.75rem 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-
-        &:last-child {
-            border-bottom: none;
-        }
-    }
+.format-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
-@media (max-width: 768px) {
-    .hero-container {
-        padding: 0 1rem;
-    }
-
-    .content-cards {
-        grid-template-columns: 1fr;
-    }
-
-    .feature-grid-content {
-        grid-template-columns: 1fr;
-    }
-
-    .endpoint-item {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-}
-
-// Local Deployment Styles
-.benefit-list,
-.requirement-list {
+// ── Shared building blocks reused across sections ──────────────────────
+.requirement-grid,
+.prerequisites-grid {
     display: grid;
-    gap: 1rem;
-
-    @media (min-width: 768px) {
-        grid-template-columns: 1fr;
-    }
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
 }
 
-.benefit-item,
 .requirement-item {
     display: flex;
     align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 8px;
-    border-left: 3px solid var(--q-primary);
+    gap: 0.85rem;
 
     h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: var(--accent);
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
+        margin: 0 0 0.2rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
     p {
         margin: 0;
-        line-height: 1.5;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
     }
 }
 
+.prerequisite-item {
+    text-align: center;
+    padding: 1.1rem;
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+
+    .prereq-icon {
+        margin-bottom: 0.5rem;
+    }
+
+    h4 {
+        margin: 0 0 0.35rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    p {
+        margin: 0 0 0.6rem 0;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .download-link {
+        color: var(--accent);
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+.export-steps,
 .setup-steps {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
 }
 
+.export-step,
 .setup-step {
     display: flex;
-    align-items: flex-start;
     gap: 1rem;
+}
 
-    .step-number {
-        background: linear-gradient(135deg, var(--q-primary), #3949ab);
-        color: white;
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+.step-number {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--text-on-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.step-content {
+    flex: 1;
+    min-width: 0;
+
+    h4 {
+        margin: 0 0 0.3rem 0;
+        font-size: 0.95rem;
         font-weight: 700;
-        font-size: 1rem;
-        flex-shrink: 0;
-        margin-top: 0.25rem;
-    }
-
-    .step-content {
-        flex: 1;
-
-        h4 {
-            margin: 0 0 0.5rem 0;
-            font-weight: 600;
-            color: var(--accent);
-            font-size: 1.1rem;
-
-            .body--dark & {
-                color: #64b5f6;
-            }
-        }
-
-        p {
-            margin: 0 0 1rem 0;
-            line-height: 1.5;
-            color: var(--q-secondary);
-        }
-    }
-}
-
-.command-block {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--q-dark-page);
-    border: 1px solid var(--q-separator-color);
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
-    margin: 0.5rem 0;
-    font-family: 'Courier New', monospace;
-    position: relative;
-
-    .body--light & {
-        background: #f8f9fa;
-    }
-
-    code {
-        flex: 1;
-        font-size: 0.875rem;
-        color: var(--q-primary);
-        font-weight: 500;
-    }
-
-    .copy-btn {
-        opacity: 0.7;
-        transition: opacity 0.2s ease;
-
-        &:hover {
-            opacity: 1;
-        }
-    }
-}
-
-.step-note {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(76, 175, 80, 0.1);
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    color: #2e7d32;
-    margin: 0.5rem 0;
-
-    .body--dark & {
-        color: #81c784;
-    }
-}
-
-.launch-options {
-    display: grid;
-    gap: 1.5rem;
-    margin-top: 1rem;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-.launch-option {
-    padding: 1.5rem;
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 12px;
-    border: 1px solid rgba(25, 118, 210, 0.2);
-
-    h4 {
-        margin: 0 0 1rem 0;
-        font-weight: 600;
-        color: var(--accent);
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
+        color: var(--text-primary);
     }
 
     p {
-        margin: 0.5rem 0 0 0;
-        line-height: 1.5;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
-    }
-}
-
-.troubleshooting-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.trouble-item {
-    padding: 1.5rem;
-    background: rgba(244, 67, 54, 0.05);
-    border-radius: 8px;
-    border-left: 3px solid #f44336;
-
-    h4 {
         margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: #d32f2f;
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #f48fb1;
-        }
-    }
-
-    p {
-        margin: 0 0 1rem 0;
-        line-height: 1.5;
-        color: var(--q-secondary);
+        color: var(--text-secondary);
         font-size: 0.875rem;
+        line-height: 1.55;
     }
 }
 
-.resource-links {
+.step-note,
+.step-warning,
+.calculation-note {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
-
-    .resource-btn {
-        flex: 1;
-        min-width: 150px;
-        text-transform: none;
-        border-radius: 8px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 500;
-    }
-
-    @media (max-width: 768px) {
-        flex-direction: column;
-
-        .resource-btn {
-            width: 100%;
-        }
-    }
-}
-
-.resource-note {
-    margin: 0;
-    line-height: 1.6;
-    color: var(--q-secondary);
-    font-size: 0.875rem;
-    text-align: center;
-    padding: 1rem;
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 8px;
-}
-
-.download-link {
-    display: inline-flex;
-    align-items: center;
-    color: var(--q-primary);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.875rem;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    line-height: 1.4;
     margin-top: 0.5rem;
-    
-    &:hover {
-        text-decoration: underline;
+}
+
+.step-note,
+.calculation-note {
+    background: var(--accent-soft);
+    color: var(--text-primary);
+
+    .q-icon {
+        color: var(--accent);
+        flex-shrink: 0;
     }
+}
+
+.step-warning {
+    background: color-mix(in srgb, var(--q-warning, orange) 12%, transparent);
+    color: var(--text-primary);
+
+    .q-icon {
+        color: var(--q-warning, orange);
+        flex-shrink: 0;
+    }
+}
+
+.step-link {
+    margin-top: 0.6rem;
 }
 
 .command-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-}
-
-.manual-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.manual-step {
-    .step-label {
-        font-weight: 600;
-        color: var(--q-primary);
-        font-size: 0.875rem;
-        display: block;
-        margin-bottom: 0.5rem;
-    }
-}
-
-.launch-option {
-    &.recommended {
-        border: 2px solid var(--q-primary);
-        position: relative;
-        
-        &::before {
-            content: "RECOMMENDED";
-            position: absolute;
-            top: -8px;
-            right: 1rem;
-            background: var(--q-primary);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-    }
-}
-
-.option-note {
-    background: rgba(25, 118, 210, 0.1);
-    border-radius: 6px;
-    padding: 0.75rem;
+    gap: 0.4rem;
     margin-top: 0.5rem;
-    font-size: 0.875rem;
-    border-left: 3px solid var(--q-primary);
 }
 
-.prerequisites-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
-    margin-top: 1rem;
+.command-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.4rem 0.4rem 0.75rem;
 
-    @media (max-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-
-    @media (max-width: 480px) {
-        grid-template-columns: 1fr;
-    }
-}
-
-.prerequisite-item {
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 12px;
-    padding: 1.5rem 1rem;
-    text-align: center;
-    border: 1px solid rgba(25, 118, 210, 0.2);
-    transition: all 0.3s ease;
-
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.15);
-    }
-
-    .prereq-icon {
-        margin-bottom: 1rem;
-        display: block;
-    }
-
-    h4 {
-        margin: 0 0 0.75rem 0;
-        font-weight: 600;
-        color: var(--accent);
-        font-size: 1rem;
-        line-height: 1.3;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
-    }
-
-    p {
-        margin: 0 0 1rem 0;
-        line-height: 1.4;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
+    code {
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        color: var(--text-primary);
+        overflow-x: auto;
+        white-space: nowrap;
     }
 }
 
 .file-content {
-    margin: 1rem 0;
-    border: 1px solid var(--q-separator-color);
-    border-radius: 8px;
+    margin-top: 0.5rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
     overflow: hidden;
-    background: var(--q-dark-page);
-
-    .body--light & {
-        background: #f8f9fa;
-    }
 }
 
 .file-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
-    background: rgba(25, 118, 210, 0.1);
-    border-bottom: 1px solid var(--q-separator-color);
+    padding: 0.4rem 0.75rem;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
 
     .file-name {
+        font-size: 0.8rem;
         font-weight: 600;
-        color: var(--q-primary);
-        font-size: 0.875rem;
-    }
-
-    .copy-btn {
-        opacity: 0.7;
-        transition: opacity 0.2s ease;
-
-        &:hover {
-            opacity: 1;
-        }
+        color: var(--text-primary);
+        font-family: 'Courier New', monospace;
     }
 }
 
 .file-code {
     margin: 0;
-    padding: 1rem;
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 0.8rem;
+    padding: 0.85rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
     line-height: 1.5;
-    color: var(--q-primary);
-    background: transparent;
+    color: var(--text-primary);
+    background: var(--surface-card);
     overflow-x: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
+    white-space: pre;
 }
 
-.method-card {
-    margin: 2rem 0;
-    border: 2px solid transparent;
-    
-    &.docker-method {
-        border-color: var(--accent);
-        background: linear-gradient(135deg, rgba(33, 150, 243, 0.05), rgba(33, 150, 243, 0.02));
-    }
-    
-    &.manual-method {
-        border-color: #4caf50;
-        background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.02));
-    }
-}
-
-.method-header {
-    margin-bottom: 2rem;
-    
-    .method-badge {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-        border-radius: 12px;
-        position: relative;
-        
-        &.recommended {
-            background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
-            border: 2px solid var(--accent);
-            
-            &::after {
-                content: "RECOMMENDED";
-                position: absolute;
-                top: -8px;
-                right: 1rem;
-                background: var(--accent);
-                color: white;
-                padding: 0.25rem 0.75rem;
-                border-radius: 4px;
-                font-size: 0.7rem;
-                font-weight: 700;
-            }
-        }
-        
-        &:not(.recommended) {
-            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
-            border: 2px solid #4caf50;
-        }
-        
-        .q-icon {
-            color: inherit;
-        }
-        
-        h2 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent);
-            
-            .body--dark & {
-                color: #64b5f6;
-            }
-            
-            .manual-method & {
-                color: #2e7d32;
-                
-                .body--dark & {
-                    color: #81c784;
-                }
-            }
-        }
-        
-        p {
-            margin: 0;
-            color: var(--q-secondary);
-            font-size: 1rem;
-        }
-    }
-}
-
-.method-content {
-    padding: 0 1rem;
-}
-
-.final-step {
-    margin-top: 2rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
-    border-radius: 12px;
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    
-    h4 {
-        margin: 0 0 1rem 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #2e7d32;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        
-        .body--dark & {
-            color: #81c784;
-        }
-    }
-    
-    p {
-        margin: 0 0 1rem 0;
-        line-height: 1.6;
-        color: var(--q-secondary);
-        
-        &.access-note {
-            margin: 1rem 0 0 0;
-            font-size: 0.9rem;
-            font-style: italic;
-        }
-    }
-}
-
-.access-url {
-    background: var(--q-dark-page);
-    border: 1px solid var(--q-separator-color);
-    border-radius: 8px;
-    padding: 1rem;
-    text-align: center;
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 1.1rem;
-    margin: 1rem 0;
-    
-    .body--light & {
-        background: #f8f9fa;
-    }
-    
-    strong {
-        color: var(--q-primary);
-    }
-}
-
-// Data Export Guide Styles
-.requirement-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-top: 1rem;
-
-    @media (max-width: 768px) {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-}
-
-.requirement-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 8px;
-    border-left: 3px solid var(--q-primary);
-    transition: all 0.3s ease;
-
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.15);
-    }
-
-    h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: var(--accent);
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
-    }
-
-    p {
-        margin: 0;
-        line-height: 1.4;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
-    }
-}
-
-.export-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.export-step {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-
-    .step-number {
-        background: linear-gradient(135deg, var(--q-primary), #3949ab);
-        color: white;
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1rem;
-        flex-shrink: 0;
-        margin-top: 0.25rem;
-    }
-
-    .step-content {
-        flex: 1;
-
-        h4 {
-            margin: 0 0 0.5rem 0;
-            font-weight: 600;
-            color: var(--accent);
-            font-size: 1.1rem;
-
-            .body--dark & {
-                color: #64b5f6;
-            }
-        }
-
-        p {
-            margin: 0 0 1rem 0;
-            line-height: 1.5;
-            color: var(--q-secondary);
-        }
-    }
-}
-
-.step-warning {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255, 152, 0, 0.1);
-    border: 1px solid rgba(255, 152, 0, 0.3);
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    color: #ef6c00;
-    margin: 0.5rem 0;
-
-    .body--dark & {
-        color: #ffb74d;
-    }
-}
-
-.step-link {
-    margin-top: 0.75rem;
-}
-
-.performance-tips {
+.performance-tips,
+.usage-tips {
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -2668,352 +2024,296 @@ volumes:
 .tip-item {
     display: flex;
     align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(255, 152, 0, 0.05);
-    border-radius: 8px;
-    border-left: 3px solid #ff9800;
+    gap: 0.75rem;
 
     h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: #ef6c00;
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #ffb74d;
-        }
+        margin: 0 0 0.2rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
     p {
         margin: 0;
-        line-height: 1.4;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
     }
 }
 
 .troubleshooting-items {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.1rem;
+}
+
+.trouble-item {
+    padding: 0.9rem 1rem;
+    background: var(--surface-raised);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+
+    h4 {
+        margin: 0 0 0.3rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
 }
 
 .success-card {
-    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
-    border: 1px solid rgba(76, 175, 80, 0.3);
+    :deep(.section-card__icon),
+    :deep(.section-card__title) {
+        color: var(--q-positive, #21ba45);
+    }
 }
 
 .success-description {
+    color: var(--text-secondary);
     line-height: 1.6;
-    color: var(--q-secondary);
-    margin-bottom: 1.5rem;
+    margin: 0 0 1.25rem 0;
 }
 
 .next-actions {
     display: flex;
-    gap: 1rem;
     flex-wrap: wrap;
-
-    @media (max-width: 768px) {
-        flex-direction: column;
-    }
-
-    .action-btn {
-        flex: 1;
-        min-width: 150px;
-        text-transform: none;
-        border-radius: 8px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 500;
-    }
-}
-
-// Documentation Hub Styles
-.hub-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    align-items: stretch;
-    gap: 2rem;
-    margin-bottom: 3rem;
-
-    @media (max-width: 1024px) {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-}
-
-.hub-card {
-    border-radius: 16px;
-    border: 2px solid transparent;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    background: var(--q-card);
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-
-    &:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    }
-
-    &.use-card {
-        border-color: var(--accent);
-        background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.02));
-
-        &:hover {
-            border-color: var(--accent);
-            box-shadow: 0 12px 40px rgba(25, 118, 210, 0.2);
-        }
-
-        .hub-icon {
-            color: var(--accent);
-        }
-    }
-
-    &.host-card {
-        border-color: #9c27b0;
-        background: linear-gradient(135deg, rgba(156, 39, 176, 0.05), rgba(156, 39, 176, 0.02));
-
-        &:hover {
-            border-color: #9c27b0;
-            box-shadow: 0 12px 40px rgba(156, 39, 176, 0.2);
-        }
-
-        .hub-icon {
-            color: #9c27b0;
-        }
-    }
-
-    &.hack-card {
-        border-color: #4caf50;
-        background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.02));
-
-        &:hover {
-            border-color: #4caf50;
-            box-shadow: 0 12px 40px rgba(76, 175, 80, 0.2);
-        }
-
-        .hub-icon {
-            color: #4caf50;
-        }
-    }
-}
-
-.hub-card-content {
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    height: 100%;
-}
-
-.hub-icon {
-    margin-bottom: 1.5rem;
-    opacity: 0.9;
-}
-
-.hub-card h2 {
-    margin: 0 0 1rem 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--accent);
-
-    .body--dark & {
-        color: #64b5f6;
-    }
-
-    .host-card & {
-        color: #9c27b0;
-
-        .body--dark & {
-            color: #ce93d8;
-        }
-    }
-
-    .hack-card & {
-        color: #4caf50;
-
-        .body--dark & {
-            color: #81c784;
-        }
-    }
-}
-
-.hub-description {
-    line-height: 1.6;
-    color: var(--q-secondary);
-    margin-bottom: 1.5rem;
-    flex-grow: 1;
-}
-
-.hub-features {
-    display: flex;
-    flex-direction: column;
     gap: 0.75rem;
-    margin-bottom: 2rem;
+}
+
+.action-btn {
+    border-radius: var(--radius-md);
+    text-transform: none;
+    font-weight: 600;
+}
+
+// ── API Reference ────────────────────────────────────────────────────────
+.api-endpoints {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.endpoint-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+}
+
+.endpoint-method {
+    flex-shrink: 0;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    min-width: 3.6rem;
+    text-align: center;
+
+    &.get {
+        background: color-mix(in srgb, var(--q-positive, #21ba45) 15%, transparent);
+        color: var(--q-positive, #21ba45);
+    }
+
+    &.post {
+        background: var(--accent-soft-strong);
+        color: var(--accent);
+    }
+}
+
+.endpoint-details {
+    min-width: 0;
+
+    .endpoint-path {
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .endpoint-description {
+        margin: 0.3rem 0 0 0;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+}
+
+// ── Local Deployment: method cards ──────────────────────────────────────
+.method-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
     width: 100%;
 
-    .feature-item {
+    .q-icon {
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+
+    h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    p {
+        margin: 0.15rem 0 0 0;
+        font-size: 0.825rem;
+        color: var(--text-secondary);
+    }
+
+    &.recommended {
+        .q-icon {
+            color: var(--q-positive, #21ba45);
+        }
+    }
+}
+
+.final-step {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: var(--accent-soft);
+    border-radius: var(--radius-md);
+
+    h4 {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        font-size: 0.875rem;
-        color: var(--q-secondary);
-
-        .q-icon {
-            opacity: 0.7;
-        }
-    }
-}
-
-.hub-btn {
-    text-transform: none;
-    border-radius: 12px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    width: 100%;
-    max-width: 200px;
-}
-
-// Stats Card
-.stats-card {
-    background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.02));
-    border: 1px solid rgba(25, 118, 210, 0.2);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 2rem;
-
-    @media (max-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-
-    @media (max-width: 480px) {
-        grid-template-columns: 1fr;
-    }
-}
-
-.stat-item {
-    text-align: center;
-
-    .stat-number {
-        font-size: 2rem;
+        gap: 0.4rem;
+        margin: 0 0 0.4rem 0;
+        font-size: 0.95rem;
         font-weight: 700;
-        color: var(--q-primary);
-        margin-bottom: 0.5rem;
+        color: var(--text-primary);
     }
 
-    .stat-label {
-        font-size: 0.875rem;
-        color: var(--q-secondary);
-        font-weight: 500;
+    p {
+        margin: 0 0 0.5rem 0;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .access-note {
+        margin-bottom: 0;
     }
 }
 
-// Rating Calculations Styles
+.access-url {
+    padding: 0.6rem 0.9rem;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    font-family: 'Courier New', monospace;
+    color: var(--accent);
+}
+
+.resource-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.resource-btn {
+    border-radius: var(--radius-md);
+    text-transform: none;
+    font-weight: 600;
+}
+
+.resource-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+// ── Rating Calculations ──────────────────────────────────────────────────
+.rating-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.rating-category {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+}
+
+.category-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+
+    h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--accent);
+    }
+
+    .category-description {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+}
+
 .weights-explanation {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .weights-note {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255, 152, 0, 0.1);
-    border: 1px solid rgba(255, 152, 0, 0.3);
-    border-radius: 6px;
-    padding: 0.75rem;
-    font-size: 0.875rem;
-    color: #ef6c00;
+    align-items: flex-start;
+    gap: 0.4rem;
     margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
 
-    .body--dark & {
-        color: #ffb74d;
-    }
-
-    strong {
-        font-weight: 600;
-    }
-}
-
-.rating-categories {
-    display: grid;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-}
-
-.rating-category {
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 12px;
-    padding: 1.5rem;
-    border: 1px solid rgba(25, 118, 210, 0.2);
-    transition: all 0.3s ease;
-
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.15);
-    }
-}
-
-.category-header {
-    margin-bottom: 1rem;
-
-    h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 700;
+    .q-icon {
         color: var(--accent);
-        font-size: 1.1rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
-    }
-
-    .category-description {
-        color: var(--q-secondary);
-        font-size: 0.875rem;
-        font-style: italic;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
     }
 }
 
 .attribute-weights {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .weight-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 6px;
-    font-size: 0.875rem;
-
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.1);
-    }
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.4rem 0.65rem;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
 
     .attribute-name {
-        color: var(--q-secondary);
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
     .weight-value {
-        font-weight: 600;
-        color: var(--q-primary);
-        background: rgba(25, 118, 210, 0.1);
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        min-width: 2rem;
-        text-align: center;
+        color: var(--text-secondary);
     }
 }
 
@@ -3021,150 +2321,74 @@ volumes:
 .total-stats-breakdown,
 .mbr-calculation,
 .scaling-info {
-    margin-top: 1.5rem;
-
     h4 {
-        margin: 0 0 1rem 0;
-        font-weight: 600;
-        color: var(--accent);
-        font-size: 1rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
+        margin: 1rem 0 0.5rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
-    ol, ul {
-        margin: 0 0 1rem 0;
-        padding-left: 1.5rem;
-
-        li {
-            margin-bottom: 0.5rem;
-            line-height: 1.5;
-            color: var(--q-secondary);
-        }
-    }
-}
-
-.calculation-note {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(76, 175, 80, 0.1);
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    border-radius: 6px;
-    padding: 0.75rem;
-    font-size: 0.875rem;
-    color: #2e7d32;
-    margin-top: 1rem;
-
-    .body--dark & {
-        color: #81c784;
+    ol,
+    ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        line-height: 1.7;
     }
 }
 
 .stats-categories {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    margin: 1rem 0;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 .stats-category {
-    background: rgba(25, 118, 210, 0.05);
-    border-radius: 8px;
-    padding: 1rem;
-    border-left: 3px solid var(--q-primary);
+    padding: 0.85rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
 
     h5 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
+        margin: 0 0 0.35rem 0;
+        font-size: 0.825rem;
+        font-weight: 700;
         color: var(--accent);
-        font-size: 0.95rem;
-
-        .body--dark & {
-            color: #64b5f6;
-        }
     }
 
     p {
         margin: 0;
-        line-height: 1.4;
-        color: var(--q-secondary);
-        font-size: 0.8rem;
+        font-size: 0.775rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
     }
 }
 
 .mbr-components {
     display: grid;
-    gap: 1rem;
-    margin: 1rem 0;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.85rem;
 }
 
 .mbr-component {
-    background: rgba(156, 39, 176, 0.05);
-    border-radius: 8px;
-    padding: 1rem;
-    border-left: 3px solid #9c27b0;
+    padding: 0.75rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
 
     h5 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: #9c27b0;
-        font-size: 0.95rem;
-
-        .body--dark & {
-            color: #ce93d8;
-        }
+        margin: 0 0 0.25rem 0;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
     }
 
     p {
         margin: 0;
-        line-height: 1.4;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
-    }
-}
-
-.usage-tips {
-    display: grid;
-    gap: 1rem;
-    margin-top: 1rem;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-.usage-tips .tip-item {
-    background: rgba(76, 175, 80, 0.05);
-    border-radius: 8px;
-    padding: 1rem;
-    border-left: 3px solid #4caf50;
-
-    h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: #2e7d32;
-        font-size: 0.95rem;
-
-        .body--dark & {
-            color: #81c784;
-        }
-    }
-
-    p {
-        margin: 0;
-        line-height: 1.4;
-        color: var(--q-secondary);
-        font-size: 0.875rem;
+        font-size: 0.775rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
     }
 }
 </style>

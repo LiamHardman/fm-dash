@@ -10,23 +10,29 @@
         <q-card
             class="bargain-hunter-dialog"
         >
-            <q-card-section
-                class="row items-center q-pb-none card-header"
-            >
-                <q-icon name="shopping_cart" size="md" class="q-mr-sm" />
-                <div class="text-h6">
-                    Bargain Hunter (Values in {{ currencySymbol }})
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="shopping_cart" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">
+                        Bargain Hunter (Values in {{ currencySymbol }})
+                    </div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            v-close-popup
+                            @click="$emit('close')"
+                        />
+                    </div>
                 </div>
-                <q-space />
-                <q-btn
-                    icon="close"
-                    flat
-                    round
-                    dense
-                    v-close-popup
-                    @click="$emit('close')"
-                />
-            </q-card-section>
+            </div>
 
             <q-card-section class="q-pt-md">
                 <!-- Filter Section with Sliders -->
@@ -265,52 +271,36 @@
 
                 <!-- Results Table -->
                 <div v-if="filteredBargainResults.length > 0 && !loading">
-                    <q-card 
-                        class="bargain-table-container" 
-                        flat
-                        bordered
-                    >
-                        <q-card-section>
-                            <div class="row items-center q-mb-md">
-                                <div class="text-subtitle1">
-                                    <q-icon name="list" class="q-mr-sm" />
-                                    Best Value Players
-                                </div>
-                                <q-space />
-                                <q-chip 
-                                    color="primary" 
-                                    text-color="white"
-                                    :label="`${filteredBargainResults.length} players`"
-                                />
-                            </div>
-                            
-                            <PlayerDataTable
-                                :players="playersForTable"
-                                :loading="loading"
-                                @player-selected="handlePlayerSelected"
-                                @team-selected="handleTeamSelected"
-                                :currency-symbol="currencySymbol"
-                                :dataset-id="datasetId"
-                                :show-value-score="true"
-                                :default-sort-field="'valueScore'"
-                                :default-sort-direction="'desc'"
+                    <SectionCard title="Best Value Players" icon="list" class="bargain-table-container">
+                        <template #actions>
+                            <q-chip
+                                color="primary"
+                                text-color="white"
+                                :label="`${filteredBargainResults.length} players`"
                             />
-                        </q-card-section>
-                    </q-card>
+                        </template>
+
+                        <PlayerDataTable
+                            :players="playersForTable"
+                            :loading="loading"
+                            @player-selected="handlePlayerSelected"
+                            @team-selected="handleTeamSelected"
+                            :currency-symbol="currencySymbol"
+                            :dataset-id="datasetId"
+                            :show-value-score="true"
+                            :default-sort-field="'valueScore'"
+                            :default-sort-direction="'desc'"
+                        />
+                    </SectionCard>
                 </div>
 
                 <!-- Empty State -->
-                <div v-else-if="!loading" class="text-center q-my-xl">
-                    <q-icon name="search_off" size="4em" color="grey-5" />
-                    <div class="text-h6 q-mt-md text-grey-6">
-                        <span v-if="bargainResults.length === 0">No bargains found</span>
-                        <span v-else>No players match current filters</span>
-                    </div>
-                    <div class="text-body2 text-grey-5 q-mt-sm">
-                        <span v-if="bargainResults.length === 0">Try adjusting your budget or age criteria</span>
-                        <span v-else>Try enabling more value score ranges or adjusting your filters</span>
-                    </div>
-                </div>
+                <EmptyState
+                    v-else-if="!loading"
+                    icon="search_off"
+                    :title="bargainResults.length === 0 ? 'No bargains found' : 'No players match current filters'"
+                    :description="bargainResults.length === 0 ? 'Try adjusting your budget or age criteria' : 'Try enabling more value score ranges or adjusting your filters'"
+                />
 
                 <!-- Help Section (Expandable) -->
                 <q-expansion-item
@@ -360,6 +350,8 @@
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { formatCurrency } from '../utils/currencyUtils'
+import EmptyState from './layout/EmptyState.vue'
+import SectionCard from './layout/SectionCard.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
@@ -368,6 +360,8 @@ export default defineComponent({
   components: {
     PlayerDetailDialog,
     PlayerDataTable,
+    SectionCard,
+    EmptyState,
   },
   props: {
     show: {
@@ -648,95 +642,99 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .bargain-hunter-dialog {
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    
-    .body--dark & {
-        background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    background: var(--surface-card);
+}
 
-    .card-header {
-        background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: $border-radius $border-radius 0 0;
-        
-        .q-icon {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .text-h6 {
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-        
-        .q-btn {
-            color: rgba(255, 255, 255, 0.8);
-            
-            &:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-            }
-        }
-    }
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// UpgradeFinderDialog — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
 
-    .q-card-section {
-        &:not(.card-header) {
-            background: transparent;
-            
-            .body--dark & {
-                background: transparent;
-            }
-        }
-    }
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
 
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+}
+
+.bargain-hunter-dialog {
     // Slider styling
     .slider-label {
         font-weight: 500;
-        color: #374151;
+        color: var(--text-secondary);
         margin-bottom: 0.5rem;
-        
-        .body--dark & {
-            color: #d1d5db;
-        }
     }
 
     :deep(.q-slider) {
         .q-slider__track-container {
             .q-slider__track {
-                background: rgba(46, 116, 181, 0.2);
+                background: var(--accent-soft-strong);
             }
-            
+
             .q-slider__selection {
-                background: #2e74b5;
+                background: var(--accent);
             }
         }
-        
+
         .q-slider__thumb {
-            background: #2e74b5;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(46, 116, 181, 0.4);
+            background: var(--accent);
+            border: 2px solid var(--surface-card);
+            box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
         }
     }
 
     :deep(.q-range) {
         .q-slider__track-container {
             .q-slider__track {
-                background: rgba(46, 116, 181, 0.2);
+                background: var(--accent-soft-strong);
             }
-            
+
             .q-slider__selection {
-                background: #2e74b5;
+                background: var(--accent);
             }
         }
-        
+
         .q-slider__thumb {
-            background: #2e74b5;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(46, 116, 181, 0.4);
+            background: var(--accent);
+            border: 2px solid var(--surface-card);
+            box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
         }
     }
 
@@ -745,29 +743,21 @@ export default defineComponent({
         border-radius: 8px;
         font-weight: 500;
         text-transform: none;
-        
+
         &.q-btn--unelevated {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            
+            box-shadow: var(--shadow-1);
+
             &:hover {
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                box-shadow: var(--shadow-2);
                 transform: translateY(-1px);
             }
-            
-            .body--dark & {
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-                
-                &:hover {
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-                }
-            }
         }
-        
+
         &.q-btn--outline {
             border-width: 2px;
-            
+
             &:hover {
-                background-color: rgba(46, 116, 181, 0.1);
+                background-color: var(--accent-soft);
             }
         }
     }
@@ -776,42 +766,30 @@ export default defineComponent({
     :deep(.q-field) {
         .q-field__control {
             border-radius: 8px;
-            
+
             &:before {
-                border-color: rgba(0, 0, 0, 0.12);
+                border-color: var(--surface-border-strong);
             }
-            
+
             &:hover:before {
-                border-color: #2e74b5;
+                border-color: var(--accent);
             }
         }
-        
+
         &.q-field--outlined {
             .q-field__control {
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                box-shadow: var(--shadow-1);
                 transition: all 0.2s ease;
-                
+
                 &:hover {
-                    box-shadow: 0 2px 6px rgba(46, 116, 181, 0.1);
+                    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 10%, transparent);
                 }
             }
         }
-        
+
         &.q-field--focused {
             .q-field__control {
-                box-shadow: 0 0 0 2px rgba(46, 116, 181, 0.2);
-            }
-        }
-        
-        .body--dark & {
-            .q-field__control {
-                background-color: rgba(255, 255, 255, 0.05);
-                border-color: rgba(255, 255, 255, 0.12);
-                
-                &:hover {
-                    border-color: #2e74b5;
-                    background-color: rgba(255, 255, 255, 0.08);
-                }
+                box-shadow: 0 0 0 2px var(--accent-soft-strong);
             }
         }
     }
@@ -865,15 +843,15 @@ export default defineComponent({
             font-weight: 500;
             text-transform: none;
             border-radius: 6px;
-            
+
             &:not(.q-btn--outline) {
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                box-shadow: var(--shadow-1);
             }
-            
+
             &.q-btn--outline {
                 border-width: 2px;
                 opacity: 0.7;
-                
+
                 &:hover {
                     opacity: 1;
                 }
@@ -888,12 +866,6 @@ export default defineComponent({
             font-weight: 600;
             text-transform: none;
             padding: 12px 24px;
-            background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
-            
-            &:hover {
-                background: linear-gradient(135deg, #1e5a9b 0%, #2e74b5 100%);
-                transform: translateY(-1px);
-            }
         }
     }
 
@@ -901,87 +873,46 @@ export default defineComponent({
     :deep(.q-table) {
         border-radius: 8px;
         overflow: hidden;
-        
+
         .q-table__top {
             padding: 1rem;
-            background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
-            
-            .body--dark & {
-                background: rgba(255, 255, 255, 0.02);
-            }
+            background: var(--accent-soft);
         }
-        
+
         .q-table__container {
             border-radius: 0 0 8px 8px;
         }
-        
+
         thead {
             th {
-                background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-                color: #374151;
+                background: var(--surface-raised);
+                color: var(--text-secondary);
                 font-weight: 600;
-                border-bottom: 2px solid #e5e7eb;
-                
-                .body--dark & {
-                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
-                    color: #d1d5db;
-                    border-bottom-color: rgba(255, 255, 255, 0.1);
-                }
+                border-bottom: 2px solid var(--surface-border-strong);
             }
         }
-        
+
         tbody {
             tr {
-                border-bottom: 1px solid #f3f4f6;
-                
+                border-bottom: 1px solid var(--surface-border);
+
                 &:hover {
-                    background-color: rgba(46, 116, 181, 0.04);
-                }
-                
-                .body--dark & {
-                    border-bottom-color: rgba(255, 255, 255, 0.05);
-                    
-                    &:hover {
-                        background-color: rgba(255, 255, 255, 0.03);
-                    }
+                    background-color: var(--accent-soft);
                 }
             }
-        }
-    }
-
-    // Card improvements
-    .q-card {
-        border-radius: $border-radius;
-        box-shadow: $card-shadow;
-        border: 1px solid rgba(0, 0, 0, 0.04);
-        
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.02);
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-    }
-
-    // Bargain table container specific styling
-    .bargain-table-container {
-        background: white;
-        
-        .body--dark & {
-            background: #1e293b !important;
-            border-color: rgba(255, 255, 255, 0.1) !important;
         }
     }
 
     // Responsive design
     @media (max-width: 768px) {
-        .card-header {
-            padding: 1rem;
-            
-            .text-h6 {
-                font-size: 1.1rem;
-            }
+        .dialog-chrome__header {
+            padding: 10px 12px;
         }
-        
+
+        .dialog-chrome__title {
+            font-size: 1rem;
+        }
+
         .value-tier-buttons {
             .q-btn {
                 font-size: 0.75rem;

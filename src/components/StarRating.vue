@@ -43,12 +43,12 @@ export default defineComponent({
     color: #f5a623;
 }
 .star-empty {
-    color: var(--text-muted, #94a3b8);
+    color: var(--text-muted);
 }
 .star-label {
     margin-left: 6px;
     font-size: 11px;
-    color: var(--text-secondary, #64748b);
+    color: var(--text-secondary);
     white-space: nowrap;
 }
 </style>

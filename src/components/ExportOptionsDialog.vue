@@ -10,23 +10,29 @@
             class="export-options-dialog"
             style="min-width: 500px; max-width: 600px; width: 90vw;"
         >
-            <q-card-section
-                class="row items-center q-pb-none card-header"
-            >
-                <q-icon name="download" size="md" class="q-mr-sm" />
-                <div class="text-h6">
-                    Export Options
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="download" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">
+                        Export Options
+                    </div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            v-close-popup
+                            @click="$emit('close')"
+                        />
+                    </div>
                 </div>
-                <q-space />
-                <q-btn
-                    icon="close"
-                    flat
-                    round
-                    dense
-                    v-close-popup
-                    @click="$emit('close')"
-                />
-            </q-card-section>
+            </div>
 
             <q-card-section class="q-pt-md">
                 <div class="text-subtitle2 q-mb-md text-grey-7">
@@ -119,25 +125,22 @@
 
                 <!-- Export Summary -->
                 <div class="export-summary q-mt-lg">
-                    <q-card flat bordered class="summary-card">
-                        <q-card-section>
-                            <div class="text-subtitle2 q-mb-sm">Export Summary</div>
-                            <div class="summary-details">
-                                <div class="summary-item">
-                                    <q-icon name="description" size="sm" class="q-mr-xs" />
-                                    <span>Format: {{ selectedFormat.toUpperCase() }}</span>
-                                </div>
-                                <div class="summary-item">
-                                    <q-icon name="group" size="sm" class="q-mr-xs" />
-                                    <span>Players: {{ playerCount.toLocaleString() }}</span>
-                                </div>
-                                <div class="summary-item">
-                                    <q-icon name="view_column" size="sm" class="q-mr-xs" />
-                                    <span>Data Categories: {{ selectedCategoriesCount }}</span>
-                                </div>
+                    <SectionCard title="Export Summary" class="summary-card">
+                        <div class="summary-details">
+                            <div class="summary-item">
+                                <q-icon name="description" size="sm" class="q-mr-xs" />
+                                <span>Format: {{ selectedFormat.toUpperCase() }}</span>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                            <div class="summary-item">
+                                <q-icon name="group" size="sm" class="q-mr-xs" />
+                                <span>Players: {{ playerCount.toLocaleString() }}</span>
+                            </div>
+                            <div class="summary-item">
+                                <q-icon name="view_column" size="sm" class="q-mr-xs" />
+                                <span>Data Categories: {{ selectedCategoriesCount }}</span>
+                            </div>
+                        </div>
+                    </SectionCard>
                 </div>
             </q-card-section>
 
@@ -164,9 +167,11 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, ref, watch } from 'vue'
+import SectionCard from './layout/SectionCard.vue'
 
 export default defineComponent({
   name: 'ExportOptionsDialog',
+  components: { SectionCard },
   props: {
     show: {
       type: Boolean,
@@ -424,14 +429,55 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.export-options-dialog {
-    .card-header {
-        background: rgba(25, 118, 210, 0.05);
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-        }
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// UpgradeFinderDialog — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
     }
+}
+
+.export-options-dialog {
+    background: var(--surface-card);
 
     .export-format-section {
         .format-options {
@@ -453,7 +499,7 @@ export default defineComponent({
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
-        
+
         .option-checkbox {
             .q-checkbox__label {
                 font-weight: 500;
@@ -462,12 +508,6 @@ export default defineComponent({
     }
 
     .summary-card {
-        background: rgba(25, 118, 210, 0.05);
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
         .summary-details {
             display: flex;
             flex-direction: column;
@@ -478,6 +518,7 @@ export default defineComponent({
             display: flex;
             align-items: center;
             font-size: 0.9rem;
+            color: var(--text-secondary);
         }
     }
 }

@@ -376,16 +376,14 @@ export default defineComponent({
     max-height: 400px;
     overflow-y: auto;
     margin-top: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: var(--surface-card);
+    border-color: var(--surface-border);
+    box-shadow: var(--shadow-3);
   }
-  
+
   .search-result-item {
     &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
-      
-      .body--dark & {
-        background-color: rgba(255, 255, 255, 0.05);
-      }
+      background-color: var(--surface-raised);
     }
   }
 
@@ -405,11 +403,7 @@ export default defineComponent({
     padding: 2px 6px !important;
     min-width: 28px !important;
     border-radius: 4px !important;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    
-    .body--dark & {
-      border-color: rgba(255, 255, 255, 0.1);
-    }
+    border: 1px solid var(--surface-border);
   }
 }
 

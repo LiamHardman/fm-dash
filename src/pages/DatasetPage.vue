@@ -159,36 +159,24 @@
 
         <!-- Error State -->
         <div v-if="pageLoadingError" class="error-container">
-            <q-banner class="error-banner" rounded>
-                <template v-slot:avatar>
-                    <q-icon name="error" />
+            <EmptyState icon="error" title="Couldn't load dataset" :description="pageLoadingError">
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                 </template>
-                {{ pageLoadingError }}
-                <q-btn
-                    flat
-                    color="white"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </EmptyState>
         </div>
 
         <!-- No Data State -->
         <div v-if="!pageLoading && !pageLoadingError && allPlayersData.length === 0" class="no-data-container">
-            <q-banner class="no-data-banner">
-                <template v-slot:avatar>
-                    <q-icon name="warning" />
+            <EmptyState
+                icon="warning"
+                title="No player data found"
+                description="No player data found for this dataset."
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                 </template>
-                No player data found for this dataset.
-                <q-btn
-                    flat
-                    color="primary"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </EmptyState>
         </div>
 
         <!-- Full Screen Player Data Table -->
@@ -298,6 +286,7 @@ import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import FreeAgentsDialog from '../components/FreeAgentsDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
+import EmptyState from '../components/layout/EmptyState.vue'
 import ManagedTeamDialog from '../components/ManagedTeamDialog.vue'
 import PlayerComparisonDialog from '../components/PlayerComparisonDialog.vue'
 import PlayerComparisonTray from '../components/PlayerComparisonTray.vue'
@@ -378,6 +367,7 @@ const formatFilterKeyPrefix = (attrKey) => {
 export default {
   name: 'DatasetPage',
   components: {
+    EmptyState,
     PlayerDataTable,
     PlayerDetailDialog,
     PlayerFilters,
@@ -1414,15 +1404,10 @@ export default {
 
 // Top Bar Styles
 .top-bar {
-    background: white;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--surface-border);
     z-index: 10;
     flex-shrink: 0;
-    
-    .body--dark & {
-        background: #1d1d1d;
-        border-bottom-color: rgba(255, 255, 255, 0.1);
-    }
 }
 
 .top-bar-content {
@@ -1441,31 +1426,23 @@ export default {
     .dataset-title {
         font-size: 1.1rem;
         font-weight: 600;
-        color: #1976d2;
+        color: var(--accent);
         display: flex;
         align-items: center;
         margin-bottom: 0.25rem;
-        
-        .body--dark & {
-            color: #64b5f6;
-        }
     }
-    
+
     .dataset-stats {
         font-size: 0.8rem;
-        color: #666;
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
+
         .stat-item {
             font-weight: 500;
         }
-        
+
         .stat-separator {
             opacity: 0.5;
         }
@@ -1473,17 +1450,13 @@ export default {
 
     .managed-team-affordance {
         font-size: 0.75rem;
-        color: #666;
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
         gap: 0.35rem;
         margin-top: 0.2rem;
         cursor: pointer;
         width: fit-content;
-
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.6);
-        }
 
         .change-link {
             text-decoration: underline;
@@ -1498,8 +1471,8 @@ export default {
 
 .quick-actions {
     display: flex;
-    gap: 0.5rem;
-    
+    gap: var(--density-gap);
+
     .action-btn {
         border-radius: 8px;
         padding: 0 12px;
@@ -1538,14 +1511,9 @@ export default {
 }
 
 .filters-section {
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-    padding: 1rem 1.5rem;
-    background: rgba(0, 0, 0, 0.02);
-    
-    .body--dark & {
-        border-top-color: rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.02);
-    }
+    border-top: 1px solid var(--surface-border);
+    padding: var(--density-card-padding) 1.5rem;
+    background: var(--surface-raised);
 }
 
 // Loading, Error, and No Data States
@@ -1562,33 +1530,8 @@ export default {
 
 .loading-text {
     margin-top: 1rem;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.9rem;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
-}
-
-.error-banner,
-.no-data-banner {
-    max-width: 600px;
-    width: 100%;
-}
-
-.error-banner {
-    background: #f44336;
-    color: white;
-}
-
-.no-data-banner {
-    background: rgba(255, 152, 0, 0.1);
-    color: #f57c00;
-    
-    .body--dark & {
-        background: rgba(255, 152, 0, 0.2);
-        color: #ffb74d;
-    }
 }
 
 // Table Container Styles
@@ -1601,35 +1544,22 @@ export default {
 }
 
 .table-header {
-    padding: 0.75rem 0 0.5rem 0;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    
-    .body--dark & {
-        border-bottom-color: rgba(255, 255, 255, 0.1);
-    }
-    
+    padding: var(--density-gap) 0;
+    border-bottom: 1px solid var(--surface-border);
+
     .table-title {
         font-size: 1.1rem;
         font-weight: 600;
-        color: #1976d2;
-        
-        .body--dark & {
-            color: #64b5f6;
-        }
+        color: var(--accent);
     }
 }
 
 .table-wrapper {
     flex: 1;
     overflow: hidden;
-    background: white;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    
-    .body--dark & {
-        background: #1d1d1d;
-        border-color: rgba(255, 255, 255, 0.1);
-    }
+    background: var(--surface-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
 }
 
 // Global utility classes

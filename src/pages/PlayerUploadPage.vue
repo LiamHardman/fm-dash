@@ -1,27 +1,30 @@
 <template>
     <q-page class="upload-page">
-        <div class="upload-container">
+        <div class="page-container">
+            <PageHeader
+                title="Upload"
+                subtitle="Choose your exported HTML or CSV file from Football Manager 2024 to start analyzing your save."
+                icon="cloud_upload"
+            >
+                <template #actions>
+                    <q-btn
+                        flat
+                        color="info"
+                        size="md"
+                        label="First Time?"
+                        icon="help_outline"
+                        @click="showTutorial"
+                    />
+                </template>
+            </PageHeader>
+
             <!-- Upload Section -->
             <div class="upload-section">
-                <q-card class="upload-card" flat bordered>
-                    <q-card-section>
-                        <!-- Help Section -->
-                        <div class="help-section">
-                            <q-btn
-                                flat
-                                color="info"
-                                size="md"
-                                label="First Time?"
-                                icon="help_outline"
-                                class="help-btn"
-                                @click="showTutorial"
-                            />
-                        </div>
-                        
-                        <div class="upload-header">
+                <SectionCard class="upload-card">
+                        <div class="upload-dropzone-header">
                             <q-icon
-                                name="cloud_upload"
-                                size="3rem"
+                                name="file_upload"
+                                size="2.5rem"
                                 color="primary"
                                 class="upload-icon"
                             />
@@ -154,14 +157,8 @@
                                 }}
                             </q-btn>
                         </div>
-                    </q-card-section>
-                </q-card>
+                </SectionCard>
             </div>
-
-
-
-
-
 
             <div v-if="error" class="error-message">
                 <q-icon name="error_outline" class="error-icon" />
@@ -226,6 +223,8 @@ import { Notify, useQuasar } from 'quasar'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InteractiveUploadLoader from '../components/InteractiveUploadLoader.vue'
+import PageHeader from '../components/layout/PageHeader.vue'
+import SectionCard from '../components/layout/SectionCard.vue'
 import playerService from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
@@ -234,6 +233,8 @@ export default {
   name: 'PlayerUploadPage',
   components: {
     InteractiveUploadLoader,
+    PageHeader,
+    SectionCard,
   },
   setup() {
     const router = useRouter()
@@ -458,73 +459,14 @@ export default {
 <style lang="scss" scoped>
 .upload-page {
     min-height: calc(100vh - 120px);
-    background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
-
-    .body--dark & {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    }
+    background: var(--surface-page);
 }
 
-.upload-container {
+.page-container {
     max-width: 900px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: var(--page-gutter);
 }
-
-// Help Section
-.help-section {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: rgba(26, 35, 126, 0.02);
-    border-radius: 8px;
-    border: 1px solid rgba(26, 35, 126, 0.05);
-
-    .body--dark & {
-        background: rgba(33, 150, 243, 0.05);
-        border-color: rgba(33, 150, 243, 0.1);
-    }
-
-    .help-btn {
-        font-weight: 500;
-        transition: all 0.3s ease;
-        border-radius: 6px;
-        padding: 0.5rem 1.5rem;
-        min-width: 140px;
-        
-        &:hover {
-            background: rgba(33, 150, 243, 0.1);
-            transform: translateY(-1px);
-        }
-    }
-}
-
-// Help Section
-.help-section {
-    margin-bottom: 2rem;
-
-    .help-card {
-        border-radius: 12px;
-        border: 1px solid rgba(26, 35, 126, 0.1);
-
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .help-text {
-            font-size: 1rem;
-            color: #666;
-            margin-bottom: 0.5rem;
-
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
-        }
-    }
-}
-
-
 
 // Upload Section
 .upload-section {
@@ -532,17 +474,8 @@ export default {
 
     .upload-card {
         position: relative;
-        border-radius: 16px;
-        border: 1px solid rgba(26, 35, 126, 0.1);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .upload-header {
+        .upload-dropzone-header {
             text-align: center;
             margin-bottom: 2rem;
 
@@ -553,28 +486,20 @@ export default {
             .upload-title {
                 font-size: 1.5rem;
                 font-weight: 500;
-                color: #333;
+                color: var(--text-primary);
                 margin: 0 0 0.5rem 0;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
             }
 
             .upload-description {
-                color: #666;
+                color: var(--text-secondary);
                 font-size: 1rem;
                 margin: 0;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
             }
         }
 
         .upload-dropzone {
-            border: 2px dashed rgba(26, 35, 126, 0.3);
-            border-radius: 12px;
+            border: 2px dashed color-mix(in srgb, var(--accent) 30%, transparent);
+            border-radius: var(--radius-md);
             padding: 3rem 2rem;
             text-align: center;
             cursor: pointer;
@@ -583,25 +508,15 @@ export default {
             position: relative;
 
             &:hover {
-                border-color: rgba(26, 35, 126, 0.5);
-                background: rgba(26, 35, 126, 0.02);
+                border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+                background: var(--accent-soft);
             }
 
             &.file-selected {
                 border-color: #4caf50;
                 background: rgba(76, 175, 80, 0.05);
-            }
 
-            .body--dark & {
-                border-color: rgba(255, 255, 255, 0.3);
-
-                &:hover {
-                    border-color: rgba(255, 255, 255, 0.5);
-                    background: rgba(255, 255, 255, 0.02);
-                }
-
-                &.file-selected {
-                    border-color: #4caf50;
+                .body--dark & {
                     background: rgba(76, 175, 80, 0.1);
                 }
             }
@@ -610,22 +525,14 @@ export default {
                 .dropzone-text {
                     .dropzone-primary {
                         font-size: 1.1rem;
-                        color: #333;
+                        color: var(--text-primary);
                         font-weight: 500;
                         margin-bottom: 0.5rem;
-
-                        .body--dark & {
-                            color: rgba(255, 255, 255, 0.9);
-                        }
                     }
 
                     .dropzone-secondary {
-                        color: #666;
+                        color: var(--text-secondary);
                         font-size: 0.9rem;
-
-                        .body--dark & {
-                            color: rgba(255, 255, 255, 0.6);
-                        }
                     }
                 }
             }
@@ -639,13 +546,9 @@ export default {
                 }
 
                 .selected-file-size {
-                    color: #666;
+                    color: var(--text-secondary);
                     font-size: 0.9rem;
                     margin-bottom: 1rem;
-
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.6);
-                    }
                 }
 
                 .remove-file-btn {
@@ -681,11 +584,7 @@ export default {
                 align-items: center;
                 gap: 0.5rem;
                 font-size: 0.9rem;
-                color: #666;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
+                color: var(--text-secondary);
             }
         }
 
@@ -693,16 +592,11 @@ export default {
             display: flex;
             align-items: flex-start;
             gap: 0.75rem;
-            background: rgba(26, 35, 126, 0.02);
-            border: 1px solid rgba(26, 35, 126, 0.1);
-            border-radius: 8px;
+            background: var(--accent-soft);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-sm);
             padding: 1rem;
             margin-bottom: 2rem;
-
-            .body--dark & {
-                background: rgba(33, 150, 243, 0.05);
-                border-color: rgba(33, 150, 243, 0.2);
-            }
 
             .disclaimer-icon {
                 margin-top: 0.1rem;
@@ -717,21 +611,13 @@ export default {
                 .disclaimer-title {
                     font-weight: 600;
                     font-size: 0.9rem;
-                    color: #1a237e;
-
-                    .body--dark & {
-                        color: rgba(33, 150, 243, 0.9);
-                    }
+                    color: var(--accent);
                 }
 
                 .disclaimer-content {
                     font-size: 0.85rem;
-                    color: #666;
+                    color: var(--text-secondary);
                     line-height: 1.4;
-
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.7);
-                    }
                 }
             }
         }
@@ -743,13 +629,13 @@ export default {
                 padding: 1rem 2rem;
                 font-weight: 500;
                 letter-spacing: 0.5px;
-                border-radius: 12px;
+                border-radius: var(--radius-md);
                 min-width: 200px;
                 transition: all 0.3s ease;
 
                 &:hover {
                     transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
+                    box-shadow: 0 8px 25px color-mix(in srgb, var(--accent) 30%, transparent);
                 }
 
                 &:disabled {
@@ -765,16 +651,11 @@ export default {
     display: flex;
     align-items: flex-start;
     gap: 1rem;
-    background: #fee;
-    border: 1px solid #f5c6cb;
-    border-radius: 8px;
+    background: color-mix(in srgb, #dc3545 8%, var(--surface-card));
+    border: 1px solid color-mix(in srgb, #dc3545 25%, transparent);
+    border-radius: var(--radius-sm);
     padding: 1rem;
     margin-top: 1rem;
-
-    .body--dark & {
-        background: rgba(220, 53, 69, 0.1);
-        border-color: rgba(220, 53, 69, 0.3);
-    }
 }
 
 .error-icon {
@@ -788,12 +669,8 @@ export default {
 }
 
 .error-text {
-    color: #721c24;
+    color: var(--text-primary);
     margin-bottom: 0.5rem;
-
-    .body--dark & {
-        color: #f8d7da;
-    }
 }
 
 .error-dismiss {
@@ -804,16 +681,12 @@ export default {
     &:hover {
         background: rgba(220, 53, 69, 0.1);
     }
-
-    .body--dark & {
-        color: #f8d7da;
-    }
 }
 
 // Responsive Design
 @media (max-width: 768px) {
-    .upload-container {
-        padding: 1rem;
+    .page-container {
+        padding: var(--page-gutter-sm);
     }
 
     .upload-section {
@@ -850,7 +723,7 @@ export default {
 @media (max-width: 480px) {
     .upload-section {
         .upload-card {
-            .upload-header {
+            .upload-dropzone-header {
                 .upload-title {
                     font-size: 1.2rem;
                 }

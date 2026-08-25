@@ -188,17 +188,11 @@ export default {
 }
 
 .money-uniform {
-  color: #334155;
-  .body--dark & {
-    color: rgba(255, 255, 255, 0.85);
-  }
+  color: var(--text-primary);
 }
 
 .money-na {
-  color: #9ca3af;
-  .body--dark & {
-    color: #6b7280;
-  }
+  color: var(--text-muted);
 }
 
 /* Name cell */
@@ -233,11 +227,7 @@ export default {
 .name-flag-placeholder {
   flex-shrink: 0;
   width: 16px;
-  color: #9ca3af;
-
-  .body--dark & {
-    color: #6b7280;
-  }
+  color: var(--text-muted);
 }
 
 .name-text {
@@ -250,15 +240,11 @@ export default {
 
 .name-meta {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
-
-  .body--dark & {
-    color: rgba(255, 255, 255, 0.45);
-  }
 }
 
 /* Legacy nationality cell (kept in case column is still used elsewhere) */
@@ -283,11 +269,7 @@ export default {
   width: 20px;
   height: 13px;
   flex-shrink: 0;
-  color: #9ca3af;
-
-  .body--dark & {
-    color: #6b7280;
-  }
+  color: var(--text-muted);
 }
 
 .nationality-cell {
@@ -363,20 +345,16 @@ export default {
 
 .position-role {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
-
-  .body--dark & {
-    color: rgba(255, 255, 255, 0.45);
-  }
 }
 
 .club-division {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -384,16 +362,8 @@ export default {
   cursor: pointer;
 
   &:hover {
-    color: #2e74b5;
+    color: var(--accent);
     text-decoration: underline;
-  }
-
-  .body--dark & {
-    color: rgba(255, 255, 255, 0.45);
-
-    &:hover {
-      color: #60a5fa;
-    }
   }
 }
 </style>

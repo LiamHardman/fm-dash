@@ -9,25 +9,103 @@
         }"
     >
         <q-card class="settings-card">
-            <q-card-section class="settings-header">
-                <div class="settings-title">
-                    <q-icon name="settings" size="2rem" class="q-mr-md" />
-                    <span class="text-h5">Settings</span>
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/BargainHunterDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="settings" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">Settings</div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            @click="closeModal"
+                        />
+                    </div>
                 </div>
-                <q-btn
-                    flat
-                    round
-                    icon="close"
-                    @click="closeModal"
-                    class="close-btn"
-                />
-            </q-card-section>
-
-            <q-separator />
+            </div>
 
             <q-card-section class="settings-content">
                 <div class="settings-sections">
                     <!-- Rating Calculation Section -->
+                    <!-- Appearance Section -->
+                    <q-expansion-item
+                        expand-separator
+                        icon="palette"
+                        label="Appearance"
+                        caption="Accent color and density"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        :default-opened="false"
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="section-description">
+                                    Personalize the app's accent color and how dense the layout feels.
+                                </div>
+
+                                <div class="appearance-block">
+                                    <div class="appearance-block__label">Accent color</div>
+                                    <div class="accent-swatches">
+                                        <button
+                                            v-for="swatch in accentSwatches"
+                                            :key="swatch"
+                                            type="button"
+                                            class="accent-swatch"
+                                            :class="{ 'accent-swatch--selected': isAccentSelected(swatch) }"
+                                            :style="{ backgroundColor: swatch }"
+                                            :aria-label="`Set accent color to ${swatch}`"
+                                            @click="accentColor = swatch"
+                                        >
+                                            <q-icon v-if="isAccentSelected(swatch)" name="check" size="1rem" color="white" />
+                                        </button>
+                                        <q-btn
+                                            round
+                                            flat
+                                            dense
+                                            icon="colorize"
+                                            class="accent-swatch accent-swatch--custom"
+                                            aria-label="Pick a custom accent color"
+                                        >
+                                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                                                <q-color v-model="accentColor" no-header no-footer />
+                                            </q-popup-proxy>
+                                        </q-btn>
+                                        <q-btn
+                                            flat
+                                            dense
+                                            no-caps
+                                            label="Reset"
+                                            class="accent-reset-btn"
+                                            @click="accentColor = ''"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="appearance-block">
+                                    <div class="appearance-block__label">Density</div>
+                                    <q-btn-toggle
+                                        v-model="density"
+                                        no-caps
+                                        unelevated
+                                        toggle-color="primary"
+                                        color="grey-3"
+                                        text-color="grey-8"
+                                        :options="[
+                                            { label: 'Comfortable', value: 'comfortable' },
+                                            { label: 'Compact', value: 'compact' },
+                                        ]"
+                                    />
+                                </div>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
                     <q-expansion-item
                         expand-separator
                         icon="assessment"
@@ -48,7 +126,6 @@
                                         :class="{
                                             'method-card': true,
                                             'method-card--selected': useScaledRatings,
-                                            'method-card--dark': $q.dark.isActive,
                                             'method-card--disabled': isLoading
                                         }"
                                         @click="!isLoading && setRatingMethod(true)"
@@ -87,7 +164,6 @@
                                         :class="{
                                             'method-card': true,
                                             'method-card--selected': !useScaledRatings,
-                                            'method-card--dark': $q.dark.isActive,
                                             'method-card--disabled': isLoading
                                         }"
                                         @click="!isLoading && setRatingMethod(false)"
@@ -579,6 +655,32 @@ export default defineComponent({
       set: (value) => uiStore.setStatSummaryOverall(value),
     })
 
+    const accentColor = computed({
+      get: () => uiStore.accentColor,
+      set: (value) => uiStore.setAccentColor(value),
+    })
+
+    const accentSwatches = [
+      '#1a237e', // brand default (indigo)
+      '#2563eb', // blue
+      '#0d9488', // teal
+      '#16a34a', // emerald
+      '#d97706', // amber
+      '#e11d48', // rose
+      '#7c3aed', // purple
+      '#475569', // slate
+    ]
+
+    const isAccentSelected = (swatch) => {
+      const current = (uiStore.accentColor || accentSwatches[0]).toLowerCase()
+      return current === swatch.toLowerCase()
+    }
+
+    const density = computed({
+      get: () => uiStore.density,
+      set: (value) => uiStore.setDensity(value),
+    })
+
     const isLoading = ref(false)
     const activeTab = ref('general')
 
@@ -675,6 +777,10 @@ export default defineComponent({
       openaiApiKey,
       openaiBaseUrl,
       openaiModel,
+      accentColor,
+      accentSwatches,
+      isAccentSelected,
+      density,
       isLoading,
       activeTab,
       showTutorial,
@@ -696,51 +802,54 @@ export default defineComponent({
     margin: 2rem auto;
     max-height: 90vh;
     overflow-y: auto;
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
 }
 
-.settings-header {
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// BargainHunterDialog — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 2rem;
-    background: rgba(26, 35, 126, 0.05);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-    }
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
 }
 
-.settings-title {
+.dialog-chrome__header {
     display: flex;
     align-items: center;
-    color: #1a237e;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
     font-weight: 600;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.close-btn {
-    color: #666;
-    
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
     &:hover {
-        background: rgba(26, 35, 126, 0.1);
-        color: #1a237e;
-    }
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.9);
-        }
+        transform: scale(1.08);
     }
 }
 
@@ -762,11 +871,7 @@ export default defineComponent({
 
 .settings-expansion-header {
     padding: 1rem 1.5rem;
-    background: rgba(26, 35, 126, 0.05);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-    }
+    background: var(--surface-raised);
 }
 
 .expansion-content {
@@ -775,12 +880,8 @@ export default defineComponent({
 
 .section-description {
     margin-bottom: 1.5rem;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.95rem;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 .rating-method-options {
@@ -791,52 +892,28 @@ export default defineComponent({
 }
 
 .method-card {
-    border: 2px solid rgba(26, 35, 126, 0.1);
+    border: 2px solid var(--surface-border-strong);
     cursor: pointer;
     transition: all 0.3s ease;
-    
+    background: var(--surface-card);
+
     &:hover {
-        border-color: rgba(26, 35, 126, 0.3);
-        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.1);
+        border-color: var(--accent);
+        box-shadow: var(--shadow-2);
     }
-    
+
     &--selected {
-        border-color: #1a237e;
-        background: rgba(26, 35, 126, 0.05);
+        border-color: var(--accent);
+        background: var(--accent-soft);
     }
-    
+
     &--disabled {
         opacity: 0.6;
         cursor: not-allowed;
-        
+
         &:hover {
-            border-color: rgba(26, 35, 126, 0.1);
+            border-color: var(--surface-border-strong);
             box-shadow: none;
-        }
-    }
-    
-    &--dark {
-        border-color: rgba(255, 255, 255, 0.2);
-        background: rgba(255, 255, 255, 0.02);
-        
-        &:hover {
-            border-color: rgba(255, 255, 255, 0.4);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        
-        &.method-card--selected {
-            border-color: rgba(255, 255, 255, 0.9);
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        &.method-card--disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            
-            &:hover {
-                border-color: rgba(255, 255, 255, 0.2);
-                box-shadow: none;
-            }
         }
     }
 }
@@ -859,32 +936,23 @@ export default defineComponent({
 
 .method-description {
     margin-left: 2rem;
-    color: #666;
-    
+    color: var(--text-secondary);
+
     ul {
         margin: 0.5rem 0;
         padding-left: 1.5rem;
-        
+
         li {
             margin-bottom: 0.25rem;
         }
     }
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 .rating-preview {
-    background: rgba(26, 35, 126, 0.03);
-    border-radius: 8px;
+    background: var(--surface-raised);
+    border-radius: var(--radius-sm);
     padding: 1.5rem;
-    border: 1px solid rgba(26, 35, 126, 0.1);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
+    border: 1px solid var(--surface-border);
 }
 
 .preview-header {
@@ -892,11 +960,7 @@ export default defineComponent({
     align-items: center;
     margin-bottom: 1rem;
     font-weight: 600;
-    color: #1a237e;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
+    color: var(--text-primary);
 }
 
 .preview-content {
@@ -908,26 +972,17 @@ export default defineComponent({
 .preview-example {
     flex: 1;
     min-width: 200px;
-    background: white;
-    border-radius: 6px;
+    background: var(--surface-card);
+    border-radius: var(--radius-sm);
     padding: 1rem;
-    border: 1px solid rgba(26, 35, 126, 0.1);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
+    border: 1px solid var(--surface-border);
 }
 
 .example-header {
     font-weight: 600;
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
-    color: #1a237e;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
+    color: var(--text-primary);
 }
 
 .example-ratings {
@@ -944,11 +999,7 @@ export default defineComponent({
 
 .rating-label {
     font-size: 0.85rem;
-    color: #666;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
+    color: var(--text-secondary);
 }
 
 .rating-value {
@@ -978,74 +1029,54 @@ export default defineComponent({
 }
 
 .info-card {
-    border: 1px solid rgba(26, 35, 126, 0.1);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
 }
 
 .info-text {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.9rem;
-    
+
     ul {
         margin: 0.5rem 0;
         padding-left: 1.5rem;
-        
+
         li {
             margin-bottom: 0.25rem;
         }
-    }
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
     }
 }
 
 .coming-soon {
     text-align: center;
     padding: 2rem;
-    color: #666;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
-    
+    color: var(--text-secondary);
+
     p {
         margin: 0.5rem 0;
     }
-    
+
     .q-icon {
-        color: #999;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.5);
-        }
+        color: var(--text-muted);
     }
 }
 
 .help-section {
     padding: 1rem 0;
-    
+
     .help-description {
         margin-bottom: 1.5rem;
-        
+
         p {
-            color: #666;
+            color: var(--text-secondary);
             line-height: 1.6;
             margin: 0;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
         }
     }
-    
+
     .help-actions {
         text-align: center;
-        
+
         .tutorial-btn {
             padding: 0.8rem 1.5rem;
             font-weight: 600;
@@ -1060,23 +1091,67 @@ export default defineComponent({
     margin-bottom: 1.5rem;
 }
 
-.option-card {
-    border: 1px solid rgba(26, 35, 126, 0.1);
-    transition: all 0.2s ease;
-    
-    &:hover {
-        border-color: rgba(26, 35, 126, 0.2);
-        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.05);
+.appearance-block {
+    margin-bottom: 1.5rem;
+
+    &:last-child {
+        margin-bottom: 0;
     }
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-        border-color: rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
+
+    &__label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 0.65rem;
+    }
+}
+
+.accent-swatches {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.accent-swatch {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+
+    &--selected {
+        border-color: var(--text-primary);
+    }
+
+    &--custom {
+        background: conic-gradient(from 180deg, #e11d48, #d97706, #16a34a, #0d9488, #2563eb, #7c3aed, #e11d48);
+        color: white;
+    }
+}
+
+.accent-reset-btn {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.option-card {
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: var(--surface-border-strong);
+        box-shadow: var(--shadow-1);
     }
 }
 
@@ -1099,12 +1174,8 @@ export default defineComponent({
 }
 
 .option-icon {
-    color: #1a237e;
+    color: var(--accent);
     flex-shrink: 0;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 .option-text {
@@ -1114,30 +1185,23 @@ export default defineComponent({
 .option-title {
     font-weight: 600;
     font-size: 1rem;
-    color: #1a237e;
+    color: var(--text-primary);
     margin-bottom: 0.25rem;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
 }
 
 .option-description {
     font-size: 0.875rem;
-    color: #666;
+    color: var(--text-secondary);
     line-height: 1.4;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 .option-disclaimer {
+    // Warning-tier color, kept semantic/hardcoded per established precedent.
     font-size: 0.8rem;
     color: #f57c00;
     margin-top: 0.5rem;
     font-style: italic;
-    
+
     .body--dark & {
         color: #ffb74d;
     }
@@ -1149,27 +1213,15 @@ export default defineComponent({
 
 .settings-actions {
     padding: 1rem 2rem;
-    background: rgba(26, 35, 126, 0.02);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-    }
+    background: var(--surface-raised);
 }
 
 .close-action-btn {
-    color: #1a237e;
-    
+    color: var(--text-secondary);
+
     &:hover {
-        background: rgba(26, 35, 126, 0.1);
-    }
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.9);
-        }
+        background: var(--accent-soft);
+        color: var(--accent);
     }
 }
 

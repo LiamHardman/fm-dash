@@ -80,16 +80,12 @@ export default {
 }
 
 .modern-header-cell {
-  color: #1e293b !important;
+  color: var(--text-primary) !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-size: 0.8rem !important;
-  padding: 1rem 0.75rem !important;
-  
-  .body--dark & {
-    color: rgba(255, 255, 255, 0.9) !important;
-  }
+  padding: var(--density-cell-padding) !important;
 
   &:hover {
     background: rgba(46, 116, 181, 0.15) !important;
@@ -101,35 +97,26 @@ export default {
   
   &.active-sort {
     background: rgba(46, 116, 181, 0.2) !important;
-    color: #2e74b5 !important;
-    
+    color: var(--accent) !important;
+
     .body--dark & {
       background: rgba(255, 255, 255, 0.2) !important;
-      color: #60a5fa !important;
     }
-    
+
     .sort-icon {
-      color: #2e74b5 !important;
-      
-      .body--dark & {
-        color: #60a5fa !important;
-      }
+      color: var(--accent) !important;
     }
   }
-  
+
   &.sorting-in-progress {
     background: rgba(46, 116, 181, 0.15) !important;
-    
+
     .body--dark & {
       background: rgba(255, 255, 255, 0.15) !important;
     }
-    
+
     .sorting-spinner {
-      color: #2e74b5 !important;
-      
-      .body--dark & {
-        color: #60a5fa !important;
-      }
+      color: var(--accent) !important;
     }
   }
 }

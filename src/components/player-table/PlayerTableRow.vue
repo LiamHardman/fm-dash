@@ -110,9 +110,10 @@ export default {
 }
 
 .table-cell-enhanced {
-  color: #334155 !important;
+  color: var(--text-primary) !important;
   font-weight: 500;
-  padding: 0.5rem 0.75rem !important;
+  padding: var(--density-cell-padding) !important;
+  font-size: var(--density-font-size);
 
   .body--dark & {
     color: rgba(255, 255, 255, 0.85) !important;

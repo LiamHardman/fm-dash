@@ -11,6 +11,16 @@
                     }})
                 </div>
             </div>
+            <q-btn
+                flat
+                dense
+                round
+                icon="view_column"
+                class="customize-columns-btn"
+                @click="showColumnCustomizeDialog = true"
+            >
+                <q-tooltip>Customize columns</q-tooltip>
+            </q-btn>
         </div>
 
         <q-card
@@ -41,7 +51,7 @@
             <q-table
                 :key="tableKey"
                 :rows="sortedPlayers"
-                :columns="currentColumns"
+                :columns="displayedColumns"
                 :loading="loading"
                 row-key="name"
                 :pagination="pagination"
@@ -59,7 +69,7 @@
                 ]"
                 table-header-class="player-table-header"
                 virtual-scroll
-                :virtual-scroll-item-size="68"
+                :virtual-scroll-item-size="virtualScrollItemSize"
                 :virtual-scroll-sticky-size-start="48"
                 :virtual-scroll-sticky-size-end="55"
                 style="height: 100%; min-height: 500px;"
@@ -127,6 +137,18 @@
             @add-to-comparison="handleAddToComparison"
             @remove-from-comparison="handleRemoveFromComparison"
         />
+
+        <CustomizeListDialog
+            v-model="showColumnCustomizeDialog"
+            title="Customize columns"
+            hint="Reorder or hide player table columns. The Name column always stays first and can't be hidden."
+            :items="columnPickerItems"
+            :hidden-ids="uiStore.playerTableHiddenColumns"
+            :order-ids="uiStore.playerTableColumnOrder"
+            @update:hidden="uiStore.setPlayerTableHiddenColumns"
+            @update:order="uiStore.setPlayerTableColumnOrder"
+            @reset="resetColumnCustomization"
+        />
     </div>
     </div>
 </template>
@@ -144,6 +166,7 @@ import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
+import CustomizeListDialog from './layout/CustomizeListDialog.vue'
 import PlayerTableContextMenu from './player-table/PlayerTableContextMenu.vue'
 import PlayerTableHeader from './player-table/PlayerTableHeader.vue'
 import PlayerTablePagination from './player-table/PlayerTablePagination.vue'
@@ -158,6 +181,7 @@ export default {
     PlayerTableRow,
     PlayerTablePagination,
     PlayerTableContextMenu,
+    CustomizeListDialog,
   },
   props: {
     players: { type: Array, required: true },
@@ -190,6 +214,15 @@ export default {
     // Reactive CA display preference from settings
     const showCA = computed(() => uiStore.showCA)
 
+    // Estimated row height (px) fed to q-table's virtual scroller. This is a
+    // rendering-correctness companion to the CSS --density-row-height/
+    // --density-cell-padding tokens (see PlayerTableRow.vue/PlayerTableHeader.vue):
+    // virtual-scroll-item-size is a plain number prop, not a CSS var, so it has to
+    // be kept in sync with density here or the virtual scroller's row-position
+    // math drifts from the actual (density-aware) rendered row height once rows
+    // shrink in compact mode.
+    const virtualScrollItemSize = computed(() => (uiStore.density === 'compact' ? 50 : 68))
+
     // Initialize optimized sorting and web workers
     const { sortLargeArray, clearSortCache } = useOptimizedSorting()
     const { sortPlayers: sortPlayersWorker } = usePlayerCalculationWorker()
@@ -203,6 +236,44 @@ export default {
       props.showValueScore,
       showCA
     )
+
+    // Column visibility/order customization (ticket 11 of the UI redesign map).
+    // 'name' is never hideable/orderable -- it's excluded from the picker and
+    // always forced first in displayedColumns regardless of stored order.
+    // "Pinning" a column is just moving it to the front of the order list.
+    const showColumnCustomizeDialog = ref(false)
+
+    const columnPickerItems = computed(() =>
+      currentColumns.value
+        .filter((c) => c.name !== 'name')
+        .map((c) => ({ id: c.name, label: c.label, icon: 'view_column' }))
+    )
+
+    const displayedColumns = computed(() => {
+      const nameCol = currentColumns.value.find((c) => c.name === 'name')
+      const rest = currentColumns.value.filter((c) => c.name !== 'name')
+      const hidden = new Set(uiStore.playerTableHiddenColumns)
+      const order = uiStore.playerTableColumnOrder
+
+      let visible = rest.filter((c) => !hidden.has(c.name))
+      if (order.length) {
+        visible = [...visible].sort((a, b) => {
+          const ai = order.indexOf(a.name)
+          const bi = order.indexOf(b.name)
+          return (
+            (ai === -1 ? Number.POSITIVE_INFINITY : ai) -
+            (bi === -1 ? Number.POSITIVE_INFINITY : bi)
+          )
+        })
+      }
+
+      return nameCol ? [nameCol, ...visible] : visible
+    })
+
+    const resetColumnCustomization = () => {
+      uiStore.setPlayerTableHiddenColumns([])
+      uiStore.setPlayerTableColumnOrder([])
+    }
 
     const {
       getUnifiedRatingClass,
@@ -928,6 +999,12 @@ export default {
       onDivisionClick,
       tableKey,
       columnMaxValues,
+      uiStore,
+      virtualScrollItemSize,
+      displayedColumns,
+      showColumnCustomizeDialog,
+      columnPickerItems,
+      resetColumnCustomization,
     }
   },
 }
@@ -955,30 +1032,23 @@ export default {
     margin-bottom: 1rem;
     
     .sort-info-chip {
-        background: rgba(46, 116, 181, 0.1);
-        color: #2e74b5;
+        background: var(--accent-soft);
+        color: var(--accent);
         font-weight: 600;
         padding: 0.5rem 1rem;
         border-radius: 8px;
-        border: 1px solid rgba(46, 116, 181, 0.2);
-        
-        .body--dark & {
-            background: rgba(96, 165, 250, 0.1);
-            color: #60a5fa;
-            border-color: rgba(96, 165, 250, 0.2);
-        }
+        border: 1px solid var(--accent-soft-strong);
     }
 }
 
 .player-q-table {
-    background: white;
+    background: var(--surface-card);
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
     border: 1px solid rgba(0, 0, 0, 0.06);
     overflow: hidden;
-    
+
     .body--dark & {
-        background: #1e293b;
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
     }
@@ -1005,19 +1075,18 @@ export default {
 }
 
 .no-players-card {
-    background: white !important;
-    border: 1px solid rgba(46, 116, 181, 0.15) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--accent-soft-strong) !important;
     border-radius: 12px !important;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-    
+
     .body--dark & {
-        background: #1e293b !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
     }
-    
+
     .no-players-text {
-        color: #64748b !important;
+        color: var(--text-secondary) !important;
         font-size: 1.1rem;
         font-weight: 500;
         margin: 0;

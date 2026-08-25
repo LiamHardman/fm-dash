@@ -9,21 +9,26 @@
         }"
     >
         <q-card class="tutorial-card">
-            <q-card-section class="tutorial-header">
-                <div class="tutorial-title">
-                    <q-icon name="school" size="2rem" class="q-mr-md" />
-                    <span class="text-h5">First Time Setup Guide</span>
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/SettingsModal — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="school" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">First Time Setup Guide</div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            @click="closeModal"
+                        />
+                    </div>
                 </div>
-                <q-btn
-                    flat
-                    round
-                    icon="close"
-                    @click="closeModal"
-                    class="close-btn"
-                />
-            </q-card-section>
-
-            <q-separator />
+            </div>
 
             <q-card-section class="tutorial-content">
                 <!-- Step Indicator -->
@@ -310,51 +315,54 @@ export default defineComponent({
     margin: 2rem auto;
     max-height: 90vh;
     overflow-y: auto;
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
 }
 
-.tutorial-header {
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// SettingsModal — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 2rem;
-    background: rgba(26, 35, 126, 0.05);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-    }
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
 }
 
-.tutorial-title {
+.dialog-chrome__header {
     display: flex;
     align-items: center;
-    color: #1a237e;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
     font-weight: 600;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.close-btn {
-    color: #666;
-    
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
     &:hover {
-        background: rgba(26, 35, 126, 0.1);
-        color: #1a237e;
-    }
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.9);
-        }
+        transform: scale(1.08);
     }
 }
 
@@ -373,42 +381,26 @@ export default defineComponent({
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    background: rgba(26, 35, 126, 0.1);
+    background: var(--surface-raised);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    color: #666;
+    color: var(--text-secondary);
     transition: all 0.3s ease;
     border: 2px solid transparent;
-    
+
     &--active {
-        background: #1a237e;
-        color: white;
-        border-color: #1a237e;
+        background: var(--accent);
+        color: var(--text-on-brand);
+        border-color: var(--accent);
     }
-    
+
     &--completed {
+        // Success-tier color, kept semantic/hardcoded per established precedent.
         background: #4caf50;
         color: white;
         border-color: #4caf50;
-    }
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.7);
-        
-        &--active {
-            background: rgba(255, 255, 255, 0.9);
-            color: #1a237e;
-            border-color: rgba(255, 255, 255, 0.9);
-        }
-        
-        &--completed {
-            background: #4caf50;
-            color: white;
-            border-color: #4caf50;
-        }
     }
 }
 
@@ -425,35 +417,22 @@ export default defineComponent({
 .step-title {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #1a237e;
+    color: var(--text-primary);
     margin: 0 0 0.5rem 0;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
 }
 
 .step-subtitle {
     font-size: 1.1rem;
-    color: #666;
+    color: var(--text-secondary);
     margin: 0;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
 }
 
 .step-body {
     .instruction-card {
-        background: rgba(26, 35, 126, 0.03);
-        border-radius: 12px;
+        background: var(--surface-raised);
+        border-radius: var(--radius-md);
         padding: 2rem;
-        border: 1px solid rgba(26, 35, 126, 0.1);
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.02);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
+        border: 1px solid var(--surface-border);
     }
 }
 
@@ -462,16 +441,12 @@ export default defineComponent({
     align-items: center;
     gap: 1rem;
     margin-bottom: 1.5rem;
-    
+
     h4 {
         font-size: 1.3rem;
         font-weight: 600;
-        color: #1a237e;
+        color: var(--text-primary);
         margin: 0;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.9);
-        }
     }
 }
 
@@ -479,34 +454,22 @@ export default defineComponent({
     p {
         font-size: 1rem;
         line-height: 1.6;
-        color: #333;
+        color: var(--text-primary);
         margin-bottom: 1rem;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.8);
-        }
     }
-    
+
     ol {
         margin: 1rem 0;
         padding-left: 1.5rem;
-        
+
         li {
             margin-bottom: 0.5rem;
             line-height: 1.6;
-            color: #333;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.8);
-            }
-            
+            color: var(--text-primary);
+
             strong {
-                color: #1a237e;
+                color: var(--accent);
                 font-weight: 600;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
             }
         }
     }
@@ -584,31 +547,21 @@ export default defineComponent({
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    
+
     kbd {
-        background: #f5f5f5;
-        border: 1px solid #ccc;
+        background: var(--surface-raised);
+        border: 1px solid var(--surface-border-strong);
         border-radius: 4px;
         padding: 0.5rem 0.8rem;
         font-family: monospace;
         font-size: 0.9rem;
         font-weight: 600;
-        color: #333;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.9);
-        }
+        color: var(--text-primary);
     }
-    
+
     span {
         font-size: 0.8rem;
-        color: #666;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
+        color: var(--text-secondary);
     }
 }
 
@@ -638,28 +591,15 @@ export default defineComponent({
 
 .tutorial-actions {
     padding: 1rem 2rem;
-    background: rgba(26, 35, 126, 0.02);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-    }
+    background: var(--surface-raised);
 }
 
 .back-btn {
-    color: #666;
-    
+    color: var(--text-secondary);
+
     &:hover {
-        background: rgba(26, 35, 126, 0.1);
-        color: #1a237e;
-    }
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.9);
-        }
+        background: var(--accent-soft);
+        color: var(--accent);
     }
 }
 

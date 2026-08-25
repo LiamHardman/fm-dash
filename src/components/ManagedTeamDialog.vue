@@ -1,12 +1,19 @@
 <template>
     <q-dialog :model-value="show" persistent @hide="$emit('close')">
         <q-card class="managed-team-dialog">
-            <q-card-section class="row items-center q-pb-none card-header">
-                <q-icon name="shield" size="md" class="q-mr-sm" />
-                <div class="text-h6">Which team do you manage?</div>
-                <q-space />
-                <q-btn icon="close" flat round dense @click="$emit('skip')" />
-            </q-card-section>
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="shield" class="dialog-chrome__icon" />
+                    <div class="dialog-chrome__title">Which team do you manage?</div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn icon="close" flat round dense class="dialog-chrome__close" @click="$emit('skip')" />
+                    </div>
+                </div>
+            </div>
 
             <q-card-section class="q-pt-md">
                 <div class="text-caption text-grey-6 q-mb-md">
@@ -138,8 +145,55 @@ export default defineComponent({
 .managed-team-dialog {
     width: 420px;
     max-width: 95vw;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    background: var(--surface-card);
 }
-.card-header {
+
+/* Dialog chrome: unified header convention shared with PlayerDetailDialog /
+   UpgradeFinderDialog — icon, title, actions, close, all in normal flow. */
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
     font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+}
+
+.dialog-chrome__close:hover {
+    transform: scale(1.08);
 }
 </style>

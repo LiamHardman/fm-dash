@@ -8,19 +8,27 @@
         transition-hide="slide-down"
     >
         <q-card class="recommend-signing-dialog">
-            <q-card-section class="row items-center q-pb-none card-header">
-                <q-icon name="person_add" size="md" class="q-mr-sm" color="warning" />
-                <div class="text-h6">Recommend Signing — {{ slotRole }}</div>
-                <q-space />
-                <q-btn
-                    icon="close"
-                    flat
-                    round
-                    dense
-                    v-close-popup
-                    @click="$emit('close')"
-                />
-            </q-card-section>
+            <!-- Dialog chrome: header (icon/title/close), the same convention used by
+                 PlayerDetailDialog/UpgradeFinderDialog — an icon, a title, then a close
+                 button, all in normal flow. -->
+            <div class="dialog-chrome">
+                <div class="dialog-chrome__header">
+                    <q-icon name="person_add" class="dialog-chrome__icon" color="warning" />
+                    <div class="dialog-chrome__title">Recommend Signing — {{ slotRole }}</div>
+                    <q-space />
+                    <div class="dialog-chrome__actions">
+                        <q-btn
+                            icon="close"
+                            flat
+                            round
+                            dense
+                            class="dialog-chrome__close"
+                            v-close-popup
+                            @click="$emit('close')"
+                        />
+                    </div>
+                </div>
+            </div>
 
             <q-card-section class="q-pt-md">
                 <!-- Filter Row -->
@@ -77,7 +85,7 @@
                     </div>
 
                     <div class="col-12 col-md-4">
-                        <div class="filter-info-box" :class="$q.dark.isActive ? 'filter-info-dark' : ''">
+                        <div class="filter-info-box">
                             <div class="info-row">
                                 <q-icon name="sports_soccer" size="xs" class="q-mr-xs" />
                                 <span class="text-caption">Position: {{ slotRole }}</span>
@@ -104,16 +112,12 @@
                 </div>
 
                 <!-- No Results -->
-                <div
+                <EmptyState
                     v-else-if="!loading && filteredPlayers.length === 0"
-                    class="text-center q-my-xl"
-                >
-                    <q-icon name="manage_search" size="3em" color="grey-5" />
-                    <div class="text-subtitle1 q-mt-md">No matching players found</div>
-                    <div class="text-caption q-mt-xs text-grey-6">
-                        Try lowering the minimum overall or increasing the max transfer value
-                    </div>
-                </div>
+                    icon="manage_search"
+                    title="No matching players found"
+                    description="Try lowering the minimum overall or increasing the max transfer value"
+                />
 
                 <!-- Results Table -->
                 <template v-else>
@@ -163,12 +167,13 @@ import { useQuasar } from 'quasar'
 import { computed, defineComponent, ref, watch } from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import EmptyState from './layout/EmptyState.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 export default defineComponent({
   name: 'RecommendSigningDialog',
-  components: { PlayerDataTable, PlayerDetailDialog },
+  components: { PlayerDataTable, PlayerDetailDialog, EmptyState },
   props: {
     show: { type: Boolean, default: false },
     slotRole: { type: String, default: '' },
@@ -335,19 +340,58 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// UpgradeFinderDialog — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.dialog-chrome__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 12px var(--density-card-padding, 16px);
+}
+
+.dialog-chrome__icon {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dialog-chrome__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dialog-chrome__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.dialog-chrome__close {
+    transition: transform 0.15s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+}
+
 .recommend-signing-dialog {
     display: flex;
     flex-direction: column;
     height: 100%;
-
-    .card-header {
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-
-        .body--dark & {
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-    }
+    background: var(--surface-card);
 
     .q-card__section:last-child {
         flex: 1;
@@ -376,7 +420,8 @@ export default defineComponent({
 }
 
 .filter-info-box {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     height: 100%;
@@ -385,18 +430,10 @@ export default defineComponent({
     justify-content: center;
     gap: 0.4rem;
 
-    &.filter-info-dark {
-        background: rgba(255, 255, 255, 0.06);
-    }
-
     .info-row {
         display: flex;
         align-items: center;
-        color: #64748b;
-
-        .body--dark & {
-            color: #94a3b8;
-        }
+        color: var(--text-secondary);
     }
 }
 </style>

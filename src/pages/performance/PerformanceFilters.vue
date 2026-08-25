@@ -10,7 +10,7 @@
           label="Select All"
           dense
           outline
-          class="division-action-btn"
+          class="filter-action-btn"
         />
         <q-btn
           @click="clearAllDivisions()"
@@ -20,7 +20,7 @@
           label="Clear All"
           dense
           outline
-          class="division-action-btn"
+          class="filter-action-btn"
         />
       </div>
       <q-select
@@ -34,8 +34,6 @@
         use-input
         @filter="filterDivisionsFn"
         class="division-filter"
-        dark
-        popup-content-class="bg-grey-10"
         :display-value="selectedDivisionsDisplayText"
       >
         <template v-slot:no-option>
@@ -56,7 +54,7 @@
           label="Select All"
           dense
           outline
-          class="position-action-btn"
+          class="filter-action-btn"
         />
         <q-btn
           @click="clearAllPositions()"
@@ -66,7 +64,7 @@
           label="Clear All"
           dense
           outline
-          class="position-action-btn"
+          class="filter-action-btn"
         />
       </div>
       <q-select
@@ -80,8 +78,6 @@
         use-input
         @filter="filterPositionsFn"
         class="position-filter"
-        dark
-        popup-content-class="bg-grey-10"
         :display-value="selectedPositionsDisplayText"
         emit-value
         map-options
@@ -105,8 +101,7 @@
         :label-value="`${sliderValueModel}+ mins`"
         label-always
         class="q-mt-sm"
-        dark
-        color="light-blue-4"
+        color="primary"
       />
     </div>
 
@@ -121,8 +116,7 @@
         :label-value="`${overallSliderValueModel}+ OVR`"
         label-always
         class="q-mt-sm"
-        dark
-        color="light-green-4"
+        color="secondary"
       />
     </div>
   </div>
@@ -201,7 +195,53 @@ const {
 } = props
 </script>
 
-<style scoped>
-/* Inherit styling from page via classes used above */
-</style>
+<style lang="scss" scoped>
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: var(--section-gap);
+  align-items: start;
 
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.division-filter-container,
+.position-filter-container {
+  width: 100%;
+}
+
+.division-filter-header,
+.position-filter-header {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.filter-action-btn {
+  font-size: 0.8rem;
+}
+
+.minutes-filter,
+.overall-filter {
+  .slider-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+}
+
+:deep(.q-item--disabled) {
+  font-weight: 600;
+  color: var(--text-secondary) !important;
+  text-align: center;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+</style>

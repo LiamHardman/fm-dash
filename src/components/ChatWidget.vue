@@ -12,17 +12,22 @@
   <div v-if="chatStore.managedTeam" class="chat-widget-root">
     <transition name="chat-drawer">
       <div v-if="open" class="chat-drawer">
-        <div class="chat-header">
-          <div class="chat-header-title">
+        <!-- Dialog chrome: header (icon/title/close), the same convention used by
+             PlayerDetailDialog/SettingsModal — icon, title, actions, close, all in normal
+             flow. Uses a q-avatar in place of the usual q-icon since the widget wants a
+             filled "bot" glyph here. -->
+        <div class="dialog-chrome chat-header">
+          <div class="dialog-chrome__header">
             <q-avatar size="32px" color="primary" text-color="white" icon="smart_toy" class="q-mr-sm" />
-            <div>
-              <div class="chat-title-main">Scout Assistant</div>
+            <div class="dialog-chrome__title-group">
+              <div class="dialog-chrome__title">Scout Assistant</div>
               <div class="chat-title-sub">{{ chatStore.statusLabel || 'Ask about your squad, targets, tactics' }}</div>
             </div>
-          </div>
-          <div class="chat-header-actions">
-            <q-btn flat dense no-caps label="New Chat" icon="add_comment" :disable="chatStore.messages.length === 0" @click="confirmNewChatOpen = true" />
-            <q-btn flat dense round icon="close" @click="open = false" />
+            <q-space />
+            <div class="dialog-chrome__actions">
+              <q-btn flat dense no-caps label="New Chat" icon="add_comment" :disable="chatStore.messages.length === 0" @click="confirmNewChatOpen = true" />
+              <q-btn flat dense round icon="close" class="dialog-chrome__close" @click="open = false" />
+            </div>
           </div>
         </div>
 
@@ -183,6 +188,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import { Bar, Radar } from 'vue-chartjs'
 import { useRouter } from 'vue-router'
 import { computeSquadComposition } from '../composables/useBestXI'
@@ -190,7 +196,9 @@ import { useChatStore } from '../stores/chatStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { renderChatMessageHtml } from '../utils/chatCitations'
 import { getFormationLayout } from '../utils/formations'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import PitchDisplay from './PitchDisplay.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 ChartJS.register(
@@ -216,23 +224,28 @@ const chatStore = useChatStore()
 const playerStore = usePlayerStore()
 const router = useRouter()
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const open = ref(false)
 const draft = ref('')
 const confirmNewChatOpen = ref(false)
 const scrollEl = ref(null)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const presetQuestions = PRESET_QUESTIONS
 
 const showPlayerDetailDialog = ref(false)
 const playerForDetailView = ref(null)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol || '$')
 
 // player_radar plots raw FM attributes, which are on a 1-20 scale — not Overall
 // (0-100-ish), which is what barOptions below is correctly scaled for.
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const radarOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: { r: { beginAtZero: true, max: 20 } },
 }
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const barOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -284,6 +297,7 @@ function openPlayer(uid) {
   showPlayerDetailDialog.value = true
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function renderMessageHtml(m) {
   return renderChatMessageHtml(m.text, m.referencedPlayers, (uid) => Boolean(findPlayerByUid(uid)))
 }
@@ -293,6 +307,7 @@ function renderMessageHtml(m) {
 // only ever supplies a formationKey; computeSquadComposition (shared with
 // TeamViewPage.vue's own Best XI) decides who actually plays where, so the two
 // surfaces can never disagree about who best fits a given formation.
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function tacticFormationData(formationKey) {
   const formation = getFormationLayout(formationKey)
   if (!formation.length || !chatStore.managedTeam?.club) return null
@@ -319,11 +334,13 @@ function tacticFormationData(formationKey) {
 
 // Player-link spans live inside v-html, so they can't carry a Vue @click binding —
 // this delegated handler reads the uid off whichever chip was actually clicked.
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function onBubbleClick(event) {
   const uid = event.target?.dataset?.playerUid
   if (uid) openPlayer(uid)
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function ask(question) {
   draft.value = question
   send()
@@ -355,6 +372,7 @@ function navigateIfRequested() {
   })
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function doNewChat() {
   chatStore.newChat()
   confirmNewChatOpen.value = false
@@ -383,7 +401,7 @@ watch(
   bottom: 24px;
   right: 24px;
   pointer-events: auto;
-  box-shadow: 0 4px 18px rgba(26, 35, 126, 0.35);
+  box-shadow: var(--shadow-3);
 }
 .chat-drawer {
   position: fixed;
@@ -392,15 +410,11 @@ watch(
   bottom: 0;
   width: 440px;
   max-width: 92vw;
-  background: white;
-  box-shadow: -6px 0 40px rgba(0, 0, 0, 0.2);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-3);
   display: flex;
   flex-direction: column;
   pointer-events: auto;
-
-  .body--dark & {
-    background: #16161f;
-  }
 }
 .chat-drawer-enter-active,
 .chat-drawer-leave-active {
@@ -411,30 +425,41 @@ watch(
   transform: translateX(100%);
 }
 
-.chat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+// Dialog chrome: unified header convention shared with PlayerDetailDialog /
+// SettingsModal — icon, title, actions, close, all in normal flow.
+.dialog-chrome {
   flex: 0 0 auto;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--surface-border);
 }
-.chat-header-title {
+.dialog-chrome__header {
   display: flex;
   align-items: center;
+  padding: 14px 16px;
 }
-.chat-title-main {
+.dialog-chrome__title-group {
+  min-width: 0;
+}
+.dialog-chrome__title {
   font-weight: 600;
   font-size: 0.95rem;
+  color: var(--text-primary);
 }
-.chat-title-sub {
-  font-size: 0.72rem;
-  color: #888;
-}
-.chat-header-actions {
+.dialog-chrome__actions {
   display: flex;
   gap: 4px;
   align-items: center;
+}
+.dialog-chrome__close {
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: scale(1.08);
+  }
+}
+.chat-title-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
 }
 
 .chat-body {
@@ -458,9 +483,11 @@ watch(
 .chat-preset-card {
   cursor: pointer;
   transition: box-shadow 0.15s ease;
+  background: var(--surface-card);
+  border-color: var(--surface-border);
 
   &:hover {
-    box-shadow: 0 2px 10px rgba(26, 35, 126, 0.15);
+    box-shadow: var(--shadow-2);
   }
 }
 .chat-preset-card-body {
@@ -489,27 +516,23 @@ watch(
   line-height: 1.5;
 }
 .chat-bubble--user {
-  background: #1a237e;
-  color: white;
+  background: var(--accent);
+  color: var(--text-on-brand);
   white-space: pre-wrap;
 }
 .chat-bubble--assistant {
-  background: #f3f4fa;
-  color: #222;
-
-  .body--dark & {
-    background: #24242f;
-    color: #eee;
-  }
+  background: var(--surface-raised);
+  color: var(--text-primary);
 }
 .chat-bubble--error {
+  // Error-tier color, kept semantic/hardcoded per established precedent.
   background: #fdecea;
   color: #a33;
   white-space: pre-wrap;
 }
 .chat-bubble--status {
-  background: #f3f4fa;
-  color: #888;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   display: flex;
   align-items: center;
@@ -562,25 +585,17 @@ watch(
     margin-bottom: 0.2em;
   }
   :deep(code) {
-    background: rgba(0, 0, 0, 0.08);
+    background: var(--surface-border-strong);
     border-radius: 4px;
     padding: 0.1em 0.3em;
     font-size: 0.85em;
-
-    .body--dark & {
-      background: rgba(255, 255, 255, 0.1);
-    }
   }
   :deep(pre) {
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--surface-border-strong);
     border-radius: 6px;
     padding: 0.6em 0.8em;
     overflow-x: auto;
     margin: 0 0 0.6em;
-
-    .body--dark & {
-      background: rgba(255, 255, 255, 0.08);
-    }
 
     code {
       background: none;
@@ -591,21 +606,13 @@ watch(
     font-weight: 700;
   }
   :deep(a) {
-    color: #1a237e;
-
-    .body--dark & {
-      color: #7c8fff;
-    }
+    color: var(--accent);
   }
   :deep(.chat-player-link) {
-    color: #1a237e;
+    color: var(--accent);
     font-weight: 600;
     text-decoration: underline;
     cursor: pointer;
-
-    .body--dark & {
-      color: #7c8fff;
-    }
   }
   :deep(.chat-player-link--unresolved) {
     color: inherit;
@@ -632,17 +639,13 @@ watch(
 .chat-pitch-unavailable {
   padding: 12px;
   font-size: 0.85rem;
-  color: #888;
+  color: var(--text-secondary);
 }
 .chat-table-wrap {
   height: 100%;
   overflow: auto;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--surface-border);
   border-radius: 6px;
-
-  .body--dark & {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
 }
 .chat-comparison-table {
   width: 100%;
@@ -654,11 +657,7 @@ watch(
   td {
     padding: 4px 8px;
     text-align: right;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-
-    .body--dark & {
-      border-bottom-color: rgba(255, 255, 255, 0.08);
-    }
+    border-bottom: 1px solid var(--surface-border);
   }
   th:first-child,
   td:first-child {
@@ -667,30 +666,22 @@ watch(
   thead th {
     position: sticky;
     top: 0;
-    background: #f3f4fa;
+    background: var(--surface-raised);
     font-weight: 600;
-
-    .body--dark & {
-      background: #2a2a38;
-    }
   }
   .chat-comparison-table-category td {
     font-weight: 600;
-    background: rgba(26, 35, 126, 0.04);
-
-    .body--dark & {
-      background: rgba(255, 255, 255, 0.04);
-    }
+    background: var(--accent-soft);
   }
   .chat-table-depth {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 0.85em;
   }
 }
 
 .chat-input-row {
   padding: 12px 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--surface-border);
   flex: 0 0 auto;
 }
 .chat-chip-row {
@@ -708,7 +699,7 @@ watch(
 }
 .chat-limit-notice {
   font-size: 0.82rem;
-  color: #888;
+  color: var(--text-secondary);
   text-align: center;
   padding: 8px 0;
 }

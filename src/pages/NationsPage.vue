@@ -1,62 +1,55 @@
 <template>
     <q-page class="nation-view-page">
-        <div class="main-content">
-            <!-- Error Banner -->
-            <q-banner
-                v-if="pageLoadingError"
-                class="error-banner"
-                rounded
+        <div class="page-container">
+            <PageHeader
+                title="Nations"
+                subtitle="Tactical analysis, formation optimization, and squad insights for any national team."
+                icon="flag"
             >
-                <template v-slot:avatar>
-                    <q-icon name="error" />
+                <template #actions>
+                    <q-btn
+                        v-if="!pageLoadingError && currentDatasetId"
+                        unelevated
+                        icon-right="share"
+                        label="Share Dataset"
+                        color="primary"
+                        @click="shareDataset"
+                        class="share-btn-modern"
+                    >
+                        <q-tooltip>Share this dataset with others</q-tooltip>
+                    </q-btn>
                 </template>
-                {{ pageLoadingError }}
-                <q-btn
-                    flat
-                    color="white"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </PageHeader>
 
-            <!-- Share Button - Modern Design -->
-            <div v-if="!pageLoadingError && currentDatasetId" class="share-section">
-                <q-btn
-                    unelevated
-                    icon-right="share"
-                    label="Share Dataset"
-                    color="primary"
-                    @click="shareDataset"
-                    class="share-btn-modern"
-                    size="md"
-                >
-                    <q-tooltip>Share this dataset with others</q-tooltip>
-                </q-btn>
-            </div>
+            <!-- Error State -->
+            <EmptyState
+                v-if="pageLoadingError"
+                icon="error"
+                title="Couldn't load nation"
+                :description="pageLoadingError"
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
+                </template>
+            </EmptyState>
 
             <!-- No Nation Selected State -->
-            <div v-if="!pageLoadingError && !selectedNationName && !pageLoading" class="empty-state">
-                <q-card class="empty-state-card">
-                    <q-card-section class="empty-state-content">
-                        <div class="empty-state-icon">
-                            <q-icon name="flag" size="4rem" />
-                        </div>
-                        <h3 class="empty-state-title">Select a Nation to Begin</h3>
-                        <p class="empty-state-description">
-                            Choose a nation from the search above to unlock detailed tactical analysis, formation optimization, and squad insights.
-                        </p>
-                        <q-btn
-                            color="primary"
-                            unelevated
-                            label="Browse Dataset"
-                            @click="router.push(`/dataset/${currentDatasetId}`)"
-                            v-if="currentDatasetId"
-                            class="empty-state-btn"
-                        />
-                    </q-card-section>
-                </q-card>
-            </div>
+            <EmptyState
+                v-if="!pageLoadingError && !selectedNationName && !pageLoading"
+                icon="flag"
+                title="Select a Nation to Begin"
+                description="Choose a nation from the search above to unlock detailed tactical analysis, formation optimization, and squad insights."
+            >
+                <template #actions>
+                    <q-btn
+                        v-if="currentDatasetId"
+                        color="primary"
+                        unelevated
+                        label="Browse Dataset"
+                        @click="router.push(`/dataset/${currentDatasetId}`)"
+                    />
+                </template>
+            </EmptyState>
 
             <!-- Loading States -->
             <div v-if="pageLoading" class="loading-state">
@@ -78,9 +71,9 @@
             <div v-if="!pageLoading && !pageLoadingError && selectedNationName && !loadingNation" class="nation-dashboard">
                 
                 <!-- Nation Header Section (replaces hero) -->
-                <GradientBackground 
+                <GradientBackground
                     :image-url="currentNationFlagISO ? `https://flagcdn.com/w80/${currentNationFlagISO.toLowerCase()}.png` : null"
-                    :fallback-gradient="'linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)'"
+                    :fallback-gradient="'var(--brand-gradient)'"
                     :intensity="0.4"
                     class="nation-hero-section"
                 >
@@ -150,77 +143,56 @@
 
                 <!-- Formation & Tactics Section -->
                 <div class="formation-tactics-layout">
-                    <q-card class="formation-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <q-icon name="diagram" class="card-icon" />
-                                    Tactical Setup
-                                </h3>
-                                <p class="card-subtitle">Optimize your formation and lineup</p>
-                            </div>
+                    <SectionCard title="Tactical Setup" icon="diagram" class="formation-card">
+                        <p class="card-subtitle">Optimize your formation and lineup</p>
 
-                            <div class="formation-controls">
-                                <q-select
-                                    v-model="selectedFormationKey"
-                                    :options="formationOptions"
-                                    label="Select Formation"
-                                    outlined
-                                    emit-value
-                                    map-options
-                                    class="formation-select"
-                                    :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
-                                />
+                        <div class="formation-controls">
+                            <q-select
+                                v-model="selectedFormationKey"
+                                :options="formationOptions"
+                                label="Select Formation"
+                                outlined
+                                emit-value
+                                map-options
+                                class="formation-select"
+                                :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
+                            />
 
-                                <q-banner
-                                    v-if="calculationMessage"
-                                    class="calculation-banner"
-                                    :class="calculationMessageClass"
-                                >
-                                    {{ calculationMessage }}
-                                </q-banner>
-                            </div>
-                        </q-card-section>
-                    </q-card>
+                            <q-banner
+                                v-if="calculationMessage"
+                                class="calculation-banner"
+                                :class="calculationMessageClass"
+                            >
+                                {{ calculationMessage }}
+                            </q-banner>
+                        </div>
+                    </SectionCard>
 
-                    <q-card class="pitch-card" v-if="selectedFormationKey">
-                        <q-card-section>
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <q-icon name="stadium" class="card-icon" />
-                                    Formation View
-                                </h3>
-                                <p class="card-subtitle">Interactive pitch with your starting XI</p>
-                            </div>
+                    <SectionCard v-if="selectedFormationKey" title="Formation View" icon="stadium" class="pitch-card">
+                        <p class="card-subtitle">Interactive pitch with your starting XI</p>
 
-                            <div class="pitch-stage">
-                                <PitchDisplay
-                                    :formation="currentFormationLayout"
-                                    :players="bestNationPlayersForPitch"
-                                    display-mode="cards"
-                                    :currency-symbol="detectedCurrencySymbol"
-                                    :dataset-id="currentDatasetId"
-                                    @player-click="handlePlayerSelectedFromNation"
-                                    @player-moved="handlePlayerMovedOnPitch"
-                                />
-                            </div>
-                        </q-card-section>
-                    </q-card>
+                        <div class="pitch-stage">
+                            <PitchDisplay
+                                :formation="currentFormationLayout"
+                                :players="bestNationPlayersForPitch"
+                                display-mode="cards"
+                                :currency-symbol="detectedCurrencySymbol"
+                                :dataset-id="currentDatasetId"
+                                @player-click="handlePlayerSelectedFromNation"
+                                @player-moved="handlePlayerMovedOnPitch"
+                            />
+                        </div>
+                    </SectionCard>
 
-                    <q-card
+                    <SectionCard
                         v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                        title="Squad Depth"
+                        icon="groups_3"
                         class="squad-depth-card"
                     >
-                        <q-card-section>
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <q-icon name="groups_3" class="card-icon" />
-                                    Squad Depth
-                                </h3>
-                                <p class="card-subtitle">Player availability by position</p>
-                            </div>
+                        <p class="card-subtitle">Player availability by position</p>
 
-                            <div class="squad-depth-grid">
+                        <div class="squad-depth-grid">
                                 <div
                                     v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
                                     :key="slot.id"
@@ -262,59 +234,46 @@
                                     </div>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                    </SectionCard>
                 </div>
 
                 <!-- Players Table -->
-                <q-card class="players-table-card">
-                    <q-card-section>
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <q-icon name="group" class="card-icon" />
-                                Squad Overview
-                            </h3>
-                            <p class="card-subtitle">
-                                All {{ nationPlayers.length }} players from {{ selectedNationName }}
-                            </p>
-                        </div>
-                        
-                        <div class="table-container">
-                            <PlayerDataTable
-                                v-if="nationPlayers.length > 0"
-                                :players="nationPlayers"
-                                :loading="false"
-                                @player-selected="handlePlayerSelectedFromNation"
-                                @team-selected="handleTeamSelected"
-                                :is-goalkeeper-view="nationIsGoalkeeperView"
-                                :currency-symbol="detectedCurrencySymbol"
-                                :dataset-id="currentDatasetId"
-                                class="modern-table"
-                            />
-                            <div v-else class="no-players-banner">
-                                <q-icon name="person_off" size="3rem" />
-                                <h4>No Players Found</h4>
-                                <p>No players found for this nation with the current data filters.</p>
-                            </div>
-                        </div>
-                    </q-card-section>
-                </q-card>
+                <SectionCard title="Squad Overview" icon="group" class="players-table-card">
+                    <p class="card-subtitle">
+                        All {{ nationPlayers.length }} players from {{ selectedNationName }}
+                    </p>
+
+                    <div class="table-container">
+                        <PlayerDataTable
+                            v-if="nationPlayers.length > 0"
+                            :players="nationPlayers"
+                            :loading="false"
+                            @player-selected="handlePlayerSelectedFromNation"
+                            @team-selected="handleTeamSelected"
+                            :is-goalkeeper-view="nationIsGoalkeeperView"
+                            :currency-symbol="detectedCurrencySymbol"
+                            :dataset-id="currentDatasetId"
+                            class="modern-table"
+                        />
+                        <EmptyState
+                            v-else
+                            icon="person_off"
+                            title="No Players Found"
+                            description="No players found for this nation with the current data filters."
+                        />
+                    </div>
+                </SectionCard>
             </div>
 
             <!-- Nations Overview Card - When no nation is selected -->
-            <q-card
+            <SectionCard
                 v-if="!pageLoading && !pageLoadingError && !selectedNationName && !loadingNation && nationsData.length > 0"
+                title="Nations Overview"
+                icon="public"
                 class="nations-overview-card"
             >
-                <q-card-section>
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <q-icon name="public" class="card-icon" />
-                            Nations Overview
-                        </h3>
-                        <p class="card-subtitle">Select a nation to analyze player talents and distributions</p>
-                    </div>
-                    
+                    <p class="card-subtitle">Select a nation to analyze player talents and distributions</p>
+
                     <!-- NEW: Calculation Progress Bar -->
                     <div v-if="isCalculatingRatings" class="calculation-progress-section">
                         <div class="progress-header">
@@ -495,36 +454,26 @@
                             <q-icon name="expand_more" class="q-ml-sm" />
                         </q-btn>
                     </div>
-                </q-card-section>
-            </q-card>
+            </SectionCard>
 
             <!-- Additional Banners -->
-            <q-banner
+            <EmptyState
                 v-else-if="!pageLoading && !loadingNation && nationsData.length > 0 && !selectedNationName"
-                class="info-banner"
-            >
-                <template v-slot:avatar>
-                    <q-icon name="info" />
-                </template>
-                Please select a nation to view its players and analyze formations.
-            </q-banner>
-            
-            <q-banner
+                icon="info"
+                title="Select a nation"
+                description="Please select a nation to view its players and analyze formations."
+            />
+
+            <EmptyState
                 v-else-if="!pageLoading && !loadingNation && !selectedNationName && nationsData.length === 0 && !pageLoadingError"
-                class="warning-banner"
+                icon="warning"
+                title="No player data available"
+                description="Please upload a player file on the main page first."
             >
-                <template v-slot:avatar>
-                    <q-icon name="warning" />
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                 </template>
-                No player data available. Please upload a player file on the main page first.
-                <q-btn
-                    flat
-                    color="primary"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </EmptyState>
         </div>
 
         <!-- Player Detail Dialog -->
@@ -542,6 +491,9 @@ import { useQuasar } from 'quasar'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GradientBackground from '../components/GradientBackground.vue'
+import EmptyState from '../components/layout/EmptyState.vue'
+import PageHeader from '../components/layout/PageHeader.vue'
+import SectionCard from '../components/layout/SectionCard.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
@@ -574,7 +526,15 @@ const fmSlotRoleMatcher = {
 
 export default {
   name: 'NationsPage',
-  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay, GradientBackground },
+  components: {
+    PlayerDataTable,
+    PlayerDetailDialog,
+    PitchDisplay,
+    GradientBackground,
+    PageHeader,
+    SectionCard,
+    EmptyState,
+  },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
@@ -2361,135 +2321,29 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// Variables
-$border-radius: 12px;
-$border-radius-small: 8px;
-$card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-$card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
+// Local aliases onto the shared token system: geometry/elevation follow
+// --radius-*/--shadow-* so they track density/theme without per-component
+// dark-mode overrides. Decorative gradients (hero, pitch turf) are
+// intentionally left as bespoke hardcoded values — see the tokens.scss
+// precedent notes for why decorative/semantic colors stay put.
+$border-radius: var(--radius-md);
+$border-radius-small: var(--radius-sm);
+$card-shadow: var(--shadow-1);
+$card-shadow-hover: var(--shadow-2);
 
 // Base Page Layout
 .nation-view-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    
-    .body--dark & {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    }
+    background: var(--surface-page);
 }
 
-.main-content {
-    max-width: 1400px;
+.page-container {
+    max-width: var(--content-max-width);
     margin: 0 auto;
-    padding: 2rem;
-    
+    padding: var(--page-gutter);
+
     @media (max-width: 768px) {
-        padding: 1rem;
-    }
-}
-
-// Banners
-.error-banner {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-    margin-bottom: 2rem;
-    border: none;
-    box-shadow: $card-shadow;
-}
-
-.info-banner {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    color: white;
-    margin-bottom: 2rem;
-    border: none;
-    box-shadow: $card-shadow;
-}
-
-.warning-banner {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    margin-bottom: 2rem;
-    border: none;
-    box-shadow: $card-shadow;
-}
-
-// Share Section
-.share-section {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 2rem;
-    
-    .share-btn-modern {
-        background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-        border: none;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        transition: all 0.3s ease;
-        
-        &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-    }
-}
-
-// Empty State
-.empty-state {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 60vh;
-    
-    .empty-state-card {
-        background: white;
-        border-radius: $border-radius;
-        box-shadow: $card-shadow;
-        border: 1px solid rgba(0, 0, 0, 0.06);
-        max-width: 500px;
-        width: 100%;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .empty-state-content {
-            text-align: center;
-            padding: 3rem;
-            
-            .empty-state-icon {
-                margin-bottom: 2rem;
-                color: var(--accent);
-                opacity: 0.7;
-            }
-            
-            .empty-state-title {
-                font-size: 1.75rem;
-                font-weight: 700;
-                margin: 0 0 1rem 0;
-                color: #1e293b;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
-            }
-            
-            .empty-state-description {
-                font-size: 1rem;
-                color: #64748b;
-                line-height: 1.6;
-                margin: 0 0 2rem 0;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-            }
-            
-            .empty-state-btn {
-                background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-                border: none;
-                padding: 0.75rem 2rem;
-                font-weight: 600;
-            }
-        }
+        padding: var(--page-gutter-sm);
     }
 }
 
@@ -2504,12 +2358,8 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     
     .loading-text {
         font-size: 1.1rem;
-        color: #64748b;
+        color: var(--text-secondary);
         font-weight: 500;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
     }
 }
 
@@ -2702,59 +2552,24 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     gap: 1.5rem;
 }
 
-// Card Styles
+// Card hover-lift — background/border/shadow/padding/title come from
+// SectionCard itself; this just layers a subtle hover affordance on top.
 .formation-card,
 .squad-depth-card,
 .pitch-card,
 .players-table-card,
 .nations-overview-card {
-    background: white;
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    border: 1px solid rgba(0, 0, 0, 0.06);
     transition: box-shadow 0.3s ease;
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-    
+
     &:hover {
         box-shadow: $card-shadow-hover;
     }
 }
 
-.card-header {
-    margin-bottom: 1.5rem;
-    
-    .card-title {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 1.3rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-        color: #1e293b;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .card-icon {
-            color: var(--accent);
-            font-size: 1.5rem;
-        }
-    }
-    
-    .card-subtitle {
-        font-size: 0.95rem;
-        color: #64748b;
-        margin: 0;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
-    }
+.card-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: 0 0 var(--section-gap) 0;
 }
 
 // Formation Controls
@@ -2796,90 +2611,69 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         }
         
         .depth-position-modern {
-            background: rgba(255, 255, 255, 0.6);
+            background: var(--surface-raised);
             border-radius: $border-radius-small;
             padding: 1rem;
-            border: 1px solid rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--surface-border);
             transition: all 0.3s ease;
-            
-            .body--dark & {
-                background: rgba(255, 255, 255, 0.05);
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-            
+
             &:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                box-shadow: var(--shadow-2);
             }
-            
+
             .position-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 0.75rem;
-                
+
                 .position-name {
                     font-weight: 700;
                     font-size: 0.9rem;
-                    color: #2d3436;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.9);
-                    }
+                    color: var(--text-primary);
                 }
-                
+
                 .player-count {
                     font-size: 0.75rem;
-                    color: #636e72;
-                    background: rgba(0, 0, 0, 0.05);
+                    color: var(--text-secondary);
+                    background: var(--surface-border);
                     padding: 0.2rem 0.5rem;
                     border-radius: 12px;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.7);
-                        background: rgba(255, 255, 255, 0.1);
-                    }
                 }
             }
-            
+
             .depth-players-modern {
                 display: flex;
                 flex-direction: column;
                 gap: 0.5rem;
-                
+
                 .player-card-mini {
                     display: grid;
                     grid-template-columns: auto 1fr auto;
                     gap: 0.5rem;
                     align-items: center;
                     padding: 0.5rem;
-                    background: rgba(255, 255, 255, 0.8);
+                    background: var(--surface-card);
                     border-radius: $border-radius-small;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    border: 1px solid rgba(0, 0, 0, 0.05);
-                    
-                    .body--dark & {
-                        background: rgba(255, 255, 255, 0.08);
-                        border-color: rgba(255, 255, 255, 0.1);
-                    }
-                    
+                    border: 1px solid var(--surface-border);
+
+                    // "Starter" indicator is a semantic success color, kept
+                    // hardcoded like the rating-tier palette elsewhere.
                     &.is-starter {
                         background: linear-gradient(135deg, rgba(0, 184, 148, 0.1) 0%, rgba(0, 206, 201, 0.05) 100%);
                         border-color: rgba(0, 184, 148, 0.2);
                         font-weight: 600;
                     }
-                    
+
                     &:hover {
                         transform: translateX(4px);
-                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                        box-shadow: var(--shadow-1);
                         background: var(--accent-soft);
-                        
-                        .body--dark & {
-                            background: var(--accent-soft-strong);
-                        }
                     }
-                    
+
                     .player-rank {
                         display: flex;
                         align-items: center;
@@ -2892,34 +2686,26 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         font-size: 0.7rem;
                         font-weight: 700;
                     }
-                    
+
                     .player-info {
                         min-width: 0;
-                        
+
                         .player-name {
                             font-size: 0.8rem;
                             font-weight: 600;
                             white-space: nowrap;
                             overflow: hidden;
                             text-overflow: ellipsis;
-                            color: #2d3436;
-                            
-                            .body--dark & {
-                                color: rgba(255, 255, 255, 0.9);
-                            }
+                            color: var(--text-primary);
                         }
-                        
+
                         .player-positions {
                             font-size: 0.65rem;
-                            color: #636e72;
+                            color: var(--text-secondary);
                             margin-top: 0.2rem;
-                            
-                            .body--dark & {
-                                color: rgba(255, 255, 255, 0.6);
-                            }
                         }
                     }
-                    
+
                     .player-rating {
                         font-size: 0.75rem;
                         font-weight: 700;
@@ -2927,29 +2713,21 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         border-radius: 4px;
                         min-width: 28px;
                         text-align: center;
-                        border: 1px solid rgba(0, 0, 0, 0.1);
-                        
-                        .body--dark & {
-                            border-color: rgba(255, 255, 255, 0.2);
-                        }
+                        border: 1px solid var(--surface-border-strong);
                     }
                 }
             }
-            
+
             .no-players-state {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 0.3rem;
                 padding: 1rem;
-                color: #636e72;
+                color: var(--text-muted);
                 font-style: italic;
                 font-size: 0.8rem;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.5);
-                }
-                
+
                 .q-icon {
                     font-size: 1.2rem;
                 }
@@ -2958,7 +2736,8 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     }
 }
 
-// Pitch Container
+// Pitch Container — decorative turf gradient kept hardcoded, same
+// precedent as the Team-of-the-Season pitch palette in LeaguesPage.vue.
 .pitch-stage {
     background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
     border-radius: $border-radius;
@@ -3048,32 +2827,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     .modern-table {
         border-radius: $border-radius-small;
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .no-players-banner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        padding: 3rem 2rem;
-        text-align: center;
-        color: #636e72;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        h4 {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        p {
-            margin: 0;
-            font-size: 1rem;
-        }
+        box-shadow: var(--shadow-1);
     }
 }
 
@@ -3096,183 +2850,136 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         background: var(--accent-soft);
         border-radius: $border-radius-small;
         border: 1px solid var(--accent-soft-strong);
-        
-        .body--dark & {
-            background: var(--accent-soft-strong);
-            border-color: var(--accent-soft-strong);
-        }
-        
+
         .progress-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
-            
+
             .progress-title {
                 display: flex;
                 align-items: center;
                 font-weight: 600;
                 color: var(--accent);
                 font-size: 1rem;
-                
-                .body--dark & {
-                    color: var(--accent);
-                }
             }
-            
+
             .progress-stats {
                 font-size: 0.9rem;
                 font-weight: 500;
-                color: #64748b;
-                background: rgba(255, 255, 255, 0.7);
+                color: var(--text-secondary);
+                background: var(--surface-card);
                 padding: 0.25rem 0.75rem;
                 border-radius: 15px;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.8);
-                    background: rgba(255, 255, 255, 0.1);
-                }
             }
         }
-        
+
         .progress-bar {
             height: 8px;
             border-radius: 4px;
             margin-bottom: 0.75rem;
-            
+
             &.progress-bar-dark {
                 .q-linear-progress__track {
                     background: rgba(255, 255, 255, 0.1);
                 }
             }
         }
-        
+
         .progress-description {
             font-size: 0.85rem;
-            color: #64748b;
+            color: var(--text-secondary);
             text-align: center;
             font-style: italic;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
         }
     }
-    
+
     .nations-list {
         .nation-row {
             display: grid;
             grid-template-columns: auto 1fr auto auto;
-            gap: 1rem;
+            gap: var(--density-gap);
             align-items: center;
-            padding: 1rem;
+            padding: var(--density-cell-padding);
             border-radius: $border-radius-small;
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            margin-bottom: 0.5rem;
-            
-            .body--dark & {
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-            
+            border: 1px solid var(--surface-border);
+            margin-bottom: var(--density-gap);
+
             &.calculating {
                 background: var(--accent-soft);
                 border-color: var(--accent-soft-strong);
-                
-                .body--dark & {
-                    background: var(--accent-soft-strong);
-                    border-color: var(--accent-soft-strong);
-                }
             }
-            
+
             &:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                box-shadow: var(--shadow-2);
                 background: var(--accent-soft);
-                
-                .body--dark & {
-                    background: var(--accent-soft);
-                }
             }
-            
+
             .nation-flag-container {
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 width: 32px;
-                
+
                 .nationality-flag {
                     border-radius: 4px;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                    box-shadow: var(--shadow-1);
                 }
             }
-            
+
             .nation-info {
                 .nation-name {
                     font-weight: 700;
                     font-size: 1rem;
-                    color: #1e293b;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.9);
-                    }
+                    color: var(--text-primary);
                 }
-                
+
                 .player-count {
                     font-size: 0.85rem;
-                    color: #64748b;
+                    color: var(--text-secondary);
                     margin-top: 0.2rem;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.6);
-                    }
                 }
             }
-            
+
             .nation-section-ratings {
                 // NEW: Calculating state styles
                 .calculating-ratings {
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
-                    
+
                     .calculating-text {
                         font-size: 0.85rem;
                         color: var(--accent);
                         font-weight: 500;
-                        
-                        .body--dark & {
-                            color: var(--accent);
-                        }
                     }
                 }
-                
+
                 // NEW: Pending state styles
                 .pending-calculation {
                     display: flex;
                     align-items: center;
-                    color: #9ca3af;
+                    color: var(--text-muted);
                     font-size: 0.85rem;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.5);
-                    }
-                    
+
                     .pending-text {
                         font-style: italic;
                     }
                 }
-                
+
                 .section-ratings-large {
                     display: flex;
                     gap: 0.5rem;
-                    
+
                     .section-rating-large {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        
+
                         .section-label-large {
                             font-size: 0.7rem;
                             font-weight: 600;
@@ -3280,7 +2987,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                             letter-spacing: 0.5px;
                             margin-bottom: 0.2rem;
                         }
-                        
+
                         .section-value-large {
                             font-size: 0.8rem;
                             font-weight: 700;
@@ -3291,21 +2998,17 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         }
                     }
                 }
-                
+
                 .no-rating-message {
                     font-size: 0.8rem;
-                    color: #9ca3af;
+                    color: var(--text-muted);
                     font-style: italic;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.5);
-                    }
                 }
             }
-            
+
             .nation-overall {
                 text-align: center;
-                
+
                 .nation-rating {
                     // NEW: Calculating state styles
                     .calculating-overall {
@@ -3314,51 +3017,45 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         align-items: center;
                         min-height: 2rem;
                     }
-                    
+
                     // NEW: Pending state styles
                     .pending-overall {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                         gap: 0.25rem;
-                        color: #9ca3af;
-                        
-                        .body--dark & {
-                            color: rgba(255, 255, 255, 0.5);
-                        }
-                        
+                        color: var(--text-muted);
+
                         .pending-stars {
                             font-size: 0.8rem;
                             font-style: italic;
                         }
                     }
-                    
+
                     .highest-overall-large {
                         font-size: 0.9rem;
                         font-weight: 700;
                         margin-bottom: 0.3rem;
                     }
-                    
+
+                    // Star colors are decorative/semantic (gold = filled),
+                    // same precedent as the rating-tier palette.
                     .star-rating-large {
                         .star-large {
                             font-size: 0.8rem;
                             margin: 0 0.05rem;
-                            
+
                             &.filled {
                                 color: #fbbf24;
                             }
-                            
+
                             &.half {
                                 color: #fbbf24;
                                 opacity: 0.5;
                             }
-                            
+
                             &.empty {
-                                color: #d1d5db;
-                                
-                                .body--dark & {
-                                    color: rgba(255, 255, 255, 0.3);
-                                }
+                                color: var(--text-muted);
                             }
                         }
                     }
@@ -3366,20 +3063,16 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             }
         }
     }
-    
+
     .show-more-btn {
         font-weight: 500;
         border-radius: $border-radius-small;
         padding: 0.75rem 2rem;
         transition: all 0.2s ease;
-        
+
         &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            
-            .body--dark & {
-                box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-            }
+            box-shadow: var(--shadow-1);
         }
     }
 }
@@ -3401,10 +3094,6 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
 @media (max-width: 768px) {
-    .main-content {
-        padding: 1rem;
-    }
-    
     .nation-dashboard {
         gap: 1.5rem;
     }

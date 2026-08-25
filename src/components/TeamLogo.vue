@@ -174,23 +174,15 @@ export default defineComponent({
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(128, 128, 128, 0.1);
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  background-color: var(--surface-raised);
+  border: 1px solid var(--surface-border);
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
 .team-logo-placeholder.loading {
-  background-color: rgba(128, 128, 128, 0.05);
-}
-
-.body--dark .team-logo-placeholder {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.body--dark .team-logo-placeholder.loading {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: var(--surface-raised);
+  opacity: 0.7;
 }
 
 /* Optional hover effects */

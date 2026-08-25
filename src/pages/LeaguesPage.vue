@@ -1,129 +1,90 @@
 <template>
     <q-page class="leagues-page">
-        <!-- Hero Section -->
-        <PageHero
-            icon="sports"
-            badge="League Explorer"
-            title="League"
-            highlight="Analytics"
-            subtitle="Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents."
-        />
-        
-        <div class="q-pa-md">
-
-            <q-banner
-                v-if="pageLoadingError"
-                class="text-white bg-negative q-mb-md"
-                rounded
+        <div class="page-container">
+            <PageHeader
+                title="Leagues"
+                subtitle="Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents."
+                icon="sports"
             >
-                <template v-slot:avatar>
-                    <q-icon name="error" />
-                </template>
-                {{ pageLoadingError }}
-                <q-btn
-                    flat
-                    color="white"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
-
-            <!-- Share Button -->
-            <div v-if="!pageLoadingError && currentDatasetId" class="share-button-container">
-                <q-btn
-                    unelevated
-                    icon="share"
-                    label="Share Dataset"
-                    color="positive"
-                    @click="shareDataset"
-                    class="share-btn-enhanced"
-                    size="md"
-                >
-                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
-                </q-btn>
-            </div>
-
-            <div v-if="!pageLoadingError" class="modern-filter-section">
-                <div class="filter-header">
-                    <h2 class="filter-title">League Selection</h2>
-                    <p class="filter-subtitle">Choose a league to analyze teams and player distributions</p>
-                </div>
-                <div class="filter-card"
-                     :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'">
-                    <div class="filter-content">
-                    <q-select
-                        v-model="selectedLeagueName"
-                        :options="leagueOptions"
-                        label="Search and Select League"
-                        outlined
-                        dense
-                        use-input
-                        hide-selected
-                        fill-input
-                        input-debounce="300"
-                        @filter="filterLeagueOptions"
-                        @update:model-value="loadLeagueTeams"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : 'bg-white text-dark'
-                        "
-                        clearable
-                        @clear="clearLeagueSelection"
-                        :disable="pageLoading || allLeaguesData.length === 0"
+                <template #actions>
+                    <q-btn
+                        v-if="!pageLoadingError && currentDatasetId"
+                        unelevated
+                        icon-right="share"
+                        label="Share Dataset"
+                        color="primary"
+                        @click="shareDataset"
+                        class="share-btn-modern"
                     >
-                        <template v-slot:no-option>
-                            <q-item>
-                                <q-item-section class="text-grey">
-                                    No leagues found.
-                                </q-item-section>
-                            </q-item>
-                        </template>
-                    </q-select>
-                    </div>
-                </div>
-            </div>
+                        <q-tooltip>Copy shareable link to clipboard</q-tooltip>
+                    </q-btn>
+                </template>
+            </PageHeader>
 
-            <div v-if="pageLoading" class="text-center q-my-xl">
+            <EmptyState
+                v-if="pageLoadingError"
+                icon="error"
+                title="Couldn't load leagues"
+                :description="pageLoadingError"
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
+                </template>
+            </EmptyState>
+
+            <SectionCard v-if="!pageLoadingError" title="League Selection" icon="search" class="q-mb-md">
+                <p class="card-subtitle">Choose a league to analyze teams and player distributions</p>
+                <q-select
+                    v-model="selectedLeagueName"
+                    :options="leagueOptions"
+                    label="Search and Select League"
+                    outlined
+                    dense
+                    use-input
+                    hide-selected
+                    fill-input
+                    input-debounce="300"
+                    @filter="filterLeagueOptions"
+                    @update:model-value="loadLeagueTeams"
+                    :label-color="
+                        quasarInstance.dark.isActive ? 'grey-4' : ''
+                    "
+                    :popup-content-class="
+                        quasarInstance.dark.isActive
+                            ? 'bg-grey-8 text-white'
+                            : 'bg-white text-dark'
+                    "
+                    clearable
+                    @clear="clearLeagueSelection"
+                    :disable="pageLoading || allLeaguesData.length === 0"
+                >
+                    <template v-slot:no-option>
+                        <q-item>
+                            <q-item-section class="text-grey">
+                                No leagues found.
+                            </q-item-section>
+                        </q-item>
+                    </template>
+                </q-select>
+            </SectionCard>
+
+            <div v-if="pageLoading" class="loading-state">
                 <q-spinner-dots color="primary" size="3em" />
-                <div
-                    class="q-mt-md text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading leagues data from server...
-                </div>
+                <div class="loading-text">Loading leagues data from server...</div>
             </div>
-            <div v-else-if="loadingLeague" class="text-center q-my-xl">
+            <div v-else-if="loadingLeague" class="loading-state">
                 <q-spinner-dots color="primary" size="2em" />
-                <div
-                    class="q-mt-sm text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading league teams...
-                </div>
+                <div class="loading-text">Loading league teams...</div>
             </div>
 
             <div v-if="!pageLoading && !pageLoadingError">
                 <!-- Leagues Overview Card -->
-                <q-card
+                <SectionCard
                     v-if="!selectedLeagueName && !loadingLeague && allLeaguesData.length > 0"
+                    title="Leagues Overview"
+                    icon="emoji_events"
                     class="q-mb-md"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
                 >
-                    <q-card-section>
-                        <div class="text-h6 q-mb-md">Leagues Overview</div>
                         <div class="leagues-list">
                             <div
                                 v-for="league in displayedLeagues"
@@ -163,8 +124,7 @@
                                 <q-icon name="expand_more" class="q-ml-sm" />
                             </q-btn>
                         </div>
-                    </q-card-section>
-                </q-card>
+                </SectionCard>
 
                 <!-- Selected League Teams -->
                 <div v-if="selectedLeagueName && !loadingLeague && leagueTeams.length > 0">
@@ -218,18 +178,11 @@
                         </div>
                     </section>
 
-                    <q-card
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-9'
-                                : 'bg-white'
-                        "
+                    <SectionCard
+                        :title="`${selectedLeagueName} - Teams (${leagueTeams.length})`"
+                        icon="groups"
                         class="q-mb-md"
                     >
-                        <q-card-section>
-                            <div class="text-h6 q-mb-md">
-                                {{ selectedLeagueName }} - Teams ({{ leagueTeams.length }})
-                            </div>
                             <div class="teams-list">
                                 <div
                                     v-for="team in leagueTeams"
@@ -255,55 +208,35 @@
                                     </div>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                    </SectionCard>
                 </div>
 
-                <q-banner
+                <EmptyState
                     v-else-if="
                         !pageLoading &&
                         !loadingLeague &&
                         allLeaguesData.length > 0 &&
                         !selectedLeagueName
                     "
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-blue-grey-8 text-blue-grey-2'
-                            : 'bg-blue-1 text-primary'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="info" />
-                    </template>
-                    Select a league to view its teams and their ratings.
-                </q-banner>
-                <q-banner
+                    icon="info"
+                    title="Select a league"
+                    description="Select a league to view its teams and their ratings."
+                />
+                <EmptyState
                     v-else-if="
                         !pageLoading &&
                         !loadingLeague &&
                         allLeaguesData.length === 0 &&
                         !pageLoadingError
                     "
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-red-9 text-red-2'
-                            : 'bg-red-1 text-negative'
-                    "
+                    icon="warning"
+                    title="No league data available"
+                    description="Please upload a player file with Division information on the main page first."
                 >
-                    <template v-slot:avatar>
-                        <q-icon name="warning" />
+                    <template #actions>
+                        <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                     </template>
-                    No league data available. Please upload a player file with Division information on the main page first.
-                    <q-btn
-                        flat
-                        color="primary"
-                        label="Go to Upload Page"
-                        @click="router.push('/')"
-                        class="q-ml-md"
-                    />
-                </q-banner>
+                </EmptyState>
             </div>
         </div>
         <PlayerDetailDialog
@@ -319,7 +252,9 @@
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import PageHero from '../components/PageHero.vue'
+import EmptyState from '../components/layout/EmptyState.vue'
+import PageHeader from '../components/layout/PageHeader.vue'
+import SectionCard from '../components/layout/SectionCard.vue'
 import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerUtils } from '../composables/usePlayerUtils'
@@ -327,7 +262,7 @@ import { usePlayerStore } from '../stores/playerStore'
 
 export default {
   name: 'LeaguesPage',
-  components: { PageHero, PlayerDetailDialog, PlayerCards },
+  components: { PageHeader, SectionCard, EmptyState, PlayerDetailDialog, PlayerCards },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
@@ -1070,82 +1005,46 @@ export default {
 
 <style lang="scss" scoped>
 .leagues-page {
-    max-width: 1600px;
+    min-height: 100vh;
+    background: var(--surface-page);
+}
+
+.page-container {
+    max-width: var(--content-max-width);
     margin: 0 auto;
+    padding: var(--page-gutter);
+
+    @media (max-width: 768px) {
+        padding: var(--page-gutter-sm);
+    }
 }
 
-// Hero styling comes from the shared PageHero component.
+// Header/card styling comes from the shared PageHeader/SectionCard components.
 
-.share-button-container {
+.card-subtitle {
+    color: var(--text-secondary);
+    margin: 0 0 var(--section-gap) 0;
+}
+
+.loading-state {
     display: flex;
-    justify-content: flex-end;
-    margin: 2rem 0;
-    padding: 0 2rem;
-}
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 30vh;
+    gap: 1rem;
 
-// Modern Filter Section
-.modern-filter-section {
-    margin: 3rem 0;
-    
-    .filter-header {
-        text-align: center;
-        margin-bottom: 2rem;
-        
-        .filter-title {
-            font-size: 2rem;
-            font-weight: 700;
-            margin: 0 0 0.5rem 0;
-            color: #1a237e;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
-            }
-        }
-        
-        .filter-subtitle {
-            font-size: 1rem;
-            color: #666;
-            margin: 0;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
-        }
-    }
-    
-    .filter-card {
-        background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        max-width: 600px;
-        margin: 0 auto;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .filter-content {
-            .q-field {
-                .q-field__control {
-                    border-radius: 12px;
-                }
-            }
-        }
+    .loading-text {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        font-weight: 500;
     }
 }
 
-.page-title {
-    // Standard title styling
-}
-
-.filter-card,
-.q-card {
-    border-radius: $generic-border-radius;
-}
-
+// The Team of the Season lineup keeps its own bespoke pitch-themed palette
+// (deep teal/gold gradient) rather than the app-chrome tokens — it's a
+// decorative "trophy cabinet" treatment in the same spirit as the fifa-card
+// design skins, not UI chrome, so it's intentionally left as-is here.
 .tots-lineup {
     border-radius: 8px;
     padding: 1.25rem;
@@ -1295,35 +1194,17 @@ export default {
 .team-row {
     display: flex;
     align-items: center;
-    padding: 12px 16px;
-    border-radius: 6px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    margin-bottom: 8px;
+    padding: var(--density-cell-padding);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--surface-border);
+    margin-bottom: var(--density-gap);
     cursor: pointer;
     transition: all 0.2s ease;
-    
+
     &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .body--dark & {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            background-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-        }
-    }
-    
-    .body--light & {
-        background-color: rgba(0, 0, 0, 0.02);
-        border-color: rgba(0, 0, 0, 0.1);
-        
-        &:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
+        transform: var(--lift-sm);
+        box-shadow: var(--shadow-2);
+        background: var(--accent-soft);
     }
 }
 
@@ -1338,25 +1219,14 @@ export default {
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 2px;
-    
-    .body--dark & {
-        color: $grey-2;
-    }
-    
-    .body--light & {
-        color: $grey-8;
-    }
+    color: var(--text-primary);
 }
 
 .team-count,
 .player-count,
 .team-player-count {
     font-size: 0.85rem;
-    color: $grey-6;
-    
-    .body--dark & {
-        color: $grey-4;
-    }
+    color: var(--text-secondary);
 }
 
 .league-section-ratings,
@@ -1394,11 +1264,7 @@ export default {
         border-radius: 6px;
         min-width: 32px;
         text-align: center;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        
-        .body--dark & {
-            border-color: rgba(255, 255, 255, 0.1);
-        }
+        border: 1px solid var(--surface-border);
     }
     
     &.att .section-label-large {
@@ -1428,13 +1294,9 @@ export default {
 
 .no-rating-message {
     font-size: 0.9rem;
-    color: $grey-6;
+    color: var(--text-secondary);
     font-style: italic;
     text-align: center;
-    
-    .body--dark & {
-        color: $grey-5;
-    }
 }
 
 .league-overall,
@@ -1481,31 +1343,7 @@ export default {
     }
     
     &.star-empty {
-        color: #E0E0E0;
-        
-        .body--dark & {
-            color: #424242;
-        }
-    }
-}
-
-.share-btn-enhanced {
-    font-weight: 600;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-    
-    &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-    
-    .body--dark & {
-        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
-        }
+        color: var(--text-muted);
     }
 }
 
@@ -1514,14 +1352,10 @@ export default {
     border-radius: 8px;
     padding: 8px 24px;
     transition: all 0.2s ease;
-    
+
     &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        
-        .body--dark & {
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-        }
+        transform: var(--lift-sm);
+        box-shadow: var(--shadow-2);
     }
 }
 

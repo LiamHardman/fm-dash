@@ -1,62 +1,55 @@
 <template>
     <q-page class="team-view-page">
-        <div class="main-content">
-            <!-- Error Banner -->
-            <q-banner
-                v-if="pageLoadingError"
-                class="error-banner"
-                rounded
+        <div class="page-container">
+            <PageHeader
+                title="Team View"
+                subtitle="Tactical analysis, formation optimization, and squad insights for any team."
+                icon="groups"
             >
-                <template v-slot:avatar>
-                    <q-icon name="error" />
+                <template #actions>
+                    <q-btn
+                        v-if="!pageLoadingError && currentDatasetId"
+                        unelevated
+                        icon-right="share"
+                        label="Share Dataset"
+                        color="primary"
+                        @click="shareDataset"
+                        class="share-btn-modern"
+                    >
+                        <q-tooltip>Share this dataset with others</q-tooltip>
+                    </q-btn>
                 </template>
-                {{ pageLoadingError }}
-                <q-btn
-                    flat
-                    color="white"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </PageHeader>
 
-            <!-- Share Button - Modern Design -->
-            <div v-if="!pageLoadingError && currentDatasetId" class="share-section">
-                <q-btn
-                    unelevated
-                    icon-right="share"
-                    label="Share Dataset"
-                    color="primary"
-                    @click="shareDataset"
-                    class="share-btn-modern"
-                    size="md"
-                >
-                    <q-tooltip>Share this dataset with others</q-tooltip>
-                </q-btn>
-            </div>
+            <!-- Error State -->
+            <EmptyState
+                v-if="pageLoadingError"
+                icon="error"
+                title="Couldn't load team"
+                :description="pageLoadingError"
+            >
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
+                </template>
+            </EmptyState>
 
             <!-- No Team Selected State -->
-            <div v-if="!pageLoadingError && !selectedTeamName && !pageLoading" class="empty-state">
-                <q-card class="empty-state-card">
-                    <q-card-section class="empty-state-content">
-                        <div class="empty-state-icon">
-                            <q-icon name="groups" size="4rem" />
-                        </div>
-                        <h3 class="empty-state-title">Select a Team to Begin</h3>
-                        <p class="empty-state-description">
-                            Choose a team from the search above to unlock detailed tactical analysis, formation optimization, and squad insights.
-                        </p>
-                        <q-btn
-                            color="primary"
-                            unelevated
-                            label="Browse Dataset"
-                            @click="router.push(`/dataset/${currentDatasetId}`)"
-                            v-if="currentDatasetId"
-                            class="empty-state-btn"
-                        />
-                    </q-card-section>
-                </q-card>
-            </div>
+            <EmptyState
+                v-if="!pageLoadingError && !selectedTeamName && !pageLoading"
+                icon="groups"
+                title="Select a Team to Begin"
+                description="Choose a team from the search above to unlock detailed tactical analysis, formation optimization, and squad insights."
+            >
+                <template #actions>
+                    <q-btn
+                        v-if="currentDatasetId"
+                        color="primary"
+                        unelevated
+                        label="Browse Dataset"
+                        @click="router.push(`/dataset/${currentDatasetId}`)"
+                    />
+                </template>
+            </EmptyState>
 
             <!-- Loading States -->
             <div v-if="pageLoading" class="loading-state">
@@ -73,9 +66,9 @@
             <div v-if="!pageLoading && !pageLoadingError && selectedTeamName && !loadingTeam" class="team-dashboard">
                 
                 <!-- Team Header Section (replaces hero) -->
-                <GradientBackground 
+                <GradientBackground
                     :image-url="teamLogoUrl"
-                    :fallback-gradient="'linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)'"
+                    :fallback-gradient="'var(--brand-gradient)'"
                     :intensity="0.4"
                     class="team-hero-section"
                 >
@@ -180,77 +173,56 @@
 
                 <!-- Formation & Tactics Section -->
                 <div class="formation-tactics-layout">
-                    <q-card class="formation-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <q-icon name="diagram" class="card-icon" />
-                                    Tactical Setup
-                                </h3>
-                                <p class="card-subtitle">Optimize your formation and lineup</p>
-                            </div>
-                            
-                            <div class="formation-controls">
-                                <q-select
-                                    v-model="selectedFormationKey"
-                                    :options="formationOptions"
-                                    label="Select Formation"
-                                    outlined
-                                    emit-value
-                                    map-options
-                                    class="formation-select"
-                                    :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
-                                />
-                                
-                                <q-banner
-                                    v-if="calculationMessage"
-                                    class="calculation-banner"
-                                    :class="calculationMessageClass"
-                                >
-                                    {{ calculationMessage }}
-                                </q-banner>
-                            </div>
-                        </q-card-section>
-                    </q-card>
+                    <SectionCard title="Tactical Setup" icon="diagram" class="formation-card">
+                        <p class="card-subtitle">Optimize your formation and lineup</p>
 
-                    <q-card class="pitch-card" v-if="selectedFormationKey">
-                        <q-card-section>
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <q-icon name="stadium" class="card-icon" />
-                                    Formation View
-                                </h3>
-                                <p class="card-subtitle">Interactive pitch with your starting XI</p>
-                            </div>
-                            
-                            <div class="pitch-stage">
-                                <PitchDisplay
-                                    :formation="currentFormationLayout"
-                                    :players="bestTeamPlayersForPitch"
-                                    display-mode="cards"
-                                    :currency-symbol="detectedCurrencySymbol"
-                                    :dataset-id="currentDatasetId"
-                                    @player-click="handlePlayerSelectedFromTeam"
-                                    @player-moved="handlePlayerMovedOnPitch"
-                                />
-                            </div>
-                        </q-card-section>
-                    </q-card>
+                        <div class="formation-controls">
+                            <q-select
+                                v-model="selectedFormationKey"
+                                :options="formationOptions"
+                                label="Select Formation"
+                                outlined
+                                emit-value
+                                map-options
+                                class="formation-select"
+                                :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
+                            />
 
-                    <q-card
+                            <q-banner
+                                v-if="calculationMessage"
+                                class="calculation-banner"
+                                :class="calculationMessageClass"
+                            >
+                                {{ calculationMessage }}
+                            </q-banner>
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard v-if="selectedFormationKey" title="Formation View" icon="stadium" class="pitch-card">
+                        <p class="card-subtitle">Interactive pitch with your starting XI</p>
+
+                        <div class="pitch-stage">
+                            <PitchDisplay
+                                :formation="currentFormationLayout"
+                                :players="bestTeamPlayersForPitch"
+                                display-mode="cards"
+                                :currency-symbol="detectedCurrencySymbol"
+                                :dataset-id="currentDatasetId"
+                                @player-click="handlePlayerSelectedFromTeam"
+                                @player-moved="handlePlayerMovedOnPitch"
+                            />
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard
                         v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                        title="Squad Depth"
+                        icon="groups_3"
                         class="squad-depth-card"
                     >
-                        <q-card-section>
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <q-icon name="groups_3" class="card-icon" />
-                                    Squad Depth
-                                </h3>
-                                <p class="card-subtitle">Player availability by position — positions with thin coverage are flagged</p>
-                            </div>
+                        <p class="card-subtitle">Player availability by position — positions with thin coverage are flagged</p>
 
-                            <div class="squad-depth-grid">
+                        <div class="squad-depth-grid">
                                 <div
                                     v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
                                     :key="slot.id"
@@ -326,72 +298,55 @@
                                     </div>
                                 </div>
                             </div>
-                        </q-card-section>
-                    </q-card>
+                    </SectionCard>
                 </div>
 
                 <!-- Players Table -->
-                <q-card class="players-table-card">
-                    <q-card-section>
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <q-icon name="group" class="card-icon" />
-                                Squad Overview
-                            </h3>
-                            <p class="card-subtitle">
-                                All {{ teamPlayers.length }} players in {{ selectedTeamName }}
-                            </p>
-                        </div>
-                        
-                        <div class="table-container">
-                            <PlayerDataTable
-                                v-if="teamPlayers.length > 0"
-                                :players="teamPlayers"
-                                :loading="false"
-                                @player-selected="handlePlayerSelectedFromTeam"
-                                @team-selected="handleTeamSelected"
-                                :is-goalkeeper-view="teamIsGoalkeeperView"
-                                :currency-symbol="detectedCurrencySymbol"
-                                :dataset-id="currentDatasetId"
-                                class="modern-table"
-                            />
-                            <div v-else class="no-players-banner">
-                                <q-icon name="person_off" size="3rem" />
-                                <h4>No Players Found</h4>
-                                <p>No players found for this team with the current data filters.</p>
-                            </div>
-                        </div>
-                    </q-card-section>
-                </q-card>
+                <SectionCard title="Squad Overview" icon="group" class="players-table-card">
+                    <p class="card-subtitle">
+                        All {{ teamPlayers.length }} players in {{ selectedTeamName }}
+                    </p>
+
+                    <div class="table-container">
+                        <PlayerDataTable
+                            v-if="teamPlayers.length > 0"
+                            :players="teamPlayers"
+                            :loading="false"
+                            @player-selected="handlePlayerSelectedFromTeam"
+                            @team-selected="handleTeamSelected"
+                            :is-goalkeeper-view="teamIsGoalkeeperView"
+                            :currency-symbol="detectedCurrencySymbol"
+                            :dataset-id="currentDatasetId"
+                            class="modern-table"
+                        />
+                        <EmptyState
+                            v-else
+                            icon="person_off"
+                            title="No Players Found"
+                            description="No players found for this team with the current data filters."
+                        />
+                    </div>
+                </SectionCard>
             </div>
 
             <!-- Additional Banners -->
-            <q-banner
+            <EmptyState
                 v-else-if="!pageLoading && !loadingTeam && currentDatasetId && !selectedTeamName"
-                class="info-banner"
-            >
-                <template v-slot:avatar>
-                    <q-icon name="info" />
-                </template>
-                Please select a team to view its players and analyze formations.
-            </q-banner>
-            
-            <q-banner
+                icon="info"
+                title="Select a team"
+                description="Please select a team to view its players and analyze formations."
+            />
+
+            <EmptyState
                 v-else-if="!pageLoading && !loadingTeam && !currentDatasetId && !pageLoadingError"
-                class="warning-banner"
+                icon="warning"
+                title="No player data available"
+                description="Please upload a player file on the main page first."
             >
-                <template v-slot:avatar>
-                    <q-icon name="warning" />
+                <template #actions>
+                    <q-btn unelevated color="primary" label="Go to Upload Page" @click="router.push('/')" />
                 </template>
-                No player data available. Please upload a player file on the main page first.
-                <q-btn
-                    flat
-                    color="primary"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
-            </q-banner>
+            </EmptyState>
         </div>
 
         <!-- Player Detail Dialog -->
@@ -420,6 +375,9 @@ import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GradientBackground from '../components/GradientBackground.vue'
+import EmptyState from '../components/layout/EmptyState.vue'
+import PageHeader from '../components/layout/PageHeader.vue'
+import SectionCard from '../components/layout/SectionCard.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
@@ -453,6 +411,9 @@ export default {
     PlayerCards,
     TeamLogo,
     GradientBackground,
+    PageHeader,
+    SectionCard,
+    EmptyState,
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -1466,126 +1427,24 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// Modern Design System Variables
-$primary-gradient: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-$success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-$warning-gradient: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
-$danger-gradient: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
-$card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-$card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
-$border-radius: 16px;
-$border-radius-small: 8px;
+// Local aliases onto the shared token system: geometry/elevation follow
+// --radius-*/--shadow-* so they track density/theme without per-component
+// dark-mode overrides. Decorative gradients (hero, prestige cards, pitch
+// turf) are intentionally left as bespoke hardcoded values — see the
+// tokens.scss precedent notes for why decorative/semantic colors stay put.
+$card-shadow: var(--shadow-2);
+$card-shadow-hover: var(--shadow-3);
+$border-radius: var(--radius-lg);
+$border-radius-small: var(--radius-sm);
 
-// Main Content Layout
-.main-content {
-    max-width: 1400px;
+// Page Layout
+.page-container {
+    max-width: var(--content-max-width);
     margin: 0 auto;
-    padding: 2rem;
-    
+    padding: var(--page-gutter);
+
     @media (max-width: 768px) {
-        padding: 1rem;
-    }
-}
-
-// Modern Banners
-.error-banner {
-    background: $danger-gradient;
-    color: white;
-    margin-bottom: 2rem;
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-}
-
-.info-banner {
-    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-    color: white;
-    margin: 2rem 0;
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-}
-
-.warning-banner {
-    background: $warning-gradient;
-    color: #2d3436;
-    margin: 2rem 0;
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-}
-
-// Share Section
-.share-section {
-    display: flex;
-    justify-content: flex-end;
-    margin: 2rem 0;
-    
-    .share-btn-modern {
-        font-weight: 600;
-        border-radius: $border-radius-small;
-        box-shadow: $card-shadow;
-        transition: all 0.3s ease;
-        padding: 0.75rem 1.5rem;
-        
-        &:hover {
-            transform: translateY(-2px);
-            box-shadow: $card-shadow-hover;
-        }
-    }
-}
-
-// Empty State
-.empty-state {
-    margin: 4rem 0;
-    
-    .empty-state-card {
-        border-radius: $border-radius;
-        box-shadow: $card-shadow;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        
-        .body--dark & {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.02);
-        }
-        
-        .empty-state-content {
-            text-align: center;
-            padding: 4rem 2rem;
-            
-            .empty-state-icon {
-                margin-bottom: 2rem;
-                opacity: 0.6;
-            }
-            
-            .empty-state-title {
-                font-size: 2rem;
-                font-weight: 700;
-                margin: 0 0 1rem 0;
-                color: #2d3436;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
-            }
-            
-            .empty-state-description {
-                font-size: 1.1rem;
-                line-height: 1.6;
-                color: #636e72;
-                margin: 0 0 2rem 0;
-                max-width: 500px;
-                margin-left: auto;
-                margin-right: auto;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-            }
-            
-            .empty-state-btn {
-                font-weight: 600;
-                padding: 0.75rem 2rem;
-                border-radius: $border-radius-small;
-            }
-        }
+        padding: var(--page-gutter-sm);
     }
 }
 
@@ -1596,15 +1455,11 @@ $border-radius-small: 8px;
     align-items: center;
     justify-content: center;
     padding: 4rem 2rem;
-    
+
     .loading-text {
         margin-top: 1.5rem;
         font-size: 1.1rem;
-        color: #636e72;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
+        color: var(--text-secondary);
     }
 }
 
@@ -1838,57 +1693,26 @@ $border-radius-small: 8px;
     flex-direction: column;
 }
 
-// Modern Card Styles
+// Card hover-lift — background/border/shadow/padding/title come from
+// SectionCard itself; this just layers a subtle hover affordance on top.
 .formation-card,
 .squad-depth-card,
 .pitch-card,
 .players-table-card {
-    border-radius: $border-radius;
-    box-shadow: $card-shadow;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    
-    .body--dark & {
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.02);
-    }
-    
+    transition:
+        box-shadow 0.3s ease,
+        transform 0.3s ease;
+
     &:hover {
         box-shadow: $card-shadow-hover;
         transform: translateY(-2px);
     }
-    
-    .card-header {
-        margin-bottom: 2rem;
-        
-        .card-title {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 1.4rem;
-            font-weight: 700;
-            margin: 0 0 0.5rem 0;
-            color: #2d3436;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
-            }
-            
-            .card-icon {
-                color: var(--accent);
-            }
-        }
-        
-        .card-subtitle {
-            font-size: 1rem;
-            color: #636e72;
-            margin: 0;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
-        }
-    }
+}
+
+.card-subtitle {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0 0 var(--section-gap) 0;
 }
 
 // Formation Controls
@@ -1923,22 +1747,20 @@ $border-radius-small: 8px;
     }
     
     .depth-position-modern {
-        background: rgba(255, 255, 255, 0.6);
+        background: var(--surface-raised);
         border-radius: $border-radius-small;
         padding: 1rem;
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--surface-border);
         transition: all 0.3s ease;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-        
+
         &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-2);
         }
-        
+
+        // Alert-state colors are semantic (red = critical, amber = thin
+        // coverage) — kept as bespoke colors, same precedent as the
+        // rating-tier palette, rather than tokenized.
         &.depth-alert-critical {
             border-color: rgba(239, 68, 68, 0.4);
             background: rgba(239, 68, 68, 0.05);
@@ -1968,11 +1790,7 @@ $border-radius-small: 8px;
             .position-name {
                 font-weight: 700;
                 font-size: 0.9rem;
-                color: #2d3436;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
+                color: var(--text-primary);
             }
 
             .position-header-right {
@@ -1983,15 +1801,10 @@ $border-radius-small: 8px;
 
             .player-count {
                 font-size: 0.75rem;
-                color: #636e72;
-                background: rgba(0, 0, 0, 0.05);
+                color: var(--text-secondary);
+                background: var(--surface-border);
                 padding: 0.2rem 0.5rem;
                 border-radius: 12px;
-
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                    background: rgba(255, 255, 255, 0.1);
-                }
             }
         }
 
@@ -2011,45 +1824,38 @@ $border-radius-small: 8px;
                 }
             }
         }
-        
+
         .depth-players-modern {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            
+            gap: var(--density-gap);
+
             .player-card-mini {
                 display: grid;
                 grid-template-columns: auto 1fr auto;
-                gap: 0.5rem;
+                gap: var(--density-gap);
                 align-items: center;
-                padding: 0.5rem;
-                background: rgba(255, 255, 255, 0.8);
+                padding: var(--density-cell-padding);
+                background: var(--surface-card);
                 border-radius: $border-radius-small;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                border: 1px solid rgba(0, 0, 0, 0.05);
-                
-                .body--dark & {
-                    background: rgba(255, 255, 255, 0.08);
-                    border-color: rgba(255, 255, 255, 0.1);
-                }
-                
+                border: 1px solid var(--surface-border);
+
+                // "Starter" indicator is a semantic success color, kept
+                // hardcoded like the rating-tier/alert palettes above.
                 &.is-starter {
                     background: linear-gradient(135deg, rgba(0, 184, 148, 0.1) 0%, rgba(0, 206, 201, 0.05) 100%);
                     border-color: rgba(0, 184, 148, 0.2);
                     font-weight: 600;
                 }
-                
+
                 &:hover {
                     transform: translateX(4px);
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    box-shadow: var(--shadow-1);
                     background: var(--accent-soft);
-                    
-                    .body--dark & {
-                        background: var(--accent-soft-strong);
-                    }
                 }
-                
+
                 .player-rank {
                     display: flex;
                     align-items: center;
@@ -2062,34 +1868,26 @@ $border-radius-small: 8px;
                     font-size: 0.7rem;
                     font-weight: 700;
                 }
-                
+
                 .player-info {
                     min-width: 0;
-                    
+
                     .player-name {
                         font-size: 0.8rem;
                         font-weight: 600;
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
-                        color: #2d3436;
-                        
-                        .body--dark & {
-                            color: rgba(255, 255, 255, 0.9);
-                        }
+                        color: var(--text-primary);
                     }
-                    
+
                     .player-positions {
                         font-size: 0.65rem;
-                        color: #636e72;
+                        color: var(--text-secondary);
                         margin-top: 0.2rem;
-                        
-                        .body--dark & {
-                            color: rgba(255, 255, 255, 0.6);
-                        }
                     }
                 }
-                
+
                 .player-rating {
                     font-size: 0.75rem;
                     font-weight: 700;
@@ -2097,29 +1895,21 @@ $border-radius-small: 8px;
                     border-radius: 4px;
                     min-width: 28px;
                     text-align: center;
-                    border: 1px solid rgba(0, 0, 0, 0.1);
-                    
-                    .body--dark & {
-                        border-color: rgba(255, 255, 255, 0.2);
-                    }
+                    border: 1px solid var(--surface-border-strong);
                 }
             }
         }
-        
+
         .no-players-state {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 0.3rem;
             padding: 1rem;
-            color: #636e72;
+            color: var(--text-muted);
             font-style: italic;
             font-size: 0.8rem;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.5);
-            }
-            
+
             .q-icon {
                 font-size: 1.2rem;
             }
@@ -2127,7 +1917,8 @@ $border-radius-small: 8px;
     }
 }
 
-// Pitch Container
+// Pitch Container — decorative turf gradient kept hardcoded, same
+// precedent as the Team-of-the-Season pitch palette in LeaguesPage.vue.
 .pitch-stage {
     background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
     border-radius: $border-radius;
@@ -2217,32 +2008,7 @@ $border-radius-small: 8px;
     .modern-table {
         border-radius: $border-radius-small;
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .no-players-banner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        padding: 3rem 2rem;
-        text-align: center;
-        color: #636e72;
-        
-        .body--dark & {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        h4 {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        p {
-            margin: 0;
-            font-size: 1rem;
-        }
+        box-shadow: var(--shadow-1);
     }
 }
 
@@ -2251,42 +2017,36 @@ $border-radius-small: 8px;
     .formation-tactics-layout {
         gap: 1.5rem;
     }
-    
+
     .formation-controls-panel {
         gap: 1.5rem;
     }
 }
 
 @media (max-width: 768px) {
-    .main-content {
-        padding: 1rem;
-    }
-    
     .team-dashboard {
         gap: 1.5rem;
     }
-    
+
     .team-hero-section {
         padding: 2rem;
     }
-    
+
     .formation-tactics-layout {
         gap: 1rem;
     }
-    
+
     .formation-controls-panel {
         gap: 1rem;
     }
 }
 
-// Dark mode enhancements
-.body--dark {
-    .team-hero-section {
-        background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
-    }
-}
-
-// Utility classes for rating colors (ensure these exist)
+// Utility classes for rating colors — intentionally hardcoded (decorative
+// semantic tier palette, same precedent as TeamsPage/LeaguesPage). Note:
+// this local palette diverges from the shared .rating-tier-* palette in
+// src/css/app.scss (translucent tints here vs. solid fills there) — a
+// pre-existing inconsistency, flagged for ticket 13 rather than changed
+// here since fixing it would alter visuals beyond this reskin's scope.
 .rating-tier-6 { color: #8e24aa; background-color: rgba(142, 36, 170, 0.1); }
 .rating-tier-5 { color: #1976d2; background-color: rgba(25, 118, 210, 0.1); }
 .rating-tier-4 { color: #388e3c; background-color: rgba(56, 142, 60, 0.1); }

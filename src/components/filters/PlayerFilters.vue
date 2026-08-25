@@ -1907,7 +1907,7 @@ export default defineComponent({
     transition: box-shadow 0.3s ease, transform 0.2s ease;
     
     .body--dark & {
-        background: #1e293b;
+        background: var(--surface-card);
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
     }
@@ -1935,8 +1935,8 @@ export default defineComponent({
 .q-select {
     .q-field__control {
         border-radius: 8px;
-        background: rgba(46, 116, 181, 0.02);
-        border: 1px solid rgba(46, 116, 181, 0.1);
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-soft-strong);
         transition: all 0.2s ease;
         
         .body--dark & {
@@ -1945,8 +1945,8 @@ export default defineComponent({
         }
         
         &:hover {
-            border-color: rgba(46, 116, 181, 0.2);
-            background: rgba(46, 116, 181, 0.04);
+            border-color: var(--accent-soft-strong);
+            background: var(--accent-soft-strong);
             
             .body--dark & {
                 border-color: rgba(255, 255, 255, 0.2);
@@ -1957,7 +1957,7 @@ export default defineComponent({
     
     .q-field__native,
     .q-field__input {
-        color: #334155;
+        color: var(--text-primary);
         font-weight: 500;
         
         .body--dark & {
@@ -1966,7 +1966,7 @@ export default defineComponent({
     }
     
     .q-field__label {
-        color: #64748b;
+        color: var(--text-secondary);
         font-weight: 600;
         
         .body--dark & {
@@ -1977,7 +1977,7 @@ export default defineComponent({
 
 .q-range {
     .q-slider__track {
-        background: rgba(46, 116, 181, 0.1);
+        background: var(--accent-soft);
         
         .body--dark & {
             background: rgba(255, 255, 255, 0.1);
@@ -1985,27 +1985,22 @@ export default defineComponent({
     }
     
     .q-slider__track-active {
-        background: #2e74b5;
-        
-        .body--dark & {
-            background: #60a5fa;
-        }
+        background: var(--accent);
     }
-    
+
     .q-slider__thumb {
-        background: #2e74b5;
+        background: var(--accent);
         border: 2px solid white;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        
+
         .body--dark & {
-            background: #60a5fa;
             border-color: rgba(255, 255, 255, 0.1);
         }
     }
 }
 
 .slider-label {
-    color: #334155;
+    color: var(--text-primary);
     font-weight: 600;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
@@ -2022,12 +2017,8 @@ export default defineComponent({
     transition: all 0.2s ease;
     
     &[color="primary"] {
-        background: #2e74b5;
-        
-        .body--dark & {
-            background: #60a5fa;
-        }
-        
+        background: var(--accent);
+
         &:hover {
             background: #1e40af;
             transform: translateY(-1px);
@@ -2041,8 +2032,8 @@ export default defineComponent({
     }
     
     &[color="grey"] {
-        background: rgba(46, 116, 181, 0.1);
-        color: #2e74b5;
+        background: var(--accent-soft);
+        color: var(--accent);
         
         .body--dark & {
             background: rgba(255, 255, 255, 0.1);
@@ -2050,7 +2041,7 @@ export default defineComponent({
         }
         
         &:hover {
-            background: rgba(46, 116, 181, 0.15);
+            background: var(--accent-soft-strong);
             
             .body--dark & {
                 background: rgba(255, 255, 255, 0.15);
@@ -2065,13 +2056,13 @@ export default defineComponent({
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     
     .body--dark & {
-        background: #1e293b;
+        background: var(--surface-card);
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
     
     .modal-subtitle {
-        color: #64748b;
+        color: var(--text-secondary);
         
         .body--dark & {
             color: rgba(255, 255, 255, 0.6);
@@ -2082,7 +2073,7 @@ export default defineComponent({
 .attributes-section-title {
     font-weight: 700;
     margin-bottom: 1rem;
-    color: #1e293b;
+    color: var(--text-primary);
     font-size: 1.1rem;
     
     .body--dark & {
@@ -2096,7 +2087,7 @@ export default defineComponent({
 
 .attribute-label-styled {
     font-size: 0.8rem;
-    color: #64748b;
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2147,8 +2138,8 @@ export default defineComponent({
         padding: 0 6px;
         min-height: 32px !important;
         border-radius: 6px;
-        background: rgba(46, 116, 181, 0.05);
-        border: 1px solid rgba(46, 116, 181, 0.1);
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-soft-strong);
         
         .body--dark & {
             background: rgba(96, 165, 250, 0.08);
@@ -2161,7 +2152,7 @@ export default defineComponent({
         text-align: center;
         font-weight: 600;
         padding: 0;
-        color: #334155;
+        color: var(--text-primary);
         
         .body--dark & {
             color: rgba(255, 255, 255, 0.9);
