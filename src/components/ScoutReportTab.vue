@@ -31,6 +31,9 @@
                     <StarRating :stars="stars.divisionStars" label="Division" />
                 </div>
                 <div v-if="report" class="verdict-rationale">{{ report.subjectGradeRationale }}</div>
+                <div v-if="report && report.generatedAt" class="verdict-scouted-at">
+                    Scouted {{ relativeTime(report.generatedAt) }}
+                </div>
             </div>
 
             <div class="cell controls-cell">
@@ -45,12 +48,14 @@
                     @update:model-value="onPositionChange"
                 />
                 <q-btn
-                    label="Regenerate Report"
-                    icon="refresh"
+                    :label="regenerating ? 'Regenerating…' : 'Regenerate Report'"
+                    :icon="regenerating ? undefined : 'refresh'"
+                    :loading="regenerating"
                     color="primary"
                     outline
                     class="full-width q-mt-md"
                     size="sm"
+                    :disable="regenerating"
                     @click="generateReport"
                 />
                 <div class="quick-facts">
@@ -163,6 +168,11 @@ export default defineComponent({
     player: { type: Object, required: true },
     datasetId: { type: String, required: true },
     currencySymbol: { type: String, default: '$' },
+    // Optional: short position code to open on, e.g. from the Scouting Book's "open full
+    // report" action (a book row is keyed by player+position, so it should land on that
+    // exact position, not just the player's own default one). Falls back to the player's
+    // own default position when omitted.
+    initialPosition: { type: String, default: '' },
   },
   setup(props) {
     const uiStore = useUiStore()
@@ -176,6 +186,7 @@ export default defineComponent({
     })
 
     function defaultPosition() {
+      if (props.initialPosition) return props.initialPosition
       const shorts = props.player.shortPositions || props.player.ShortPositions || []
       return shorts[0] || ''
     }
@@ -184,10 +195,59 @@ export default defineComponent({
     const stars = ref({ squadStars: 0, divisionStars: 0 })
     const report = ref(null)
     const loading = ref(false)
+    const regenerating = ref(false)
     const error = ref(null)
     const managedTeamMissing = ref(false)
     const loadingMessage = ref(FUNNY_LOADING_MESSAGES[0])
     let loadingMessageTimer = null
+
+    function relativeTime(iso) {
+      const diffMs = Date.now() - new Date(iso).getTime()
+      const days = Math.floor(diffMs / 86400000)
+      if (days <= 0) {
+        const hours = Math.floor(diffMs / 3600000)
+        if (hours <= 0) return 'just now'
+        return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+      }
+      if (days === 1) return 'yesterday'
+      return `${days} days ago`
+    }
+
+    // fetchPersistedReport reads the backend's saved report (Scout Report v2 map ticket
+    // 01's GET /api/scout-report/{datasetId}) — the source of truth for both initial
+    // mount and position toggles (ticket 04), replacing what used to be an
+    // in-session-only cache check. Returns null on any non-2xx (typically 404, "never
+    // scouted at this position").
+    async function fetchPersistedReport(uid, pos) {
+      if (!uid || !pos) return null
+      try {
+        const params = new URLSearchParams({ playerUid: uid, position: pos })
+        const res = await fetch(`/api/scout-report/${props.datasetId}?${params}`)
+        if (!res.ok) return null
+        return await res.json()
+      } catch (e) {
+        console.error('[ScoutReportTab] failed to fetch persisted report', e)
+        return null
+      }
+    }
+
+    // loadReportFor checks the session cache first (a pure request-dedup layer in front
+    // of the backend now, not the source of truth — ticket 04), then falls back to the
+    // backend GET. Returns true if a report was found and set, false otherwise.
+    async function loadReportFor(uid, pos) {
+      const cached = scoutReportStore.get(props.datasetId, uid, pos)
+      if (cached) {
+        report.value = cached
+        return true
+      }
+      const persisted = await fetchPersistedReport(uid, pos)
+      if (persisted) {
+        report.value = persisted
+        scoutReportStore.set(props.datasetId, uid, pos, persisted)
+        return true
+      }
+      return false
+    }
 
     const bestRoleLabel = computed(() => {
       const role = props.player.bestRoleOverall || props.player.BestRoleOverall || ''
@@ -240,7 +300,15 @@ export default defineComponent({
 
     async function generateReport() {
       if (!playerUid.value || !position.value || managedTeamMissing.value) return
-      loading.value = true
+      // A report already on screen stays visible with an in-place "Regenerating…"
+      // indicator (ticket 04's UX upgrade) rather than blanking to the full skeleton —
+      // that skeleton is now reserved for the genuine first-generation case.
+      const hasExistingReport = !!report.value
+      if (hasExistingReport) {
+        regenerating.value = true
+      } else {
+        loading.value = true
+      }
       error.value = null
       startLoadingMessages()
       try {
@@ -272,27 +340,27 @@ export default defineComponent({
         error.value = 'Could not reach the server. Check your connection and try again.'
       } finally {
         loading.value = false
+        regenerating.value = false
         stopLoadingMessages()
       }
     }
 
-    function onPositionChange() {
+    async function onPositionChange() {
       fetchStars()
-      const cached = scoutReportStore.get(props.datasetId, playerUid.value, position.value)
-      report.value = cached
       error.value = null
-      // No auto-refetch on position change (decided: explicit Regenerate only) — if nothing
-      // is cached for this position yet, the dashboard just shows the controls until the
-      // user presses Regenerate.
+      report.value = null
+      // Backend-GET-first (ticket 04): a persisted report for this position — from any
+      // prior session, or from a chat-triggered generation — now shows instantly. Still
+      // no auto-generate when nothing's been scouted at this position yet (decided:
+      // explicit Regenerate only) — the dashboard just shows the controls until pressed.
+      await loadReportFor(playerUid.value, position.value)
     }
 
     onMounted(async () => {
       await fetchStars()
       if (managedTeamMissing.value) return
-      const cached = scoutReportStore.get(props.datasetId, playerUid.value, position.value)
-      if (cached) {
-        report.value = cached
-      } else {
+      const found = await loadReportFor(playerUid.value, position.value)
+      if (!found) {
         await generateReport()
       }
     })
@@ -313,11 +381,13 @@ export default defineComponent({
       stars,
       report,
       loading,
+      regenerating,
       error,
       managedTeamMissing,
       loadingMessage,
       bestRoleLabel,
       gradeColor,
+      relativeTime,
       generateReport,
       onPositionChange,
       formatCurrency,
@@ -386,6 +456,11 @@ export default defineComponent({
     font-size: 12px;
     color: var(--text-secondary);
     line-height: 1.5;
+}
+.verdict-scouted-at {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
 }
 .controls-cell {
     display: flex;

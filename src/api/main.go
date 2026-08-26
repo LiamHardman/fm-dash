@@ -257,6 +257,7 @@ func main() {
 	mux.Handle("/api/managed-team/", wrapHandler(http.HandlerFunc(managedTeamHandler), "managed-team"))
 	mux.Handle("/api/scout-report-stars/", wrapHandler(http.HandlerFunc(scoutReportStarsHandler), "scout-report-stars"))
 	mux.Handle("/api/scout-report/", wrapHandler(http.HandlerFunc(scoutReportHandler), "scout-report"))
+	mux.Handle("/api/scout-reports/", wrapHandler(http.HandlerFunc(scoutReportsBookHandler), "scout-reports-book"))
 	mux.Handle("/api/chatbot/", wrapHandler(http.HandlerFunc(chatbotHandler), "chatbot"))
 	mux.Handle("/api/fm-save-import", wrapHandler(http.HandlerFunc(fmSaveImportHandler), "fm-save-import"))
 

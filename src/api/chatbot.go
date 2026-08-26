@@ -796,6 +796,44 @@ func buildTeamComparisonTable(datasetID string, clubs []string) *ChatChart {
 	}
 }
 
+// --- generate_scout_report tool (Scout Report v2 map ticket 03) ---
+
+type chatGenerateScoutReportArgs struct {
+	PlayerUID     int64  `json:"playerUid"`
+	ShortPosition string `json:"shortPosition"`
+}
+
+var chatGenerateScoutReportToolSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"playerUid":     map[string]any{"type": "integer", "description": "The uid of the player to generate a full AI Scout Report for — must come from a tool result this conversation."},
+		"shortPosition": map[string]any{"type": "string", "description": "Which position to scout them at, e.g. \"ST\", \"CB\". Omit to use the player's own primary position."},
+	},
+	"required": []string{"playerUid"},
+}
+
+// renderScoutReportSummary formats a ScoutReportWithMeta (scout_report.go) as a compact
+// pipe-delimited summary for the model, matching this codebase's existing
+// token-minimization convention rather than raw JSON. The trailing "(saved to your
+// Scouting Book)" line lets the model reliably mention persistence without guessing.
+func renderScoutReportSummary(report *ScoutReportWithMeta) string {
+	var b strings.Builder
+	b.WriteString("grade|" + report.SubjectGrade + "\n")
+	b.WriteString("rationale|" + chatTableFieldSafe(report.SubjectGradeRationale) + "\n")
+	b.WriteString("pros|" + chatTableFieldSafe(strings.Join(report.Pros, "; ")) + "\n")
+	b.WriteString("cons|" + chatTableFieldSafe(strings.Join(report.Cons, "; ")))
+	if len(report.ComparablePlayers) > 0 {
+		b.WriteString("\n\ncomparable players:\nuid|name|club|grade|squadStars|divisionStars|rationale")
+		for _, c := range report.ComparablePlayers {
+			fmt.Fprintf(&b, "\n%d|%s|%s|%s|%.1f|%.1f|%s",
+				c.UID, chatTableFieldSafe(c.Name), chatTableFieldSafe(c.Club), c.Grade,
+				c.SquadStars, c.DivisionStars, chatTableFieldSafe(c.Rationale))
+		}
+	}
+	b.WriteString("\n\n(saved to your Scouting Book)")
+	return b.String()
+}
+
 // --- System prompt (ticket 08) ---
 
 func buildChatbotSystemPrompt(managedClub string) string {
@@ -806,7 +844,8 @@ func buildChatbotSystemPrompt(managedClub string) string {
 	b.WriteString("- compare_squads: get per-position average overall, depth, and a best-XI figure for two clubs — use this for squad composition comparisons instead of eyeballing full rosters yourself.\n")
 	b.WriteString("- get_managed_squad: get the manager's own current squad plus the nation their club is based in. Always call this before answering a homegrown-talent or tactic-fit question.\n")
 	b.WriteString("- render_chart: optionally render a chart or table (player_radar / player_comparison_table for 1-2 players' attributes, team_bar / team_comparison_table for a two-club squad comparison, tactic_formation for a \"what tactic would fit\" question) to accompany your answer. Prefer the *_table variant when exact numbers matter more than an at-a-glance visual. For tactic_formation, pick the formationKey whose shape best fits the squad's strengths from get_managed_squad's data — the pitch diagram itself is computed independently from the real squad, so just pick the formation; you don't need to name who plays where. Only call it when a visual genuinely helps — most answers don't need one.\n")
-	b.WriteString("- navigate_to_page: optionally send the user to another page of the app when they ask to see, find, or search something better shown there (e.g. \"show me strikers under 21\" → page \"dataset\" with search \"striker\"; \"take me to my squad depth chart\" → page \"team-view\"). Only call it when the user is actually asking to go somewhere or see a filtered list, not for every answer.\n\n")
+	b.WriteString("- generate_scout_report: generate and save a full AI Scout Report (grade, pros/cons, comparable players) for one specific player — the same report the AI Scout Report tab produces, saved to their Scouting Book. Only call this when the manager explicitly asks for a scout report or an in-depth evaluation of one specific player, never automatically for every player you mention — it's a slower, heavier call than your other tools. At most once per turn; if asked to scout several players, do one and suggest the manager ask again for the next.\n")
+	b.WriteString("- navigate_to_page: optionally send the user to another page of the app when they ask to see, find, or search something better shown there (e.g. \"show me strikers under 21\" → page \"dataset\" with search \"striker\"; \"take me to my squad depth chart\" → page \"team-view\"; \"show me my scouting book\" → page \"scouting-book\"). Only call it when the user is actually asking to go somewhere or see a filtered list, not for every answer.\n\n")
 	b.WriteString("Instructions:\n")
 	b.WriteString("- Never state a player's stats or attributes that didn't come from a tool result this conversation — do not invent numbers.\n")
 	b.WriteString("- Use Football Manager terminology and this app's position/attribute naming conventions, not generic football commentary or FIFA-style ratings — PAC, SHO, PAS, DRI, DEF, and PHY do not exist here and must never appear in your reasoning.\n")
@@ -962,11 +1001,12 @@ func getManagedTeam(datasetID string) (ManagedTeam, bool) {
 }
 
 var chatbotToolFriendlyLabels = map[string]string{
-	"search_players":    "Searching players…",
-	"compare_squads":    "Comparing squads…",
-	"get_managed_squad": "Reviewing your squad…",
-	"render_chart":      "Building chart…",
-	"navigate_to_page":  "Navigating…",
+	"search_players":        "Searching players…",
+	"compare_squads":        "Comparing squads…",
+	"get_managed_squad":     "Reviewing your squad…",
+	"render_chart":          "Building chart…",
+	"navigate_to_page":      "Navigating…",
+	"generate_scout_report": "Generating scout report…",
 }
 
 // --- navigate_to_page tool (ticket 04, .scratch/llm-refinements/issues/
@@ -978,7 +1018,7 @@ var chatbotToolFriendlyLabels = map[string]string{
 
 var chatNavigatePages = []string{
 	"dataset", "team-view", "nations", "teams", "leagues",
-	"performance", "wishlist", "cards", "progression", "save-analysis",
+	"performance", "wishlist", "cards", "progression", "save-analysis", "scouting-book",
 }
 
 type chatNavigateToPageArgs struct {
@@ -1052,6 +1092,11 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 			Description: openai.String("Send the user to another page, optionally setting the Player Table's search box (page: \"dataset\" only)."),
 			Parameters:  chatNavigateToPageToolSchema,
 		}},
+		{OfFunction: &responses.FunctionToolParam{
+			Name:        "generate_scout_report",
+			Description: openai.String("Generate and save a full AI Scout Report (grade, pros/cons, comparable players) for one player. Slower than other tools — only call when explicitly asked. At most once per turn."),
+			Parameters:  chatGenerateScoutReportToolSchema,
+		}},
 	}
 	textFormat := responses.ResponseTextConfigParam{
 		Format: func() responses.ResponseFormatTextConfigUnionParam {
@@ -1080,6 +1125,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 	var lastChart *ChatChart
 	var lastNavigate *ChatNavigate
 	searchCount := 0
+	scoutReportCount := 0
 
 	for round := 0; ; round++ {
 		var toolCalls []responses.ResponseFunctionToolCall
@@ -1122,7 +1168,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 			if toolCall.Name == "search_players" {
 				searchCount++
 			}
-			outputText := dispatchChatbotTool(ctx, datasetID, managedClub, toolCall.Name, toolCall.Arguments, &lastChart, &lastNavigate)
+			outputText := dispatchChatbotTool(ctx, client, datasetID, managedClub, model, toolCall.Name, toolCall.Arguments, &lastChart, &lastNavigate, &scoutReportCount, sendStatus)
 			outputItems[i] = responses.ResponseInputItemUnionParam{
 				OfFunctionCallOutput: &responses.ResponseInputItemFunctionCallOutputParam{
 					CallID: toolCall.CallID,
@@ -1161,7 +1207,7 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 // originally instrumented). resultCount's meaning varies by tool: a real count for
 // search_players/get_managed_squad, a 1/0 success flag for the other three, which have
 // no natural "count" of their own.
-func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, argsJSON string, lastChart **ChatChart, lastNavigate **ChatNavigate) string {
+func dispatchChatbotTool(ctx context.Context, client *openai.Client, datasetID, managedClub, model, name, argsJSON string, lastChart **ChatChart, lastNavigate **ChatNavigate, scoutReportCount *int, sendStatus func(string)) string {
 	switch name {
 	case "search_players":
 		var args chatSearchPlayersArgs
@@ -1231,6 +1277,22 @@ func dispatchChatbotTool(ctx context.Context, datasetID, managedClub, name, args
 		RecordToolCall(ctx, "navigate_to_page", argsJSON, 1)
 		*lastNavigate = &ChatNavigate{Page: args.Page, Search: args.Search}
 		return "Navigation queued."
+
+	case "generate_scout_report":
+		if *scoutReportCount >= 1 {
+			RecordToolCall(ctx, "generate_scout_report", argsJSON, 0)
+			return "You've already generated a scout report this turn — ask again in a follow-up message for another player."
+		}
+		var args chatGenerateScoutReportArgs
+		_ = json.Unmarshal([]byte(argsJSON), &args)
+		*scoutReportCount++
+		report, scoutErr := generateScoutReport(ctx, client, datasetID, model, args.PlayerUID, args.ShortPosition, sendStatus)
+		if scoutErr != nil {
+			RecordToolCall(ctx, "generate_scout_report", argsJSON, 0)
+			return "Could not generate a scout report: " + scoutErr.message
+		}
+		RecordToolCall(ctx, "generate_scout_report", argsJSON, 1)
+		return renderScoutReportSummary(report)
 
 	default:
 		return "Unknown tool."

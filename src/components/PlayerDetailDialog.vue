@@ -1146,6 +1146,7 @@
                         :player="displayPlayer"
                         :dataset-id="datasetId"
                         :currency-symbol="currencySymbol"
+                        :initial-position="initialScoutPosition"
                     />
                 </div>
             </q-card-section>
@@ -1565,6 +1566,14 @@ export default defineComponent({
     // reacts to whichever player/datasetId it's given, same as it always has.
     snapshotTabs: { type: Array, default: () => [] }, // [{ label }]
     activeSnapshotIndex: { type: Number, default: 0 },
+    // Optional: which q-tab to open on ('simple' | 'advanced' | 'scoutReport'). Used by
+    // the Scouting Book's "open full report" action to land directly on the AI Scout
+    // Report tab rather than making the manager click through from Simple.
+    initialTab: { type: String, default: 'simple' },
+    // Optional: short position code to preselect on the AI Scout Report tab (the
+    // Scouting Book's rows are keyed by player+position, so opening a row should show
+    // the report for that exact position, not just the player's own default one).
+    initialScoutPosition: { type: String, default: '' },
   },
   emits: ['close', 'update:activeSnapshotIndex'],
   setup(props) {
@@ -1616,7 +1625,7 @@ export default defineComponent({
 
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
-    const activeTab = ref('simple') // Default to simple view
+    const activeTab = ref(props.initialTab || 'simple')
 
     const isTop5League = (division, basedIn) => {
       if (!division) return false

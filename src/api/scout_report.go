@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/responses"
@@ -290,19 +291,31 @@ func writeScoutReportError(w http.ResponseWriter, r *http.Request, err *whoToSig
 
 // --- Handler ---
 
+// scoutReportHandler dispatches GET (fetch one persisted report), DELETE (remove one),
+// and POST (generate + persist) on /api/scout-report/{datasetId} — Scout Report v2 map
+// ticket 01's extension of what was previously a POST-only endpoint. GET/DELETE are
+// handled by scout_report_book.go; POST keeps its own SSE streaming shape here.
 func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	datasetID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/scout-report/"), "/")
 	if datasetID == "" {
 		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
 		return
 	}
+
+	switch r.Method {
+	case http.MethodGet:
+		scoutReportGetHandler(w, r, datasetID)
+	case http.MethodDelete:
+		scoutReportDeleteHandler(w, r, datasetID)
+	case http.MethodPost:
+		scoutReportPostHandler(w, r, datasetID)
+	default:
+		http.Error(w, "Only GET, POST, and DELETE methods are allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func scoutReportPostHandler(w http.ResponseWriter, r *http.Request, datasetID string) {
+	ctx := r.Context()
 
 	var req ScoutReportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -329,40 +342,15 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	llmConfig := readLLMRequestConfig(r)
 
-	players, _, found := GetPlayerData(datasetID)
-	if !found {
-		writeScoutReportError(w, r, &whoToSignError{http.StatusNotFound, "dataset not found"})
-		return
-	}
-	players = RecalculateAllPlayersRatings(players)
-
-	var subject *Player
-	for i := range players {
-		if players[i].UID == playerUID {
-			subject = &players[i]
-			break
-		}
-	}
-	if subject == nil {
-		writeScoutReportError(w, r, &whoToSignError{http.StatusNotFound, "player not found in dataset"})
-		return
-	}
-
-	managedTeam, err := loadManagedTeam(datasetID)
-	if err != nil {
-		writeScoutReportError(w, r, &whoToSignError{http.StatusBadRequest, "set your managed team before generating a Scout Report"})
-		return
-	}
-
-	subjectSummary := buildScoutPlayerSummary(*subject, nil)
-	percentiles := getSubjectDivisionPercentiles(players, *subject)
-	systemPrompt := buildScoutReportSystemPrompt(managedTeam.Club, managedTeam.Division, subjectSummary, req.Position, percentiles)
-
 	logInfo(ctx, "Processing scout-report request", "dataset_id", datasetID, "player_uid", req.PlayerUID, "position", req.Position)
 
 	// SSE from here on (Safari fix, see .scratch/llm-refinements/issues/
-	// 05-safari-compatibility-investigation.md): all validation above still fails as
-	// plain JSON before any bytes are committed to the client.
+	// 05-safari-compatibility-investigation.md). generateScoutReport does its own
+	// dataset/player/managed-team validation and reports failure via the SSE "error"
+	// event below — this endpoint no longer pre-validates before opening the stream
+	// (Scout Report v2 map ticket 03: the same generateScoutReport is called from
+	// chat's tool dispatch, which has no separate pre-flight phase, so validation lives
+	// in one place for both callers rather than being duplicated).
 	setCORSHeaders(w, r)
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -384,7 +372,8 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	llmResult, candidates, scoutErr := runScoutReportLoop(ctx, client, datasetID, llmConfig.resolveModel(scoutReportModel), systemPrompt, subject.UID, sendStatus)
+
+	result, scoutErr := generateScoutReport(ctx, client, datasetID, llmConfig.resolveModel(scoutReportModel), playerUID, req.Position, sendStatus)
 	if scoutErr != nil {
 		logWarn(ctx, "scout-report request failed", "dataset_id", datasetID, "status", scoutErr.status, "error", scoutErr.message)
 		writeSSEEvent(w, "error", map[string]string{"code": strconv.Itoa(scoutErr.status), "message": scoutErr.message})
@@ -392,6 +381,62 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 		return
+	}
+
+	writeSSEEvent(w, "done", result)
+	if canFlush {
+		flusher.Flush()
+	}
+}
+
+// generateScoutReport runs the full pipeline — resolve subject, load managed team,
+// build percentiles/prompt, drive the tool-calling loop, resolve comparable players,
+// compute stars, persist — shared by scoutReportPostHandler (HTTP) and the chatbot's
+// generate_scout_report tool (chatbot.go), so generation and persistence logic is never
+// duplicated between the two entry points (Scout Report v2 map tickets 01/03).
+func generateScoutReport(ctx context.Context, client *openai.Client, datasetID, model string, playerUID int64, position string, sendStatus func(string)) (*ScoutReportWithMeta, *whoToSignError) {
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		return nil, &whoToSignError{http.StatusNotFound, "dataset not found"}
+	}
+	players = RecalculateAllPlayersRatings(players)
+
+	var subject *Player
+	for i := range players {
+		if players[i].UID == playerUID {
+			subject = &players[i]
+			break
+		}
+	}
+	if subject == nil {
+		return nil, &whoToSignError{http.StatusNotFound, "player not found in dataset"}
+	}
+
+	// Position defaults to the subject's own primary short position when omitted —
+	// mirrors ScoutReportTab.vue's own defaultPosition(), so a chat-triggered report
+	// (ticket 03, whose tool contract makes shortPosition optional) and a
+	// dialog-triggered one agree by default.
+	if position == "" {
+		if len(subject.ShortPositions) == 0 {
+			return nil, &whoToSignError{http.StatusBadRequest, "player has no known position"}
+		}
+		position = subject.ShortPositions[0]
+	}
+
+	managedTeam, err := loadManagedTeam(datasetID)
+	if err != nil {
+		return nil, &whoToSignError{http.StatusBadRequest, "set your managed team before generating a Scout Report"}
+	}
+
+	subjectSummary := buildScoutPlayerSummary(*subject, nil)
+	percentiles := getSubjectDivisionPercentiles(players, *subject)
+	systemPrompt := buildScoutReportSystemPrompt(managedTeam.Club, managedTeam.Division, subjectSummary, position, percentiles)
+
+	logInfo(ctx, "Generating scout report", "dataset_id", datasetID, "player_uid", playerUID, "position", position)
+
+	llmResult, candidates, scoutErr := runScoutReportLoop(ctx, client, datasetID, model, systemPrompt, subject.UID, sendStatus)
+	if scoutErr != nil {
+		return nil, scoutErr
 	}
 
 	RecordScoutReportSubjectGrade(ctx, scoutReportGradeOrdinal(llmResult.SubjectGrade))
@@ -408,7 +453,7 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 			// Hallucinated or never-surfaced uid — drop it rather than show fabricated data.
 			continue
 		}
-		squadStars, divisionStars := scoutReportStars(players, candidate, req.Position, managedTeam.Club)
+		squadStars, divisionStars := scoutReportStars(players, candidate, position, managedTeam.Club)
 		RecordScoutReportComparable(ctx, scoutReportGradeOrdinal(pick.Grade), squadStars, divisionStars)
 		result.ComparablePlayers = append(result.ComparablePlayers, ScoutReportComparable{
 			UID:                 candidate.UID,
@@ -428,10 +473,16 @@ func scoutReportHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeSSEEvent(w, "done", result)
-	if canFlush {
-		flusher.Flush()
+	subjectSquadStars, subjectDivisionStars := scoutReportStars(players, *subject, position, managedTeam.Club)
+	generatedAt := time.Now()
+	if err := saveScoutReport(datasetID, subject.UID, position, subject.Name, subject.Club, result, subjectSquadStars, subjectDivisionStars, generatedAt); err != nil {
+		// Persistence is best-effort: a manager's freshly-generated report is still
+		// worth returning even if the Scouting Book write failed — they just won't see
+		// it there until a future successful save.
+		logWarn(ctx, "scout-report: failed to persist report", "dataset_id", datasetID, "player_uid", playerUID, "error", err.Error())
 	}
+
+	return &ScoutReportWithMeta{ScoutReportResponse: result, GeneratedAt: generatedAt}, nil
 }
 
 // runScoutReportLoop drives the Responses API tool-calling loop for find_comparable_players,

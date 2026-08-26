@@ -278,6 +278,13 @@ export default defineComponent({
         requiresDataset: true,
         badge: wishlistCount.value > 0 ? wishlistCount.value : null,
       },
+      {
+        id: 'scouting-book',
+        label: 'Scouting Book',
+        icon: 'menu_book',
+        to: '/scouting-book',
+        requiresDataset: true,
+      },
     ])
 
     const visibleNavItems = computed(() => {

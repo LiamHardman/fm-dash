@@ -14,6 +14,7 @@ const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
 const ProgressionPage = () => import('../pages/ProgressionPage.vue')
 const SaveImportPage = () => import('../pages/SaveImportPage.vue')
 const SaveAnalysisPage = () => import('../pages/SaveAnalysisPage.vue')
+const ScoutingBookPage = () => import('../pages/ScoutingBookPage.vue')
 
 const routes = [
   {
@@ -122,6 +123,11 @@ const routes = [
     name: 'shared-save-analysis',
     component: SaveAnalysisPage,
     props: true,
+  },
+  {
+    path: '/scouting-book',
+    name: 'scouting-book',
+    component: ScoutingBookPage,
   },
 ]
 
