@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"golang.org/x/net/html"
 	"google.golang.org/protobuf/proto"
 
 	apperrors "api/errors"
@@ -264,6 +265,194 @@ func getMaxUploadSize() int64 {
 func getFileSizeLimitErrorMessage() string {
 	maxUploadSizeMB := getMaxUploadSize() / (1024 * 1024)
 	return fmt.Sprintf("Only 10,000 players or less can be in a given dataset. (Max file size: %dMB)", maxUploadSizeMB)
+}
+
+// UploadPreflightResponse reports whether an exported FM table contains the
+// headers FM Dash needs for its full analysis experience. It deliberately does
+// not retain the file or parse player rows.
+type UploadPreflightResponse struct {
+	Valid          bool     `json:"valid"`
+	Format         string   `json:"format"`
+	Headers        []string `json:"headers"`
+	MissingColumns []string `json:"missingColumns"`
+	Message        string   `json:"message"`
+}
+
+var requiredExportHeaders = []string{
+	"Name", "Position", "Age",
+	"Acc", "Pac", "Str", "Sta", "Nat", "Bal", "Jum", "Agi",
+	"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor",
+	"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec",
+	"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Ref", "TRO", "Thr", "Pun",
+}
+
+// uploadPreflightHandler validates the export shape before the client starts
+// the heavier upload-and-parse request. The upload handler remains the final
+// authority for file size and parser failures.
+func uploadPreflightHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	if r.ContentLength > getMaxUploadSize() {
+		WriteErrorResponse(w, r, "content_length_exceeded", getFileSizeLimitErrorMessage(), nil, http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		WriteErrorResponse(w, r, "multipart_parse_failed", "Could not read the selected export.", nil, http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("playerFile")
+	if err != nil {
+		WriteErrorResponse(w, r, "file_retrieval_failed", "Choose an HTML or CSV export to check.", nil, http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(http.MaxBytesReader(w, file, getMaxUploadSize()))
+	if err != nil {
+		WriteErrorResponse(w, r, "file_size_exceeded", getFileSizeLimitErrorMessage(), nil, http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	format, headers, extractionErr := extractExportHeaders(handler.Filename, content)
+	if extractionErr != nil {
+		writeUploadPreflightResponse(w, r, http.StatusOK, UploadPreflightResponse{
+			Valid:   false,
+			Format:  format,
+			Message: extractionErr.Error(),
+		})
+		return
+	}
+
+	missingColumns := missingRequiredExportHeaders(headers)
+	response := UploadPreflightResponse{
+		Valid:          len(missingColumns) == 0,
+		Format:         format,
+		Headers:        headers,
+		MissingColumns: missingColumns,
+		Message:        "Your export is ready to upload.",
+	}
+	if !response.Valid {
+		response.Message = "This export is missing columns from the FM Dash Search View."
+	}
+
+	writeUploadPreflightResponse(w, r, http.StatusOK, response)
+}
+
+func writeUploadPreflightResponse(w http.ResponseWriter, r *http.Request, status int, response UploadPreflightResponse) {
+	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, r)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		LogWarn("Could not encode upload preflight response: %v", err)
+	}
+}
+
+func extractExportHeaders(filename string, content []byte) (string, []string, error) {
+	if strings.HasSuffix(strings.ToLower(filename), ".csv") {
+		for _, line := range strings.Split(string(content), "\n") {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
+			return "csv", normalizeCSVHeaders(strings.Split(strings.TrimSuffix(line, "\r"), ";")), nil
+		}
+		return "csv", nil, fmt.Errorf("We could not find column headings in this CSV export.")
+	}
+	if strings.HasSuffix(strings.ToLower(filename), ".html") || strings.HasSuffix(strings.ToLower(filename), ".htm") {
+		headers, err := extractHTMLHeaders(content)
+		return "html", headers, err
+	}
+	return "", nil, fmt.Errorf("Choose an HTML or CSV export from Football Manager.")
+}
+
+func normalizeCSVHeaders(rawHeaders []string) []string {
+	headers := make([]string, 0, len(rawHeaders))
+	for _, rawHeader := range rawHeaders {
+		header := strings.TrimSpace(rawHeader)
+		if canonical, ok := csvHeaderNormalize[header]; ok {
+			header = canonical
+		}
+		headers = append(headers, header)
+	}
+	return headers
+}
+
+func extractHTMLHeaders(content []byte) ([]string, error) {
+	tokenizer := html.NewTokenizer(bytes.NewReader(content))
+	insideTable := false
+	insideHeaderRow := false
+	insideHeaderCell := false
+	var headers []string
+	var cell strings.Builder
+
+	for {
+		tokenType := tokenizer.Next()
+		token := tokenizer.Token()
+		switch tokenType {
+		case html.ErrorToken:
+			if tokenizer.Err() == io.EOF {
+				if len(headers) > 0 {
+					return headers, nil
+				}
+				return nil, fmt.Errorf("We could not find a player table with column headings in this HTML export.")
+			}
+			return nil, fmt.Errorf("We could not read this HTML export.")
+		case html.StartTagToken:
+			switch token.Data {
+			case "table":
+				insideTable = true
+			case "tr":
+				if insideTable && len(headers) == 0 {
+					insideHeaderRow = true
+				}
+			case "th", "td":
+				if insideHeaderRow {
+					insideHeaderCell = true
+					cell.Reset()
+				}
+			}
+		case html.TextToken:
+			if insideHeaderCell {
+				cell.WriteString(token.Data)
+			}
+		case html.EndTagToken:
+			switch token.Data {
+			case "th", "td":
+				if insideHeaderCell {
+					if header := strings.TrimSpace(cell.String()); header != "" {
+						headers = append(headers, header)
+					}
+					insideHeaderCell = false
+				}
+			case "tr":
+				if insideHeaderRow && len(headers) > 0 {
+					return headers, nil
+				}
+				insideHeaderRow = false
+			case "table":
+				insideTable = false
+			}
+		}
+	}
+}
+
+func missingRequiredExportHeaders(headers []string) []string {
+	found := make(map[string]struct{}, len(headers))
+	for _, header := range headers {
+		found[header] = struct{}{}
+	}
+
+	missing := make([]string, 0)
+	for _, requiredHeader := range requiredExportHeaders {
+		if _, ok := found[requiredHeader]; !ok {
+			missing = append(missing, requiredHeader)
+		}
+	}
+	return missing
 }
 
 // uploadHandler handles POST requests for uploading HTML player files.

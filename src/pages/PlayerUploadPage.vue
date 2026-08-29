@@ -18,6 +18,32 @@
                 </template>
             </PageHeader>
 
+            <section class="guided-upload" aria-label="Export and upload steps">
+                <div class="guided-upload__steps">
+                    <span class="guided-upload__step"><strong>1.</strong> Install view</span>
+                    <q-icon name="arrow_forward" aria-hidden="true" />
+                    <span class="guided-upload__step"><strong>2.</strong> Export</span>
+                    <q-icon name="arrow_forward" aria-hidden="true" />
+                    <span class="guided-upload__step guided-upload__step--current"><strong>3.</strong> Upload</span>
+                </div>
+                <q-expansion-item
+                    v-model="showExportGuide"
+                    dense
+                    icon="help_outline"
+                    label="How to export from Football Manager"
+                    class="export-guide"
+                >
+                    <div class="export-guide__content">
+                        <ol>
+                            <li>Subscribe to the FM Dash Search View from the Steam Workshop.</li>
+                            <li>In FM, open Scouting, choose <strong>Overview → Custom → Import View</strong>, then select the view.</li>
+                            <li>Select your players, press <kbd>Ctrl/Cmd + A</kbd>, then <kbd>Ctrl/Cmd + P</kbd> and save as <strong>Web Page</strong> or CSV.</li>
+                        </ol>
+                        <q-btn flat color="primary" icon="open_in_new" label="Open FM Dash Search View" @click="openWorkshopLink" />
+                    </div>
+                </q-expansion-item>
+            </section>
+
             <!-- Upload Section -->
             <div class="upload-section">
                 <SectionCard class="upload-card">
@@ -72,6 +98,32 @@
                                 <div class="selected-file-size">
                                     {{ formatFileSize(playerFile.size) }}
                                 </div>
+                                <div v-if="preflightChecking" class="preflight-status" role="status">
+                                    <q-spinner size="1.1rem" /> Checking the export columns…
+                                </div>
+                                <div
+                                    v-else-if="preflightResult"
+                                    class="preflight-status"
+                                    :class="preflightResult.valid ? 'preflight-status--valid' : 'preflight-status--invalid'"
+                                    role="status"
+                                >
+                                    <q-icon :name="preflightResult.valid ? 'check_circle' : 'error_outline'" />
+                                    <div>
+                                        <strong>{{ preflightResult.valid ? 'Ready to upload' : 'This export needs the FM Dash Search View' }}</strong>
+                                        <span>{{ preflightResult.message }}</span>
+                                        <span v-if="preflightResult.missingColumns?.length" class="preflight-status__columns">
+                                            Missing: {{ preflightResult.missingColumns.join(', ') }}
+                                        </span>
+                                        <q-btn
+                                            v-if="!preflightResult.valid"
+                                            flat
+                                            dense
+                                            color="primary"
+                                            label="Open export guide"
+                                            @click="showExportGuide = true"
+                                        />
+                                    </div>
+                                </div>
                                 <q-btn
                                     flat
                                     icon="close"
@@ -119,6 +171,11 @@
                             </div>
                         </div>
 
+                        <div class="upload-recovery-actions">
+                            <q-btn flat color="primary" icon="download" label="Download example export" href="/upload-demo.html" download="fm-dash-example-export.html" />
+                            <q-btn outline color="primary" icon="sports_soccer" label="Use demo data" :loading="demoLoading" @click="loadDemoData" />
+                        </div>
+
                         <!-- Data Retention Disclaimer -->
                         <div class="retention-disclaimer">
                             <q-icon
@@ -144,7 +201,9 @@
                                 :loading="loading"
                                 :disable="
                                     !playerFile ||
-                                    loading
+                                    loading ||
+                                    preflightChecking ||
+                                    !preflightResult?.valid
                                 "
                                 @click="uploadAndParse"
                                 class="upload-btn-modern"
@@ -245,6 +304,10 @@ export default {
     const playerFile = ref(null)
     const showFileSizeLimitModal = ref(false)
     const uploadProgress = ref(0)
+    const preflightResult = ref(null)
+    const preflightChecking = ref(false)
+    const demoLoading = ref(false)
+    const showExportGuide = ref(true)
 
     const maxFileSizeBytes = ref(15 * 1024 * 1024)
     const maxFileSizeMB = ref(15)
@@ -283,20 +346,7 @@ export default {
       }
 
       if (route.query.demo === 'true') {
-        try {
-          const response = await fetch('/demo.html')
-          const blob = await response.blob()
-          playerFile.value = new File([blob], 'demo.html', { type: 'text/html' })
-          await uploadAndParse()
-        } catch (e) {
-          console.error('Failed to load demo file:', e)
-          Notify.create({
-            type: 'negative',
-            message: 'Failed to load demo dataset. Please try uploading a file manually.',
-            position: 'top',
-            timeout: 5000,
-          })
-        }
+        await loadDemoData()
       }
     })
 
@@ -308,10 +358,84 @@ export default {
       return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
     }
 
-    const onFileSelected = (file) => {
+    const inspectExportInBrowser = async (file) => {
+      const content = await file.text()
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const headerLine = content.split(/\r?\n/).find((line) => line.trim())
+        return headerLine
+          ? headerLine
+              .split(';')
+              .map((header) => header.trim())
+              .filter(Boolean)
+          : []
+      }
+
+      const document = new DOMParser().parseFromString(content, 'text/html')
+      const firstRow = document.querySelector('table tr')
+      return firstRow
+        ? [...firstRow.querySelectorAll('th, td')]
+            .map((cell) => cell.textContent.trim())
+            .filter(Boolean)
+        : []
+    }
+
+    const preflightFile = async (file) => {
+      preflightResult.value = null
+      if (!file) return
+
+      try {
+        const headers = await inspectExportInBrowser(file)
+        if (headers.length === 0) {
+          preflightResult.value = {
+            valid: false,
+            missingColumns: [],
+            message: 'We could not find a player table with column headings in this export.',
+          }
+          return
+        }
+
+        preflightChecking.value = true
+        preflightResult.value = await playerService.preflightPlayerFile(file)
+      } catch (error) {
+        preflightResult.value = {
+          valid: false,
+          missingColumns: [],
+          message:
+            error.message ||
+            'We could not check this export. Try exporting it again from Football Manager.',
+        }
+      } finally {
+        preflightChecking.value = false
+      }
+    }
+
+    const onFileSelected = async (file) => {
       if (file && file.size > maxFileSizeBytes.value) {
         showFileSizeLimitModal.value = true
         playerFile.value = null
+        preflightResult.value = null
+        return
+      }
+      await preflightFile(file)
+    }
+
+    const loadDemoData = async () => {
+      demoLoading.value = true
+      try {
+        const response = await fetch('/upload-demo.html')
+        if (!response.ok) throw new Error('Demo data is unavailable')
+        const blob = await response.blob()
+        playerFile.value = new File([blob], 'fm-dash-demo.html', { type: 'text/html' })
+        await preflightFile(playerFile.value)
+      } catch (error) {
+        Notify.create({
+          type: 'negative',
+          message: error.message || 'Failed to load demo data. Please try again.',
+          position: 'top',
+          timeout: 5000,
+        })
+      } finally {
+        demoLoading.value = false
       }
     }
 
@@ -342,7 +466,13 @@ export default {
 
     const uploadAndParse = async () => {
       if (!playerFile.value) {
-        playerStore.error = 'Please select an HTML file first.'
+        playerStore.error = 'Please select an HTML or CSV export first.'
+        return
+      }
+
+      if (!preflightResult.value?.valid) {
+        playerStore.error = 'Check your export columns before uploading.'
+        showExportGuide.value = true
         return
       }
       if (playerFile.value.size > maxFileSizeBytes.value) {
@@ -423,6 +553,10 @@ export default {
       uiStore.showTutorial()
     }
 
+    const openWorkshopLink = () => {
+      window.open('https://steamcommunity.com/sharedfiles/filedetails/?id=3498467200', '_blank')
+    }
+
     const maxPlayersSupported = computed(() => {
       // Rule: 15MB = 10,000 players
       // So players = (current max file size in MB / 15MB) * 10,000
@@ -443,6 +577,10 @@ export default {
       onFileSelected,
       playerStore,
       uiStore,
+      preflightResult,
+      preflightChecking,
+      demoLoading,
+      showExportGuide,
 
       maxFileSizeMB,
       loaderProps,
@@ -451,6 +589,8 @@ export default {
       maxPlayersSupported,
       datasetRetentionDays,
       showTutorial,
+      loadDemoData,
+      openWorkshopLink,
     }
   },
 }
@@ -466,6 +606,57 @@ export default {
     max-width: 900px;
     margin: 0 auto;
     padding: var(--page-gutter);
+}
+
+.guided-upload {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-card);
+}
+
+.guided-upload__steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1rem;
+    color: var(--text-secondary);
+}
+
+.guided-upload__step strong {
+    color: var(--accent);
+}
+
+.guided-upload__step--current {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.export-guide {
+    border-top: 1px solid var(--surface-border);
+    color: var(--text-primary);
+}
+
+.export-guide__content {
+    padding: 0 1rem 1rem;
+    color: var(--text-secondary);
+
+    ol {
+        margin: 0 0 0.75rem;
+        padding-left: 1.4rem;
+    }
+
+    li + li {
+        margin-top: 0.45rem;
+    }
+
+    kbd {
+        border: 1px solid var(--surface-border-strong);
+        border-radius: 3px;
+        padding: 0.1rem 0.25rem;
+        color: var(--text-primary);
+    }
 }
 
 // Upload Section
@@ -558,6 +749,36 @@ export default {
                 }
             }
 
+            .preflight-status {
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                gap: 0.45rem;
+                margin: 0.8rem auto 0;
+                max-width: 44rem;
+                color: var(--text-secondary);
+
+                > div {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.2rem;
+                    text-align: left;
+                }
+
+                &--valid {
+                    color: #2e7d32;
+                }
+
+                &--invalid {
+                    color: var(--negative, #c62828);
+                }
+            }
+
+            .preflight-status__columns {
+                font-size: 0.85rem;
+            }
+
             .hidden-file-input {
                 position: absolute;
                 top: 0;
@@ -586,6 +807,14 @@ export default {
                 font-size: 0.9rem;
                 color: var(--text-secondary);
             }
+        }
+
+        .upload-recovery-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            margin: 0.5rem 0 1.5rem;
         }
 
         .retention-disclaimer {
@@ -685,6 +914,11 @@ export default {
 
 // Responsive Design
 @media (max-width: 768px) {
+    .guided-upload__steps {
+        gap: 0.35rem;
+        font-size: 0.82rem;
+    }
+
     .page-container {
         padding: var(--page-gutter-sm);
     }

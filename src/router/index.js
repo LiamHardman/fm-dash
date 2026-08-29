@@ -8,7 +8,8 @@ const NationsPage = () => import('../pages/NationsPage.vue')
 const TeamsPage = () => import('../pages/TeamsPage.vue')
 const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
-const WishlistPage = () => import('../pages/WishlistPage.vue')
+const ShortlistsPage = () => import('../pages/ShortlistsPage.vue')
+const SavedSearchesPage = () => import('../pages/SavedSearchesPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
 const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
 const ProgressionPage = () => import('../pages/ProgressionPage.vue')
@@ -46,8 +47,10 @@ const routes = [
   },
   {
     path: '/nations',
-    name: 'nations',
-    component: NationsPage,
+    redirect: () =>
+      sessionStorage.getItem('currentDatasetId')
+        ? `/nations/${sessionStorage.getItem('currentDatasetId')}`
+        : '/upload',
   },
   {
     path: '/nations/:datasetId',
@@ -57,8 +60,10 @@ const routes = [
   },
   {
     path: '/teams',
-    name: 'teams',
-    component: TeamsPage,
+    redirect: () =>
+      sessionStorage.getItem('currentDatasetId')
+        ? `/teams/${sessionStorage.getItem('currentDatasetId')}`
+        : '/upload',
   },
   {
     path: '/teams/:datasetId',
@@ -68,8 +73,10 @@ const routes = [
   },
   {
     path: '/leagues',
-    name: 'leagues',
-    component: LeaguesPage,
+    redirect: () =>
+      sessionStorage.getItem('currentDatasetId')
+        ? `/leagues/${sessionStorage.getItem('currentDatasetId')}`
+        : '/upload',
   },
   {
     path: '/leagues/:datasetId',
@@ -79,8 +86,10 @@ const routes = [
   },
   {
     path: '/performance',
-    name: 'performance',
-    component: PerformancePage,
+    redirect: () =>
+      sessionStorage.getItem('currentDatasetId')
+        ? `/performance/${sessionStorage.getItem('currentDatasetId')}`
+        : '/upload',
   },
   {
     path: '/performance/:datasetId',
@@ -89,9 +98,18 @@ const routes = [
     props: true,
   },
   {
+    path: '/shortlists',
+    name: 'shortlists',
+    component: ShortlistsPage,
+  },
+  {
+    path: '/saved-searches',
+    name: 'saved-searches',
+    component: SavedSearchesPage,
+  },
+  {
     path: '/wishlist',
-    name: 'wishlist',
-    component: WishlistPage,
+    redirect: '/shortlists',
   },
   {
     path: '/docs',

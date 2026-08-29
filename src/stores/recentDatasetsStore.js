@@ -44,5 +44,12 @@ export const useRecentDatasetsStore = defineStore('recentDatasets', () => {
     persist()
   }
 
-  return { entries, load, recordDataset, removeDataset }
+  function renameDataset(datasetId, label) {
+    const entry = entries.value.find((item) => item.datasetId === datasetId)
+    if (!entry || !label?.trim()) return
+    entry.label = label.trim()
+    persist()
+  }
+
+  return { entries, load, recordDataset, removeDataset, renameDataset }
 })

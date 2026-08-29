@@ -1,5 +1,5 @@
 <template>
-  <div class="error-boundary">
+  <div v-if="error" class="error-boundary">
     <div class="error-boundary__container">
       <q-icon 
         name="error_outline" 
@@ -13,6 +13,7 @@
       <p class="error-boundary__message">
         {{ message }}
       </p>
+      <p class="error-boundary__context">{{ contextSummary }}</p>
       <div class="error-boundary__actions">
         <q-btn
           v-if="showRetry"
@@ -22,6 +23,7 @@
           label="Try Again"
           icon="refresh"
         />
+        <q-btn @click="goToRecovery" color="secondary" outline label="Back to upload" icon="upload_file" />
         <q-btn
           v-if="showDetails && error"
           @click="showErrorDetails = !showErrorDetails"
@@ -44,13 +46,52 @@
       </div>
     </div>
   </div>
+  <div v-else :key="retryKey"><slot /></div>
 </template>
 
 <script setup>
-// Removed unused imports: computed, ref
-// Removed unused variables: props, emit
+import { computed, onErrorCaptured, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-// This component is currently a placeholder - functionality to be implemented
+const route = useRoute()
+const router = useRouter()
+const error = ref(null)
+const showErrorDetails = ref(false)
+const retryKey = ref(0)
+const title = computed(() => 'This view needs a refresh')
+const message = computed(
+  () => error.value?.message || 'Something went wrong while loading this feature.'
+)
+const showRetry = computed(() => true)
+const showDetails = computed(() => import.meta.env.DEV)
+const contextSummary = computed(
+  () => `Feature: ${String(route.name || 'page')} · Route: ${route.fullPath}`
+)
+const errorDetails = computed(() =>
+  JSON.stringify(
+    {
+      feature: route.name || 'page',
+      route: route.fullPath,
+      datasetSize: document.querySelectorAll('[data-player-row]').length || 'unknown',
+      message: message.value,
+    },
+    null,
+    2
+  )
+)
+function handleRetry() {
+  error.value = null
+  showErrorDetails.value = false
+  retryKey.value += 1
+}
+function goToRecovery() {
+  error.value = null
+  router.push('/upload')
+}
+onErrorCaptured((caught) => {
+  error.value = caught
+  return false
+})
 </script>
 
 <style scoped>

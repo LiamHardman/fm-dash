@@ -62,6 +62,28 @@ const fetchJsonResponse = async (url, options = {}) => {
 }
 
 export default {
+  async preflightPlayerFile(file) {
+    if (!file) {
+      throw new Error('Choose a file before checking it')
+    }
+
+    const formData = new FormData()
+    formData.append('playerFile', file)
+
+    const response = await fetch('/api/upload/preflight', {
+      method: 'POST',
+      body: formData,
+      headers: { Accept: 'application/json' },
+    })
+    const result = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      throw new Error(result?.message || 'We could not check this export.')
+    }
+
+    return result
+  },
+
   async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
     const file = formData.get('playerFile')
     if (!file) {

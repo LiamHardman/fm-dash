@@ -9,7 +9,7 @@
      singleton. Dataset-scoped: the FAB only renders when a dataset is loaded and a managed
      team is set (map's widget-scope decision). -->
 <template>
-  <div v-if="chatStore.managedTeam" class="chat-widget-root">
+<div v-if="managedTeamUsable" class="chat-widget-root">
     <transition name="chat-drawer">
       <div v-if="open" class="chat-drawer">
         <!-- Dialog chrome: header (icon/title/close), the same convention used by
@@ -22,6 +22,7 @@
             <div class="dialog-chrome__title-group">
               <div class="dialog-chrome__title">Scout Assistant</div>
               <div class="chat-title-sub">{{ chatStore.statusLabel || 'Ask about your squad, targets, tactics' }}</div>
+              <div class="chat-context-label">{{ chatStore.managedTeam.club }} · {{ chatStore.managedTeam.division }} · current Dataset</div>
             </div>
             <q-space />
             <div class="dialog-chrome__actions">
@@ -236,6 +237,11 @@ const showPlayerDetailDialog = ref(false)
 const playerForDetailView = ref(null)
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol || '$')
+const managedTeamUsable = computed(() => {
+  const team = chatStore.managedTeam
+  if (!team?.club || !playerStore.currentDatasetId) return false
+  return (playerStore.allPlayers || []).some((player) => player.club === team.club)
+})
 
 // player_radar plots raw FM attributes, which are on a 1-20 scale — not Overall
 // (0-100-ish), which is what barOptions below is correctly scaled for.
@@ -273,10 +279,10 @@ watch(
   async (datasetId) => {
     stopManagedTeamPoll()
     await chatStore.checkManagedTeam(datasetId)
-    if (datasetId && !chatStore.managedTeam) {
+    if (datasetId && !managedTeamUsable.value) {
       managedTeamPoll = setInterval(async () => {
         await chatStore.checkManagedTeam(datasetId)
-        if (chatStore.managedTeam) stopManagedTeamPoll()
+        if (managedTeamUsable.value) stopManagedTeamPoll()
       }, 3000)
     }
   },
@@ -460,6 +466,11 @@ watch(
 .chat-title-sub {
   font-size: 0.72rem;
   color: var(--text-secondary);
+}
+.chat-context-label {
+  font-size: 0.66rem;
+  color: var(--accent);
+  margin-top: 2px;
 }
 
 .chat-body {

@@ -805,7 +805,8 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setCurrentDatasetId(datasetId) {
     currentDatasetId.value = datasetId
-    sessionStorage.setItem('currentDatasetId', datasetId)
+    if (datasetId) sessionStorage.setItem('currentDatasetId', datasetId)
+    else sessionStorage.removeItem('currentDatasetId')
   }
 
   return {

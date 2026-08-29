@@ -1,8 +1,13 @@
 <template>
   <q-tr :props="props"
         @click="$emit('row-click', props.row)"
+        @keydown.enter="$emit('row-click', props.row)"
+        @keydown.space.prevent="$emit('row-click', props.row)"
         @contextmenu="$emit('right-click', $event, props.row)"
-        class="cursor-pointer table-row-hover modern-table-row">
+        class="cursor-pointer table-row-hover modern-table-row"
+        tabindex="0"
+        role="button"
+        :aria-label="`Open details for ${props.row.name || 'player'}`">
     <q-td v-for="col in props.cols"
           :key="col.name"
           :props="props"
@@ -109,6 +114,15 @@ export default {
   }
 }
 
+.modern-table-row:focus-visible {
+  outline: 3px solid var(--q-primary);
+  outline-offset: -3px;
+}
+
+@media (max-width: 600px) {
+  .modern-table-row :deep(.q-td) { padding: 8px 6px !important; font-size: 0.78rem; }
+}
+
 .table-cell-enhanced {
   color: var(--text-primary) !important;
   font-weight: 500;
@@ -119,4 +133,4 @@ export default {
     color: rgba(255, 255, 255, 0.85) !important;
   }
 }
-</style> 
+</style>

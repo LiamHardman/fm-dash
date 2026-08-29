@@ -240,6 +240,7 @@ func main() {
 	mux.Handle("/", wrapHandler(indexHandler, "index"))
 	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
 	mux.Handle("/api/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
+	mux.Handle("/api/upload/preflight", wrapHandler(http.HandlerFunc(uploadPreflightHandler), "upload-preflight"))
 	mux.Handle("/api/players/", wrapHandler(GetFormatAwareCacheHandler(), "player-data"))
 	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(cachedRolesHandler), "roles"))
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
@@ -306,9 +307,14 @@ func main() {
 
 	// API endpoint for persisting per-dataset wishlists
 	mux.Handle("/api/wishlists/", wrapHandler(http.HandlerFunc(wishlistHandler), "wishlists"))
+	// API endpoint for installation-level, cross-dataset shortlists
+	mux.Handle("/api/shortlists", wrapHandler(http.HandlerFunc(shortlistsHandler), "shortlists"))
+	// API endpoint for installation-level saved filter recipes
+	mux.Handle("/api/saved-searches", wrapHandler(http.HandlerFunc(savedSearchesHandler), "saved-searches"))
 
 	// API endpoint for multi-snapshot player progression analysis
 	mux.Handle("/api/progression/analyze", wrapHandler(http.HandlerFunc(progressionAnalyzeHandler), "progression-analyze"))
+	mux.Handle("/api/progression/projects", wrapHandler(http.HandlerFunc(progressionProjectsHandler), "progression-projects"))
 
 	// Register memory profiling and pprof endpoints
 	RegisterMemoryProfileEndpoints(mux)

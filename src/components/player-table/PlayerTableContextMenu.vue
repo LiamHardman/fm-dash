@@ -6,22 +6,22 @@
     <q-list dense style="min-width: 180px">
       <q-item clickable 
               v-close-popup 
-              @click="$emit('add-to-wishlist')"
-              v-if="contextMenuPlayer && !isPlayerInWishlist">
+              @click="$emit('add-to-shortlist')"
+              v-if="contextMenuPlayer && !isPlayerInShortlist">
         <q-item-section avatar>
           <q-icon name="favorite_border" color="positive" />
         </q-item-section>
-        <q-item-section>Add to Wishlist</q-item-section>
+        <q-item-section>Add to Shortlist</q-item-section>
       </q-item>
       
       <q-item clickable 
               v-close-popup 
-              @click="$emit('remove-from-wishlist')"
-              v-if="contextMenuPlayer && isPlayerInWishlist">
+              @click="$emit('remove-from-shortlist')"
+              v-if="contextMenuPlayer && isPlayerInShortlist">
         <q-item-section avatar>
           <q-icon name="favorite" color="negative" />
         </q-item-section>
-        <q-item-section>Remove from Wishlist</q-item-section>
+        <q-item-section>Remove from Shortlist</q-item-section>
       </q-item>
       
       <q-separator />
@@ -57,6 +57,15 @@
         </q-item-section>
         <q-item-section>View Details</q-item-section>
       </q-item>
+      <q-item clickable
+              v-close-popup
+              @click="$emit('why-this-player')"
+              v-if="contextMenuPlayer && hasMatchFilters">
+        <q-item-section avatar>
+          <q-icon name="help_outline" color="secondary" />
+        </q-item-section>
+        <q-item-section>Why this player?</q-item-section>
+      </q-item>
     </q-list>
   </q-menu>
 </template>
@@ -69,7 +78,7 @@ export default {
       type: Object,
       default: null,
     },
-    isPlayerInWishlist: {
+    isPlayerInShortlist: {
       type: Boolean,
       default: false,
     },
@@ -77,17 +86,22 @@ export default {
       type: Boolean,
       default: false,
     },
+    hasMatchFilters: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
-    'add-to-wishlist',
-    'remove-from-wishlist',
+    'add-to-shortlist',
+    'remove-from-shortlist',
     'player-details',
     'add-to-comparison',
     'remove-from-comparison',
+    'why-this-player',
   ],
 }
 </script>
 
 <style scoped>
 /* Context menu styles are minimal since Quasar handles most styling */
-</style> 
+</style>

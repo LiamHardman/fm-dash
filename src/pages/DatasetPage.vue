@@ -29,53 +29,9 @@
                     <q-btn
                         unelevated
                         dense
-                        icon="find_replace"
-                        label="Upgrade Finder"
-                        color="primary"
-                        @click="openUpgradeFinder"
-                        :disable="allPlayersData.length === 0"
-                        class="action-btn"
-                        size="sm"
-                    />
-                    <q-btn
-                        unelevated
-                        dense
-                        icon="stars"
-                        label="Wonderkids"
-                        color="secondary"
-                        @click="openWonderkids"
-                        :disable="allPlayersData.length === 0"
-                        class="action-btn"
-                        size="sm"
-                    />
-                    <q-btn
-                        unelevated
-                        dense
-                        icon="local_offer"
-                        label="Bargains"
-                        color="positive"
-                        @click="openBargainHunter"
-                        :disable="allPlayersData.length === 0"
-                        class="action-btn"
-                        size="sm"
-                    />
-                    <q-btn
-                        unelevated
-                        dense
-                        icon="person_off"
-                        label="Free Agents"
-                        color="deep-orange"
-                        @click="openFreeAgents"
-                        :disable="allPlayersData.length === 0"
-                        class="action-btn"
-                        size="sm"
-                    />
-                    <q-btn
-                        unelevated
-                        dense
                         icon="person_search"
-                        label="Who to Sign"
-                        color="purple"
+                        label="Find a signing"
+                        color="primary"
                         @click="showWhoToSign = true"
                         :disable="allPlayersData.length === 0"
                         class="action-btn"
@@ -84,25 +40,77 @@
                     <q-btn
                         unelevated
                         dense
-                        icon="download"
-                        label="Export"
-                        color="accent"
-                        @click="openExportOptions"
-                        :disable="loading || !filteredPlayers || filteredPlayers.length === 0"
+                        :icon="managedTeam ? 'find_replace' : 'lock_open'"
+                        :label="managedTeam ? 'Improve my squad' : 'Set up squad tools'"
+                        color="secondary"
+                        @click="openUpgradeFinder"
+                        :disable="allPlayersData.length === 0"
                         class="action-btn"
                         size="sm"
+                    />
+                    <q-btn
+                        unelevated
+                        dense
+                        icon="travel_explore"
+                        label="Explore players"
+                        color="positive"
+                        @click="explorePlayers"
+                        :disable="allPlayersData.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    />
+                    <q-btn
+                        v-if="!managedTeam"
+                        unelevated
+                        dense
+                        icon="lock"
+                        label="Scout Assistant"
+                        color="grey-7"
+                        @click="openManagedTeamDialog"
+                        class="action-btn assistant-locked-btn"
+                        size="sm"
                     >
-                        <q-tooltip v-if="filteredPlayers && filteredPlayers.length > 0">
-                            Export {{ filteredPlayers.length }} filtered players
-                        </q-tooltip>
-                        <q-tooltip v-else>
-                            No players to export
-                        </q-tooltip>
+                        <q-tooltip>Set a managed club to unlock squad-aware Scout Assistant</q-tooltip>
                     </q-btn>
+                    <q-btn-dropdown unelevated dense icon="more_horiz" label="Actions" color="grey-8" class="action-btn" size="sm">
+                        <q-list dense>
+                            <q-item v-close-popup clickable @click="openWonderkids"><q-item-section avatar><q-icon name="stars" /></q-item-section><q-item-section>Wonderkids</q-item-section></q-item>
+                            <q-item v-close-popup clickable @click="openBargainHunter"><q-item-section avatar><q-icon name="local_offer" /></q-item-section><q-item-section>Bargains</q-item-section></q-item>
+                            <q-item v-close-popup clickable @click="openFreeAgents"><q-item-section avatar><q-icon name="person_off" /></q-item-section><q-item-section>Free Agents</q-item-section></q-item>
+                            <q-item v-close-popup clickable :disable="loading || !filteredPlayers?.length" @click="openExportOptions"><q-item-section avatar><q-icon name="download" /></q-item-section><q-item-section>Export results</q-item-section></q-item>
+                        </q-list>
+                    </q-btn-dropdown>
                 </div>
 
                 <!-- Right section: Share and filters toggle -->
                 <div class="top-bar-controls">
+                    <q-btn
+                        flat
+                        dense
+                        icon="bookmark_add"
+                        label="Save search"
+                        @click="openSaveSearch"
+                        class="save-search-btn"
+                        size="sm"
+                    />
+                    <q-btn
+                        flat
+                        dense
+                        icon="bookmarks"
+                        label="Saved searches"
+                        to="/saved-searches"
+                        class="save-search-btn"
+                        size="sm"
+                    />
+                    <q-btn
+                        flat
+                        dense
+                        icon="link"
+                        label="Share search"
+                        @click="shareCurrentSearch"
+                        class="save-search-btn"
+                        size="sm"
+                    />
                     <q-btn
                         v-if="currentDatasetId"
                         flat
@@ -124,6 +132,7 @@
                         :color="showFilters ? 'primary' : 'grey-6'"
                     >
                         <q-tooltip>{{ showFilters ? 'Hide' : 'Show' }} Filters</q-tooltip>
+                        <q-badge v-if="activeFilterCount" color="primary" floating :label="activeFilterCount" />
                     </q-btn>
                 </div>
             </div>
@@ -131,7 +140,15 @@
             <!-- Collapsible Filters Section -->
             <q-slide-transition>
                 <div v-show="showFilters" class="filters-section">
+                    <div class="starter-presets" aria-label="Starter presets">
+                        <span class="starter-presets__label">Start with:</span>
+                        <q-btn flat dense color="primary" label="First-team ready" @click="applyStarterPreset('first-team-ready')" />
+                        <q-btn flat dense color="primary" label="High-potential wonderkid" @click="applyStarterPreset('high-potential-wonderkid')" />
+                        <q-btn flat dense color="primary" label="Affordable target" @click="applyStarterPreset('affordable-target')" />
+                        <q-btn flat dense color="primary" label="Free-agent depth" @click="applyStarterPreset('free-agent-depth')" />
+                    </div>
                     <PlayerFilters
+                        ref="playerFilters"
                         @filter-changed="handleFiltersChanged"
                         :all-available-roles="allAvailableRoles"
                         :unique-clubs="uniqueClubs"
@@ -149,7 +166,26 @@
                     />
                 </div>
             </q-slide-transition>
+            <div v-if="showFilters && activeFilterCount" class="filter-summary row items-center q-px-md q-pb-sm">
+                <span class="text-caption">{{ activeFilterCount }} active filters</span>
+                <q-btn flat dense size="sm" color="negative" label="Reset filters" class="q-ml-sm" @click="resetFilters" />
+            </div>
         </div>
+
+        <q-banner
+            v-if="!managedTeam && (!managedTeamDismissed || managedTeamStale)"
+            class="managed-team-banner"
+            rounded
+            inline-actions
+        >
+            <template #avatar><q-icon :name="managedTeamStale ? 'warning_amber' : 'shield'" color="secondary" /></template>
+            <div class="text-subtitle2">{{ managedTeamStale ? 'Managed club needs updating' : 'Unlock squad-aware tools' }}</div>
+            <div class="text-caption">Set your club to compare the squad, improve recruitment, and use Scout Assistant. Player discovery remains available without it.</div>
+            <template #action>
+                <q-btn flat color="secondary" label="Set managed club" @click="openManagedTeamDialog" />
+                <q-btn v-if="!managedTeamStale" flat label="Dismiss" @click="skipManagedTeamDialog" />
+            </template>
+        </q-banner>
 
         <!-- Loading State -->
         <div v-if="pageLoading" class="loading-container">
@@ -196,6 +232,7 @@
                     :is-goalkeeper-view="isGoalkeeperView"
                     :currency-symbol="detectedCurrencySymbol"
                     :dataset-id="currentDatasetId"
+                    :match-filters="currentFilters"
                     class="full-screen-table"
                 />
             </div>
@@ -268,6 +305,19 @@
             @close="showComparisonDialog = false"
             @remove-player="(p) => comparisonStore.removeFromComparison(currentDatasetId, p)"
         />
+
+        <q-dialog v-model="showSaveSearchDialog">
+            <q-card style="min-width: 340px">
+                <q-card-section><div class="text-h6">Save this search</div></q-card-section>
+                <q-card-section class="q-pt-none">
+                    <q-input v-model="saveSearchName" outlined autofocus label="Search name" @keyup.enter="saveCurrentSearch" />
+                </q-card-section>
+                <q-card-actions align="right">
+                    <q-btn flat label="Cancel" v-close-popup />
+                    <q-btn unelevated color="primary" label="Save" :disable="!saveSearchName.trim()" @click="saveCurrentSearch" />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
         <PlayerComparisonTray
             v-if="currentDatasetId"
             :players="comparisonStore.getPlayersForDataset(currentDatasetId)"
@@ -280,7 +330,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
@@ -298,6 +348,7 @@ import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
+import { useSavedSearchStore } from '../stores/savedSearchStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
@@ -305,6 +356,7 @@ import {
   deriveShortPositionsFromPositionString,
   getFifaWeightedOverallByPosition,
 } from '../utils/playerUtils'
+import { decodeSearchRecipe, encodeSearchRecipe } from '../utils/savedSearch'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -387,6 +439,7 @@ export default {
     const route = useRoute()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const savedSearchStore = useSavedSearchStore()
     const comparisonStore = useComparisonStore()
     const uiStore = useUiStore()
     const analytics = useAnalytics()
@@ -401,6 +454,10 @@ export default {
     const showWhoToSign = ref(false)
     const showManagedTeamDialog = ref(false)
     const managedTeam = ref(null) // { club, division } | null
+    const managedTeamDismissed = ref(false)
+    const managedTeamStale = ref(false)
+    const showSaveSearchDialog = ref(false)
+    const saveSearchName = ref('')
 
     function managedTeamSkipKey(datasetId) {
       return `scoutReport:managedTeamSkipped:${datasetId}`
@@ -411,16 +468,25 @@ export default {
       try {
         const res = await fetch(`/api/managed-team/${datasetId}`)
         if (res.ok) {
-          managedTeam.value = await res.json()
+          const savedTeam = await res.json()
+          if (uniqueClubs.value.includes(savedTeam?.club)) {
+            managedTeam.value = savedTeam
+            managedTeamStale.value = false
+          } else {
+            managedTeam.value = null
+            managedTeamStale.value = true
+          }
           showManagedTeamDialog.value = false
-          localStorage.removeItem(managedTeamSkipKey(datasetId))
+          managedTeamDismissed.value = false
           return
         }
       } catch (e) {
         console.error('[DatasetPage] failed to check managed team', e)
       }
       managedTeam.value = null
-      showManagedTeamDialog.value = localStorage.getItem(managedTeamSkipKey(datasetId)) !== '1'
+      managedTeamStale.value = false
+      managedTeamDismissed.value = localStorage.getItem(managedTeamSkipKey(datasetId)) === '1'
+      showManagedTeamDialog.value = false
     }
 
     function openManagedTeamDialog() {
@@ -429,6 +495,7 @@ export default {
 
     function skipManagedTeamDialog() {
       showManagedTeamDialog.value = false
+      managedTeamDismissed.value = true
       if (currentDatasetId.value) {
         localStorage.setItem(managedTeamSkipKey(currentDatasetId.value), '1')
       }
@@ -436,6 +503,8 @@ export default {
 
     function onManagedTeamSaved(team) {
       managedTeam.value = team
+      managedTeamStale.value = false
+      managedTeamDismissed.value = false
       showManagedTeamDialog.value = false
       if (currentDatasetId.value) {
         localStorage.removeItem(managedTeamSkipKey(currentDatasetId.value))
@@ -445,6 +514,7 @@ export default {
     const showFreeAgents = ref(false)
     const showExportOptions = ref(false)
     const showComparisonDialog = ref(false)
+    const playerFilters = ref(null)
 
     const currentFilters = ref({
       name: '',
@@ -791,7 +861,7 @@ export default {
           // Only apply transfer value filtering if user has explicitly set a filter
           // and the maximum value is less than the default maximum (indicating user intent)
           const defaultMax = 100000000 // 100M default
-          const hasUserSetMaxFilter = isUserSet && filterMax > 0 && filterMax < defaultMax
+          const hasUserSetMaxFilter = isUserSet && filterMax < defaultMax
 
           if (hasUserSetMaxFilter) {
             // If player has no transfer value data or is "Not for Sale", filter them out
@@ -1055,6 +1125,7 @@ export default {
     }
 
     onMounted(async () => {
+      await savedSearchStore.load()
       const datasetIdFromRoute = route.params.datasetId
       if (datasetIdFromRoute) {
         // Check if we have cached data for this dataset
@@ -1101,6 +1172,14 @@ export default {
 
         await fetchDataset(datasetIdFromRoute)
         await checkManagedTeam(datasetIdFromRoute)
+        await nextTick()
+        const savedSearchId = route.query.savedSearchId
+        const savedSearch =
+          typeof savedSearchId === 'string' ? savedSearchStore.getById(savedSearchId) : null
+        if (savedSearch) playerFilters.value?.setFilters(savedSearch.filters)
+        const recipe =
+          typeof route.query.recipe === 'string' ? decodeSearchRecipe(route.query.recipe) : null
+        if (recipe) playerFilters.value?.setFilters(recipe)
       } else {
         pageLoadingError.value = 'No dataset ID provided in URL.'
         pageLoading.value = false
@@ -1137,6 +1216,24 @@ export default {
 
       // Track the share event using our analytics service
       analytics.shareDataset(currentDatasetId.value)
+    }
+
+    const openSaveSearch = () => {
+      saveSearchName.value = ''
+      showSaveSearchDialog.value = true
+    }
+
+    const saveCurrentSearch = async () => {
+      if (!saveSearchName.value.trim()) return
+      await savedSearchStore.create(saveSearchName.value, currentFilters.value)
+      showSaveSearchDialog.value = false
+      quasarInstance.notify({ type: 'positive', message: 'Search saved', position: 'top' })
+    }
+
+    const shareCurrentSearch = async () => {
+      const url = `${window.location.origin}/saved-searches?recipe=${encodeSearchRecipe(currentFilters.value)}`
+      await navigator.clipboard.writeText(url)
+      quasarInstance.notify({ type: 'positive', message: 'Search recipe copied', position: 'top' })
     }
 
     const handlePlayerSelected = (player) => {
@@ -1204,6 +1301,10 @@ export default {
     }
 
     const openUpgradeFinder = () => {
+      if (!managedTeam.value) {
+        openManagedTeamDialog()
+        return
+      }
       showUpgradeFinder.value = true
       analytics.trackButtonClick('Upgrade Finder', { feature_type: 'quick_action' })
     }
@@ -1226,6 +1327,20 @@ export default {
     const openExportOptions = () => {
       showExportOptions.value = true
       analytics.trackButtonClick('Export Options', { feature_type: 'export' })
+    }
+
+    const explorePlayers = async () => {
+      showFilters.value = true
+      await nextTick()
+      playerFilters.value?.clearAllFilters()
+      analytics.trackButtonClick('Explore Players', { feature_type: 'primary_action' })
+    }
+
+    const applyStarterPreset = async (presetKey) => {
+      showFilters.value = true
+      await nextTick()
+      playerFilters.value?.applyStarterPreset(presetKey)
+      analytics.trackButtonClick(`Starter preset: ${presetKey}`, { feature_type: 'starter_preset' })
     }
 
     const handleExportWithOptions = async (exportOptions) => {
@@ -1275,6 +1390,18 @@ export default {
     }
 
     const showFilters = ref(false)
+    const activeFilterCount = computed(
+      () =>
+        Object.entries(currentFilters.value || {}).filter(([key, value]) => {
+          if (key === 'ageRange' || key === 'transferValueRangeLocal')
+            return value?.min > 0 || value?.max > 0
+          if (Array.isArray(value)) return value.length > 0
+          return (
+            value !== null && value !== undefined && value !== '' && value !== 0 && value !== 'all'
+          )
+        }).length
+    )
+    const resetFilters = () => playerFilters.value?.clearAllFilters()
 
     let datasetFetchController = null
     onUnmounted(() => datasetFetchController?.abort())
@@ -1367,14 +1494,21 @@ export default {
       showWhoToSign,
       showManagedTeamDialog,
       managedTeam,
+      managedTeamDismissed,
+      managedTeamStale,
       openManagedTeamDialog,
       skipManagedTeamDialog,
       onManagedTeamSaved,
       showFreeAgents,
       showExportOptions,
       showComparisonDialog,
+      showSaveSearchDialog,
+      saveSearchName,
       comparisonStore,
       shareDataset,
+      openSaveSearch,
+      saveCurrentSearch,
+      shareCurrentSearch,
       handlePlayerSelected,
       handleTeamSelected,
       handleFiltersChanged,
@@ -1387,6 +1521,10 @@ export default {
       openBargainHunter,
       openFreeAgents,
       openExportOptions,
+      explorePlayers,
+      applyStarterPreset,
+      activeFilterCount,
+      resetFilters,
       handleExportWithOptions,
       showFilters,
     }
@@ -1417,6 +1555,12 @@ export default {
     padding: 0.75rem 1.5rem;
     gap: 1rem;
     min-height: 60px;
+}
+
+.managed-team-banner {
+    margin: 0.75rem 1.5rem;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-strong);
 }
 
 .dataset-info {
@@ -1497,6 +1641,10 @@ export default {
     }
 }
 
+.assistant-locked-btn {
+    opacity: 0.86;
+}
+
 .top-bar-controls {
     display: flex;
     align-items: center;
@@ -1514,6 +1662,20 @@ export default {
     border-top: 1px solid var(--surface-border);
     padding: var(--density-card-padding) 1.5rem;
     background: var(--surface-raised);
+}
+
+.starter-presets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.starter-presets__label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
 // Loading, Error, and No Data States

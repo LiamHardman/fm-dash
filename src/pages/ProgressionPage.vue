@@ -7,6 +7,21 @@
         icon="trending_up"
       />
 
+      <SectionCard title="Progression project" icon="folder_open" class="q-mb-md">
+        <div class="row items-center q-gutter-sm">
+          <q-select dense outlined emit-value map-options style="min-width: 240px" label="Project"
+            :options="projectOptions" :model-value="projectStore.activeId" @update:model-value="openProject" />
+          <q-btn flat color="primary" icon="add" label="New project" @click="newProject" />
+          <q-btn v-if="projectStore.activeProject" flat icon="edit" label="Rename" @click="renameProject" />
+          <q-chip v-if="projectStore.activeProject" dense :color="projectStore.activeProject.orderMode === 'manual' ? 'primary' : 'grey-7'" text-color="white">
+            {{ projectStore.activeProject.orderMode === 'manual' ? 'Manually confirmed order' : 'Inferred order' }}
+          </q-chip>
+        </div>
+        <div v-if="projectStore.activeProject" class="text-caption text-grey-6 q-mt-sm">
+          {{ projectStore.activeProject.snapshots.length }} saved snapshot references. Expired exports remain listed and cannot be substituted.
+        </div>
+      </SectionCard>
+
       <div v-if="progressionStore.status === 'analyzed'" class="progression-stats">
         <StatTile icon="groups" label="Shared players" :value="progressionStore.players.length" />
         <StatTile icon="layers" label="Snapshots" :value="progressionStore.order.length" />
@@ -129,6 +144,15 @@
 
       <!-- Results -->
       <div v-if="progressionStore.status === 'analyzed' && !progressionStore.emptyIntersection">
+        <div class="progression-insights row q-col-gutter-md q-mb-md">
+          <div v-for="insight in insights" :key="insight.title" class="col-12 col-sm-6 col-lg-3">
+            <q-card flat bordered class="insight-card"><q-card-section>
+              <div class="text-caption text-grey-6">{{ insight.title }}</div>
+              <div class="text-subtitle1 text-weight-medium">{{ insight.value }}</div>
+              <div class="text-caption">{{ insight.detail }}</div>
+            </q-card-section></q-card>
+          </div>
+        </div>
         <div class="row items-center q-gutter-md q-mb-sm results-toolbar">
           <q-select
             dense
@@ -340,11 +364,13 @@ import StatGauge from '../components/player-table/StatGauge.vue'
 import TeamLogo from '../components/TeamLogo.vue'
 import { filterLatestSnapshotPlayers, uniqueValues } from '../composables/useLatestSnapshotFilters'
 import playerService from '../services/playerService'
+import { useProgressionProjectStore } from '../stores/progressionProjectStore'
 import { useProgressionStore } from '../stores/progressionStore'
 import { formatCurrency } from '../utils/currencyUtils'
 
 const $q = useQuasar()
 const progressionStore = useProgressionStore()
+const projectStore = useProgressionProjectStore()
 const fileInput = ref(null)
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const showFilters = ref(false)
@@ -359,6 +385,39 @@ const slots = computed(() => progressionStore.slots)
 const parsedCount = computed(() => slots.value.filter((s) => s.status === 'parsed').length)
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const anyUploading = computed(() => slots.value.some((s) => s.status === 'uploading'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const projectOptions = computed(() =>
+  projectStore.projects.map((p) => ({ label: p.name, value: p.id }))
+)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const insights = computed(() => {
+  const players = progressionStore.players
+  if (!players.length) return []
+  const top = (field, positive = true) =>
+    [...players].sort(
+      (a, b) => (positive ? 1 : -1) * (fieldDelta(b, field) - fieldDelta(a, field))
+    )[0]
+  const breakout = top(ALL_FIELDS[0], true)
+  const regression = top(ALL_FIELDS[0], false)
+  const value = top(ALL_FIELDS[1], true)
+  return [
+    breakout && {
+      title: 'Biggest breakout',
+      value: latestOf(breakout).name,
+      detail: deltaLabel(breakout, overallField),
+    },
+    regression && {
+      title: 'Biggest regression',
+      value: latestOf(regression).name,
+      detail: deltaLabel(regression, overallField),
+    },
+    value && {
+      title: 'Value opportunity',
+      value: latestOf(value).name,
+      detail: deltaLabel(value, valueField),
+    },
+  ].filter(Boolean)
+})
 
 const ALL_FIELDS = [
   { key: 'Overall', label: 'Overall', accessor: (p) => p.overall, format: (v) => `${v}` },
@@ -522,6 +581,8 @@ async function onFileSelected(event) {
   event.target.value = ''
   if (!file) return
 
+  if (!projectStore.activeProject) await projectStore.create()
+
   const slotId = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   progressionStore.addSlot({
     id: slotId,
@@ -535,6 +596,9 @@ async function onFileSelected(event) {
     formData.append('playerFile', file)
     const response = await playerService.uploadPlayerFile(formData)
     progressionStore.updateSlot(slotId, { status: 'parsed', datasetId: response.datasetId })
+    const project = projectStore.activeProject
+    project.snapshots.push({ datasetId: response.datasetId, label: file.name })
+    await projectStore.update(project)
   } catch (error) {
     progressionStore.updateSlot(slotId, {
       status: 'error',
@@ -547,6 +611,40 @@ async function onFileSelected(event) {
 function startOver() {
   progressionStore.reset()
   expandedUid.value = null
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+async function newProject() {
+  await projectStore.create()
+  progressionStore.reset()
+}
+async function openProject(id) {
+  projectStore.activeId = id
+  progressionStore.reset()
+  const project = projectStore.activeProject
+  for (const snapshot of project?.snapshots || [])
+    progressionStore.addSlot({
+      id: `saved-${snapshot.datasetId}`,
+      filename: snapshot.label,
+      datasetId: snapshot.datasetId,
+      status: 'parsed',
+    })
+}
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+async function renameProject() {
+  const project = projectStore.activeProject
+  if (!project) return
+  $q.dialog({
+    title: 'Rename progression project',
+    prompt: { model: project.name, type: 'text' },
+    cancel: true,
+    persistent: true,
+  }).onOk(async (name) => {
+    if (name?.trim()) {
+      project.name = name.trim()
+      await projectStore.update(project)
+    }
+  })
 }
 
 function filenameFor(datasetId) {
@@ -562,6 +660,14 @@ function moveReorder(i, dir) {
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 async function confirmReorder() {
   await progressionStore.confirmOrder(reorderList.value)
+  const project = projectStore.activeProject
+  if (project) {
+    project.orderMode = 'manual'
+    project.snapshots = reorderList.value
+      .map((id) => project.snapshots.find((s) => s.datasetId === id))
+      .filter(Boolean)
+    await projectStore.update(project)
+  }
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
@@ -572,8 +678,9 @@ function toggleSortDir() {
   )
 }
 
-onMounted(() => {
-  progressionStore.reset()
+onMounted(async () => {
+  await projectStore.load()
+  if (projectStore.activeId) await openProject(projectStore.activeId)
 })
 
 // Keep the reorder list in sync whenever we enter the ambiguous-order state
@@ -600,6 +707,8 @@ watch(
   gap: var(--section-gap);
   margin-bottom: var(--section-gap);
 }
+
+.insight-card { height: 100%; border-color: var(--surface-border); }
 
 .surface-card {
   background: var(--surface-card);

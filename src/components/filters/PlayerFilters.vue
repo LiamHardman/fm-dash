@@ -8,6 +8,17 @@
                 </h3>
                 <p class="card-subtitle">Using {{ currencySymbol }} for values</p>
             </div>
+            <q-chip
+                v-if="activeStarterPreset"
+                removable
+                color="primary"
+                text-color="white"
+                icon="auto_awesome"
+                class="q-mb-md"
+                @remove="clearAllFilters"
+            >
+                {{ starterPresetLabels[activeStarterPreset] }}
+            </q-chip>
 
             <!-- First Row: Basic Filters -->
             <div class="row q-col-gutter-md q-mb-md">
@@ -22,7 +33,7 @@
                         :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-3">
+                <div v-show="showAdvancedFilters" class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.club"
                         :options="clubOptions"
@@ -48,7 +59,7 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-3">
+                <div v-show="showAdvancedFilters" class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.nationality"
                         :options="nationalityOptions"
@@ -76,7 +87,7 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-3">
+                <div v-show="showAdvancedFilters" class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.division"
                         :options="divisionOptions"
@@ -107,7 +118,7 @@
 
             </div>
 
-            <!-- Second Row: Advanced Filters -->
+            <!-- Second Row: Position and role are the rest of the basic search. -->
             <div class="row q-col-gutter-md q-mb-md">
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-select
@@ -161,7 +172,7 @@
                     </q-select>
                 </div>
 
-                <div class="col-12 col-sm-6 col-md-3">
+                <div v-show="showAdvancedFilters" class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.mediaHandling"
                         :options="mediaHandlingOptions"
@@ -178,7 +189,7 @@
                         :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-3">
+                <div v-show="showAdvancedFilters" class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.personality"
                         :options="personalityOptions"
@@ -196,6 +207,16 @@
                     />
                 </div>
             </div>
+
+            <q-btn
+                flat
+                dense
+                color="primary"
+                :icon="showAdvancedFilters ? 'expand_less' : 'tune'"
+                :label="showAdvancedFilters ? 'Hide advanced filters' : 'Advanced filters'"
+                class="q-mb-md"
+                @click="showAdvancedFilters = !showAdvancedFilters"
+            />
 
             <!-- Third Row: Range Sliders -->
             <div class="row q-col-gutter-md">
@@ -305,7 +326,7 @@
             </div>
 
             <!-- Fourth Row: Set Minimum Stats Button and Preset Filters -->
-            <div class="row q-col-gutter-md q-mt-sm">
+            <div v-show="showAdvancedFilters" class="row q-col-gutter-md q-mt-sm">
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-btn
                         color="primary"
@@ -1048,6 +1069,7 @@ export default defineComponent({
     })
 
     const showMinimumStatsModal = ref(false)
+    const showAdvancedFilters = ref(false)
 
     // State for inline editing
     const inlineEditingAttributeKey = ref(null) // e.g., "Cor", "Agg"
@@ -1171,6 +1193,62 @@ export default defineComponent({
           continentNationalities: getAllAfricanCountries(),
         },
       },
+    }
+
+    const activeStarterPreset = ref(null)
+    const starterPresetLabels = {
+      'first-team-ready': 'First-team ready',
+      'high-potential-wonderkid': 'High-potential wonderkid',
+      'affordable-target': 'Affordable target',
+      'free-agent-depth': 'Free-agent depth',
+    }
+
+    const applyStarterPreset = (presetKey) => {
+      clearAllFilters()
+      const datasetMaximum = props.initialDatasetRange?.max || 100000000
+      const affordableMaximum = Math.max(1000000, Math.round(datasetMaximum * 0.25))
+
+      switch (presetKey) {
+        case 'first-team-ready':
+          filters.value.ageRange = { min: 23, max: 30 }
+          filters.value.minOverall = 75
+          break
+        case 'high-potential-wonderkid':
+          filters.value.ageRange = { min: 15, max: 21 }
+          filters.value.minOverall = 75
+          break
+        case 'affordable-target':
+          filters.value.transferValueRangeLocal = {
+            min: 0,
+            max: affordableMaximum,
+            userSet: true,
+          }
+          break
+        case 'free-agent-depth':
+          filters.value.transferValueRangeLocal = { min: 0, max: 0, userSet: true }
+          break
+        default:
+          return
+      }
+
+      activeStarterPreset.value = presetKey
+      selectedPreset.value = null
+      showAdvancedFilters.value = false
+      applyFilters()
+    }
+
+    const setFilters = (savedFilters) => {
+      clearAllFilters()
+      if (!savedFilters || typeof savedFilters !== 'object') return
+      for (const [key, value] of Object.entries(savedFilters)) {
+        if (key in filters.value) {
+          filters.value[key] =
+            typeof value === 'object' && value !== null ? structuredClone(value) : value
+        }
+      }
+      activeStarterPreset.value = null
+      selectedPreset.value = null
+      applyFilters()
     }
 
     const presetOptions = computed(() => [
@@ -1588,6 +1666,7 @@ export default defineComponent({
         filters.value[`min${formatAttrKey(attr)}`] = 0
       }
       selectedPreset.value = null
+      activeStarterPreset.value = null
       applyFilters()
     }
 
@@ -1843,6 +1922,7 @@ export default defineComponent({
       hasActiveFilters,
       hasActiveStatFilters,
       showMinimumStatsModal,
+      showAdvancedFilters,
       inlineEditingAttributeKey,
       inlineEditingValue,
       attributeInputRefs, // For inline editing
@@ -1876,9 +1956,13 @@ export default defineComponent({
       ageSliderMax: AGE_SLIDER_MAX,
       formatCurrency,
       selectedPreset,
+      activeStarterPreset,
+      starterPresetLabels,
       presetFilters,
       presetOptions,
       applyPresetFilter,
+      applyStarterPreset,
+      setFilters,
       formatAgeLabel,
       formatTransferValueLabel,
       formatSalaryLabel,

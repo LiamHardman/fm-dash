@@ -20,6 +20,7 @@
                 <div v-if="currentDatasetId" class="search-container">
                     <UniversalSearch />
                 </div>
+                <DatasetSwitcher />
 
                 <q-space />
 
@@ -132,7 +133,7 @@
         </q-drawer>
 
         <q-page-container>
-            <router-view />
+            <ErrorBoundary><router-view /></ErrorBoundary>
         </q-page-container>
 
         <!-- Settings Modal -->
@@ -163,14 +164,17 @@
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref } from 'vue'
 import ChatWidget from './components/ChatWidget.vue'
+import DatasetSwitcher from './components/DatasetSwitcher.vue'
+import ErrorBoundary from './components/ErrorBoundary.vue'
 import FirstTimeTutorialModal from './components/FirstTimeTutorialModal.vue'
 import CustomizeListDialog from './components/layout/CustomizeListDialog.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
 import { useAnalytics } from './composables/useAnalytics'
 import { usePlayerStore } from './stores/playerStore'
+import { useSavedSearchStore } from './stores/savedSearchStore'
+import { useShortlistStore } from './stores/shortlistStore'
 import { useUiStore } from './stores/uiStore'
-import { useWishlistStore } from './stores/wishlistStore'
 
 export default defineComponent({
   name: 'App',
@@ -179,13 +183,16 @@ export default defineComponent({
     SettingsModal,
     FirstTimeTutorialModal,
     CustomizeListDialog,
+    ErrorBoundary,
     ChatWidget,
+    DatasetSwitcher,
   },
   setup() {
     const $q = useQuasar()
     const uiStore = useUiStore()
     const playerStore = usePlayerStore()
-    const wishlistStore = useWishlistStore()
+    const shortlistStore = useShortlistStore()
+    const savedSearchStore = useSavedSearchStore()
 
     // Initialize analytics with automatic page view tracking
     const _analytics = useAnalytics()
@@ -233,10 +240,12 @@ export default defineComponent({
       window.$q = $q
 
       uiStore.initSettings() // Initialize all settings including the new rating calculation setting
+      shortlistStore.load()
+      savedSearchStore.load()
     })
 
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
-    const wishlistCount = computed(() => wishlistStore.getWishlistCount(currentDatasetId.value))
+    const shortlistCount = computed(() => shortlistStore.activeList?.items?.length || 0)
 
     // Full nav metadata. requiresDataset items only render once a dataset is
     // loaded; `to` is computed per-item since Players needs the current
@@ -245,6 +254,7 @@ export default defineComponent({
       { id: 'home', label: 'Home', icon: 'home', to: '/', exact: true },
       { id: 'upload', label: 'Upload', icon: 'upload', to: '/upload' },
       { id: 'progression', label: 'Progression', icon: 'trending_up', to: '/progression' },
+      { id: 'saved-searches', label: 'Saved searches', icon: 'bookmarks', to: '/saved-searches' },
       { id: 'save-import', label: 'Save Import', icon: 'science', to: '/save-import' },
       { id: 'docs', label: 'Docs', icon: 'menu_book', to: '/docs' },
       {
@@ -258,25 +268,36 @@ export default defineComponent({
         id: 'performance',
         label: 'Performance',
         icon: 'leaderboard',
-        to: '/performance',
+        to: currentDatasetId.value ? `/performance/${currentDatasetId.value}` : '/upload',
         requiresDataset: true,
       },
-      { id: 'nations', label: 'Nations', icon: 'flag', to: '/nations', requiresDataset: true },
-      { id: 'teams', label: 'Teams', icon: 'shield', to: '/teams', requiresDataset: true },
+      {
+        id: 'nations',
+        label: 'Nations',
+        icon: 'flag',
+        to: `/nations/${currentDatasetId.value}`,
+        requiresDataset: true,
+      },
+      {
+        id: 'teams',
+        label: 'Teams',
+        icon: 'shield',
+        to: `/teams/${currentDatasetId.value}`,
+        requiresDataset: true,
+      },
       {
         id: 'leagues',
         label: 'Leagues',
         icon: 'emoji_events',
-        to: '/leagues',
+        to: `/leagues/${currentDatasetId.value}`,
         requiresDataset: true,
       },
       {
-        id: 'wishlist',
-        label: 'Wishlist',
+        id: 'shortlists',
+        label: 'Shortlists',
         icon: 'favorite',
-        to: '/wishlist',
-        requiresDataset: true,
-        badge: wishlistCount.value > 0 ? wishlistCount.value : null,
+        to: '/shortlists',
+        badge: shortlistCount.value > 0 ? shortlistCount.value : null,
       },
       {
         id: 'scouting-book',
@@ -308,7 +329,7 @@ export default defineComponent({
       isDarkModeActive: uiStore.isDarkModeActive,
       toggleDarkMode: uiStore.toggleDarkMode,
       currentDatasetId,
-      wishlistCount,
+      shortlistCount,
       showSettingsModal,
       showTutorialModal,
       showCustomizeDialog,

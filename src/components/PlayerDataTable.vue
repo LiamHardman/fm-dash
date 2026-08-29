@@ -129,13 +129,15 @@
         <PlayerTableContextMenu
             ref="contextMenu"
             :context-menu-player="contextMenuPlayer"
-            :is-player-in-wishlist="contextMenuPlayer ? isPlayerInWishlist(contextMenuPlayer) : false"
+            :is-player-in-shortlist="contextMenuPlayer ? isPlayerInShortlist(contextMenuPlayer) : false"
             :is-player-in-comparison="contextMenuPlayer ? comparisonStore.isInComparison(currentDatasetId, contextMenuPlayer) : false"
-            @add-to-wishlist="handleAddToWishlist"
-            @remove-from-wishlist="handleRemoveFromWishlist"
+            :has-match-filters="Object.keys(matchFilters || {}).length > 0"
+            @add-to-shortlist="handleAddToShortlist"
+            @remove-from-shortlist="handleRemoveFromShortlist"
             @player-details="handlePlayerDetails"
             @add-to-comparison="handleAddToComparison"
             @remove-from-comparison="handleRemoveFromComparison"
+            @why-this-player="handleWhyThisPlayer"
         />
 
         <CustomizeListDialog
@@ -164,8 +166,9 @@ import { useOptimizedSorting } from '../composables/useVirtualScrolling'
 import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
 import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
+import { useShortlistStore } from '../stores/shortlistStore'
 import { useUiStore } from '../stores/uiStore'
-import { useWishlistStore } from '../stores/wishlistStore'
+import { explainPlayerMatch } from '../utils/savedSearch'
 import CustomizeListDialog from './layout/CustomizeListDialog.vue'
 import PlayerTableContextMenu from './player-table/PlayerTableContextMenu.vue'
 import PlayerTableHeader from './player-table/PlayerTableHeader.vue'
@@ -191,6 +194,7 @@ export default {
     filteredPlayerCount: { type: Number, default: 0 },
     showWishlistActions: { type: Boolean, default: false },
     datasetId: { type: String, default: null },
+    matchFilters: { type: Object, default: () => ({}) },
     showValueScore: { type: Boolean, default: false },
     defaultSortField: { type: String, default: 'Overall' },
     defaultSortDirection: { type: String, default: 'desc' },
@@ -206,7 +210,7 @@ export default {
   setup(props, { emit }) {
     const $q = useQuasar()
     const playerStore = usePlayerStore()
-    const wishlistStore = useWishlistStore()
+    const shortlistStore = useShortlistStore()
     const comparisonStore = useComparisonStore()
     const router = useRouter()
     const uiStore = useUiStore()
@@ -804,28 +808,32 @@ export default {
 
     const contextMenuPlayer = ref(null)
 
-    const isPlayerInWishlist = (player) => {
+    const isPlayerInShortlist = (player) => {
       if (!player || !currentDatasetId.value) return false
-      return wishlistStore.isInWishlist(currentDatasetId.value, player)
+      return shortlistStore.activeList?.items?.some(
+        (item) =>
+          item.playerRef.datasetId === currentDatasetId.value &&
+          Number(item.playerRef.playerUid) === Number(player.uid ?? player.UID)
+      )
     }
 
-    const handleAddToWishlist = async () => {
+    const handleAddToShortlist = async () => {
       if (contextMenuPlayer.value && currentDatasetId.value) {
-        const success = await wishlistStore.addToWishlist(
+        const success = await shortlistStore.addPlayer(
           currentDatasetId.value,
           contextMenuPlayer.value
         )
         if (success) {
           $q.notify({
             type: 'positive',
-            message: `${contextMenuPlayer.value.name} added to wishlist`,
+            message: `${contextMenuPlayer.value.name} added to Shortlist`,
             position: 'top',
             timeout: 2000,
           })
         } else {
           $q.notify({
             type: 'warning',
-            message: `${contextMenuPlayer.value.name} is already in wishlist`,
+            message: `${contextMenuPlayer.value.name} is already in this Shortlist`,
             position: 'top',
             timeout: 2000,
           })
@@ -833,16 +841,19 @@ export default {
       }
     }
 
-    const handleRemoveFromWishlist = async () => {
-      if (contextMenuPlayer.value && currentDatasetId.value) {
-        const success = await wishlistStore.removeFromWishlist(
-          currentDatasetId.value,
-          contextMenuPlayer.value
+    const handleRemoveFromShortlist = async () => {
+      if (contextMenuPlayer.value && currentDatasetId.value && shortlistStore.activeList) {
+        const item = shortlistStore.activeList.items.find(
+          (candidate) =>
+            candidate.playerRef.datasetId === currentDatasetId.value &&
+            Number(candidate.playerRef.playerUid) ===
+              Number(contextMenuPlayer.value.uid ?? contextMenuPlayer.value.UID)
         )
-        if (success) {
+        if (item) {
+          await shortlistStore.removeItem(item)
           $q.notify({
             type: 'positive',
-            message: `${contextMenuPlayer.value.name} removed from wishlist`,
+            message: `${contextMenuPlayer.value.name} removed from Shortlist`,
             position: 'top',
             timeout: 2000,
           })
@@ -857,6 +868,17 @@ export default {
       if (contextMenuPlayer.value) {
         emit('player-selected', contextMenuPlayer.value)
       }
+    }
+
+    const handleWhyThisPlayer = () => {
+      if (!contextMenuPlayer.value) return
+      $q.notify({
+        type: 'info',
+        icon: 'help_outline',
+        message: `${contextMenuPlayer.value.name}: ${explainPlayerMatch(props.matchFilters, contextMenuPlayer.value).join(' · ')}`,
+        timeout: 7000,
+        multiLine: true,
+      })
     }
 
     const handleAddToComparison = () => {
@@ -989,10 +1011,11 @@ export default {
       contextMenu,
       contextMenuPlayer,
       comparisonStore,
-      isPlayerInWishlist,
-      handleAddToWishlist,
-      handleRemoveFromWishlist,
+      isPlayerInShortlist,
+      handleAddToShortlist,
+      handleRemoveFromShortlist,
       handlePlayerDetails,
+      handleWhyThisPlayer,
       handleAddToComparison,
       handleRemoveFromComparison,
       onRightClick,
