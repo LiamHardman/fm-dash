@@ -171,10 +171,12 @@ import CustomizeListDialog from './components/layout/CustomizeListDialog.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
 import { useAnalytics } from './composables/useAnalytics'
+import playerService from './services/playerService'
 import { usePlayerStore } from './stores/playerStore'
 import { useSavedSearchStore } from './stores/savedSearchStore'
 import { useShortlistStore } from './stores/shortlistStore'
 import { useUiStore } from './stores/uiStore'
+import { useWeightsStore } from './stores/weightsStore'
 
 export default defineComponent({
   name: 'App',
@@ -193,6 +195,7 @@ export default defineComponent({
     const playerStore = usePlayerStore()
     const shortlistStore = useShortlistStore()
     const savedSearchStore = useSavedSearchStore()
+    const weightsStore = useWeightsStore()
 
     // Initialize analytics with automatic page view tracking
     const _analytics = useAnalytics()
@@ -242,6 +245,16 @@ export default defineComponent({
       uiStore.initSettings() // Initialize all settings including the new rating calculation setting
       shortlistStore.load()
       savedSearchStore.load()
+
+      weightsStore.load()
+      // Re-apply the saved active weight profile to the backend -- the API's
+      // in-memory weights reset to defaults on restart, but the browser's
+      // choice of active profile should survive that.
+      if (weightsStore.activeProfile) {
+        playerService
+          .updateConfig({ attributeWeights: weightsStore.activeProfile.weights })
+          .catch(() => {})
+      }
     })
 
     const currentDatasetId = computed(() => playerStore.currentDatasetId)

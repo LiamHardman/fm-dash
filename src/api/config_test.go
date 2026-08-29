@@ -272,3 +272,61 @@ func TestValidateEnvironmentVariables(t *testing.T) {
 		})
 	}
 }
+
+// restoreAttributeWeights snapshots the current global attribute weights and returns a func
+// that restores them, so tests mutating global state via SetAttributeWeights don't leak into
+// other tests.
+func restoreAttributeWeights(t *testing.T) func() {
+	t.Helper()
+	muAttributeWeights.Lock()
+	original := attributeWeights
+	muAttributeWeights.Unlock()
+	return func() {
+		muAttributeWeights.Lock()
+		attributeWeights = original
+		muAttributeWeights.Unlock()
+	}
+}
+
+func TestSetAttributeWeights(t *testing.T) {
+	defer restoreAttributeWeights(t)()
+
+	t.Run("rejects empty update", func(t *testing.T) {
+		if err := SetAttributeWeights(map[string]map[string]int{}); err == nil {
+			t.Error("expected error for empty update, got nil")
+		}
+	})
+
+	t.Run("rejects category with no weights", func(t *testing.T) {
+		if err := SetAttributeWeights(map[string]map[string]int{"PAC": {}}); err == nil {
+			t.Error("expected error for category with no weights, got nil")
+		}
+	})
+
+	t.Run("rejects out-of-range weight", func(t *testing.T) {
+		if err := SetAttributeWeights(map[string]map[string]int{"PAC": {"Acc": -1}}); err == nil {
+			t.Error("expected error for negative weight, got nil")
+		}
+		if err := SetAttributeWeights(map[string]map[string]int{"PAC": {"Acc": maxAttributeWeightValue + 1}}); err == nil {
+			t.Error("expected error for weight above max, got nil")
+		}
+	})
+
+	t.Run("merges category weights without disturbing others", func(t *testing.T) {
+		muAttributeWeights.Lock()
+		attributeWeights = deepCopyWeights(defaultAttributeWeightsGo)
+		muAttributeWeights.Unlock()
+
+		if err := SetAttributeWeights(map[string]map[string]int{"PAC": {"Acc": 20, "Pac": 20}}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		snapshot := GetAttributeWeightsSnapshot()
+		if snapshot["PAC"]["Acc"] != 20 || snapshot["PAC"]["Pac"] != 20 {
+			t.Errorf("PAC weights not updated as expected: %v", snapshot["PAC"])
+		}
+		if snapshot["SHO"]["Fin"] != defaultAttributeWeightsGo["SHO"]["Fin"] {
+			t.Errorf("SHO weights should be untouched, got %v", snapshot["SHO"])
+		}
+	})
+}

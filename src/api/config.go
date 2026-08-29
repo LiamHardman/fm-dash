@@ -429,6 +429,63 @@ func SetUseScaledRatings(useScaled bool) {
 	LogInfo("Rating calculation method changed to: %s", map[bool]string{true: "scaled", false: "linear"}[useScaled])
 }
 
+// GetAttributeWeightsSnapshot returns a deep copy of the currently active attribute weights
+// (falling back to the compiled-in defaults if nothing has loaded yet), for exposing to clients.
+func GetAttributeWeightsSnapshot() map[string]map[string]int {
+	muAttributeWeights.RLock()
+	defer muAttributeWeights.RUnlock()
+	if attributeWeights == nil {
+		return deepCopyWeights(defaultAttributeWeightsGo)
+	}
+	return deepCopyWeights(attributeWeights)
+}
+
+// GetDefaultAttributeWeightsSnapshot returns a deep copy of the compiled-in default attribute
+// weights, regardless of what is currently active -- used by clients to offer a "reset to default".
+func GetDefaultAttributeWeightsSnapshot() map[string]map[string]int {
+	return deepCopyWeights(defaultAttributeWeightsGo)
+}
+
+// maxAttributeWeightValue bounds a single attribute's weight to keep player-supplied weight
+// profiles from overflowing the int64 accumulators in calculateWeightedAverage.
+const maxAttributeWeightValue = 1000
+
+// SetAttributeWeights merges the given category weights into the active attribute weights,
+// replacing each provided category wholesale (categories not present in the update are left
+// untouched) so a client can update just the outfield categories without disturbing goalkeeper
+// ones, or vice versa. Returns an error if the update is empty or contains an out-of-range weight.
+func SetAttributeWeights(update map[string]map[string]int) error {
+	if len(update) == 0 {
+		return apperrors.ErrEmptyWeightsFile
+	}
+
+	for categoryName, weights := range update {
+		if len(weights) == 0 {
+			return apperrors.WrapErrInvalidAttributeWeights(categoryName, "category has no attribute weights")
+		}
+		for attrName, weight := range weights {
+			if weight < 0 || weight > maxAttributeWeightValue {
+				return apperrors.WrapErrInvalidAttributeWeights(categoryName, fmt.Sprintf("weight for %q must be between 0 and %d", attrName, maxAttributeWeightValue))
+			}
+		}
+	}
+
+	muAttributeWeights.Lock()
+	defer muAttributeWeights.Unlock()
+	if attributeWeights == nil {
+		attributeWeights = deepCopyWeights(defaultAttributeWeightsGo)
+	}
+	for categoryName, weights := range update {
+		innerCopy := make(map[string]int, len(weights))
+		for attrName, weight := range weights {
+			innerCopy[attrName] = weight
+		}
+		attributeWeights[categoryName] = innerCopy
+	}
+	LogInfo("Attribute weights updated via API for %d categories.", len(update))
+	return nil
+}
+
 // GetMinLogLevel returns the current minimum log level
 func GetMinLogLevel() int {
 	muLogLevel.RLock()

@@ -257,7 +257,8 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 		var updateRequest struct {
-			UseScaledRatings *bool `json:"useScaledRatings"`
+			UseScaledRatings *bool                     `json:"useScaledRatings"`
+			AttributeWeights map[string]map[string]int `json:"attributeWeights"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&updateRequest); err != nil {
@@ -273,6 +274,16 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 				logInfo(r.Context(), "Rating calculation method updated via API: disabled scaled ratings")
 			}
 			// Delete all format variants from cache
+			DeleteAllFormatVariants(baseCacheKey)
+		}
+
+		if updateRequest.AttributeWeights != nil {
+			if err := SetAttributeWeights(updateRequest.AttributeWeights); err != nil {
+				http.Error(w, "Error updating attribute weights: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+			logInfo(r.Context(), "Attribute weights updated via API")
+			// Delete all format variants from cache so downstream player responses use the new weights
 			DeleteAllFormatVariants(baseCacheKey)
 		}
 

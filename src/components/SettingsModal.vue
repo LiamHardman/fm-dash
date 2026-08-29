@@ -267,6 +267,35 @@
                         </q-card>
                     </q-expansion-item>
 
+                    <!-- Attribute Weights Section -->
+                    <q-expansion-item
+                        expand-separator
+                        icon="tune"
+                        label="Attribute Weights"
+                        caption="View and customize how FIFA-style category stats are calculated"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        :default-opened="false"
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="section-description">
+                                    PAC, SHO, PAS, DRI, DEF, PHY, and the goalkeeper stats are each
+                                    computed as a weighted average of specific FM attributes. Open
+                                    the weights editor to see exactly how each category is built,
+                                    create your own weighting, and switch between saved weight sets.
+                                </div>
+                                <q-btn
+                                    unelevated
+                                    color="primary"
+                                    icon="tune"
+                                    label="Open Attribute Weights"
+                                    @click="showWeightsDialog = true"
+                                />
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
                     <!-- Overall Calculation Source Section -->
                     <q-expansion-item
                         expand-separator
@@ -576,6 +605,8 @@
             </q-card-actions>
         </q-card>
     </q-dialog>
+
+    <AttributeWeightsDialog v-model="showWeightsDialog" />
 </template>
 
 <script>
@@ -584,10 +615,11 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useUiStore } from '@/stores/uiStore'
 import playerService from '../services/playerService'
+import AttributeWeightsDialog from './AttributeWeightsDialog.vue'
 
 export default defineComponent({
   name: 'SettingsModal',
-  components: {},
+  components: { AttributeWeightsDialog },
   props: {
     modelValue: {
       type: Boolean,
@@ -683,6 +715,7 @@ export default defineComponent({
 
     const isLoading = ref(false)
     const activeTab = ref('general')
+    const showWeightsDialog = ref(false)
 
     // Load backend configuration on component mount
     onMounted(async () => {
@@ -784,6 +817,7 @@ export default defineComponent({
       isLoading,
       activeTab,
       showTutorial,
+      showWeightsDialog,
     }
   },
 })

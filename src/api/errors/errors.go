@@ -64,16 +64,17 @@ var (
 	ErrSkippedRowNameMissing            = errors.New("skipped row: 'Name' field is missing or empty, but other data present")
 
 	// Configuration errors
-	ErrEmptyWeightsFile       = errors.New("loaded weights file is empty")
-	ErrConfigInitTimeout      = errors.New("configuration initialization timed out")
-	ErrInvalidOtelEndpoint    = errors.New("invalid OTEL_EXPORTER_OTLP_ENDPOINT")
-	ErrInvalidS3Endpoint      = errors.New("invalid S3_ENDPOINT format")
-	ErrInvalidServiceName     = errors.New("invalid SERVICE_NAME: contains unsafe characters")
-	ErrServiceNameEmpty       = errors.New("service name cannot be empty")
-	ErrCollectorURLEmpty      = errors.New("collector URL cannot be empty")
-	ErrInvalidTraceSampleRate = errors.New("invalid trace sample rate")
-	ErrInvalidBatchSize       = errors.New("invalid batch size")
-	ErrInvalidMaxQueueSize    = errors.New("invalid max queue size")
+	ErrEmptyWeightsFile        = errors.New("loaded weights file is empty")
+	ErrConfigInitTimeout       = errors.New("configuration initialization timed out")
+	ErrInvalidOtelEndpoint     = errors.New("invalid OTEL_EXPORTER_OTLP_ENDPOINT")
+	ErrInvalidS3Endpoint       = errors.New("invalid S3_ENDPOINT format")
+	ErrInvalidServiceName      = errors.New("invalid SERVICE_NAME: contains unsafe characters")
+	ErrServiceNameEmpty        = errors.New("service name cannot be empty")
+	ErrCollectorURLEmpty       = errors.New("collector URL cannot be empty")
+	ErrInvalidTraceSampleRate  = errors.New("invalid trace sample rate")
+	ErrInvalidBatchSize        = errors.New("invalid batch size")
+	ErrInvalidMaxQueueSize     = errors.New("invalid max queue size")
+	ErrInvalidAttributeWeights = errors.New("invalid attribute weights")
 
 	// Security errors
 	ErrFilenameEmpty               = errors.New("filename cannot be empty")
@@ -158,6 +159,12 @@ func WrapErrInvalidBatchSize(size int) error {
 // WrapErrInvalidMaxQueueSize wraps an invalid max queue size error with context
 func WrapErrInvalidMaxQueueSize(size int) error {
 	return fmt.Errorf("%w, got %d", ErrInvalidMaxQueueSize, size)
+}
+
+// WrapErrInvalidAttributeWeights wraps an invalid attribute weights error with context about
+// which category and what was wrong with it.
+func WrapErrInvalidAttributeWeights(category, reason string) error {
+	return fmt.Errorf("%w for category %q: %s", ErrInvalidAttributeWeights, category, reason)
 }
 
 // WrapErrInvalidUID wraps an invalid UID error with context
