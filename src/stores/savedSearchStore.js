@@ -47,16 +47,26 @@ export const useSavedSearchStore = defineStore('savedSearch', () => {
   }
   const create = async (name, filters) => {
     const search = { id: makeID(), name: name.trim(), filters: cloneFilters(filters) }
-    document.value.searches.push(search)
+    document.value = { ...document.value, searches: [...document.value.searches, search] }
     await saveDocument()
     return search
   }
   const update = async (search, filters) => {
-    search.filters = cloneFilters(filters)
+    document.value = {
+      ...document.value,
+      searches: document.value.searches.map((candidate) =>
+        candidate === search ? { ...candidate, filters: cloneFilters(filters) } : candidate
+      ),
+    }
     await saveDocument()
   }
   const rename = async (search, name) => {
-    search.name = name.trim()
+    document.value = {
+      ...document.value,
+      searches: document.value.searches.map((candidate) =>
+        candidate === search ? { ...candidate, name: name.trim() } : candidate
+      ),
+    }
     await saveDocument()
   }
   const remove = async (search) => {

@@ -525,8 +525,8 @@ export default {
       mediaHandling: [],
       personality: [],
       ageRange: {
-        min: computed(() => AGE_SLIDER_MIN_DEFAULT.value),
-        max: computed(() => AGE_SLIDER_MAX_DEFAULT.value),
+        min: playerStore.AGE_SLIDER_MIN_DEFAULT,
+        max: playerStore.AGE_SLIDER_MAX_DEFAULT,
       },
       transferValueRangeLocal: {
         min: 0,

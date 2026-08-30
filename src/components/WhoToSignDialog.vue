@@ -114,7 +114,14 @@
                         <q-stepper-navigation class="row justify-between">
                             <q-btn v-if="step > 1" flat label="Back" @click="step--" />
                             <div v-else />
-                            <q-btn v-if="step < 3" color="primary" unelevated label="Continue" @click="step++" />
+                            <q-btn
+                                v-if="step < 3"
+                                color="primary"
+                                unelevated
+                                label="Continue"
+                                :disable="step === 1 && !basicsValid"
+                                @click="goNext"
+                            />
                             <q-btn v-else color="primary" unelevated label="Find Signings" icon="search" @click="submit" />
                         </q-stepper-navigation>
                     </template>
@@ -421,6 +428,16 @@ export default {
     })
     const fullPlayer = (uid) => playersByUid.value.get(String(uid)) || null
 
+    // Backend requires team/squadStatus/budgets (400s otherwise); block advancing past
+    // Basics rather than letting the user finish the whole wizard and hit a dead end.
+    const basicsValid = computed(
+      () => !!form.team && !!form.squadStatus && form.maxTransferBudgetM > 0 && form.maxWageBudgetK > 0
+    )
+    const goNext = () => {
+      if (step.value === 1 && !basicsValid.value) return
+      step.value++
+    }
+
     const consideredFullPlayers = (rec) =>
       (rec.playersConsidered || []).map((p) => fullPlayer(p.uid)).filter((p) => p !== null)
 
@@ -547,6 +564,8 @@ export default {
       phase,
       step,
       form,
+      basicsValid,
+      goNext,
       response,
       errorStatus,
       errorMessage,

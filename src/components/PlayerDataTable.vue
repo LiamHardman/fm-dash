@@ -53,7 +53,7 @@
                 :rows="sortedPlayers"
                 :columns="displayedColumns"
                 :loading="loading"
-                row-key="name"
+                :row-key="(row) => row.uid ?? row.UID ?? row.name"
                 :pagination="pagination"
                 @update:pagination="onPaginationUpdate"
                 :rows-per-page-options="rowsPerPageOptions"

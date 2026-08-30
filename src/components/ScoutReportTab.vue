@@ -315,7 +315,7 @@ export default defineComponent({
         const res = await fetch(`/api/scout-report/${props.datasetId}`, {
           method: 'POST',
           headers: llmRequestHeaders(uiStore),
-          body: JSON.stringify({ playerUid: playerUid.value, position: position.value }),
+          body: JSON.stringify({ playerUid: String(playerUid.value), position: position.value }),
         })
         if (!res.ok || !res.body) {
           let message = `Unexpected error (${res.status}).`
