@@ -41,12 +41,13 @@
                                 need to add up to any particular total.
                             </p>
                             <p>
-                                Build your own weighting by editing the values below, then
+                                Pick a built-in preset for a different scouting philosophy, or
+                                build your own weighting by editing the values below, then
                                 <strong>Save As</strong> to name and keep it. Use the dropdown
-                                to switch between your saved weight sets — whichever one is
-                                selected is applied immediately across the whole app for the
-                                currently loaded dataset. Weight sets are saved in this
-                                browser only.
+                                to switch between presets and your saved weight sets —
+                                whichever one is selected is applied immediately across the
+                                whole app for the currently loaded dataset. Custom weight sets
+                                are saved in this browser only.
                             </p>
                         </div>
                     </q-card-section>
@@ -69,6 +70,10 @@
                             <q-icon name="balance" />
                         </template>
                     </q-select>
+
+                    <q-badge v-if="selectedPreset" color="primary" outline class="dirty-badge">
+                        Built-in preset — edit and "Save As" to customize
+                    </q-badge>
 
                     <q-badge v-if="isDirty" color="warning" outline class="dirty-badge">
                         Unsaved changes
@@ -109,6 +114,10 @@
                         :disable="applying"
                         @click="confirmDelete"
                     />
+                </div>
+
+                <div v-if="selectedPreset" class="preset-description">
+                    {{ selectedPreset.description }}
                 </div>
 
                 <q-tabs
@@ -186,7 +195,12 @@
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { usePlayerStore } from '@/stores/playerStore'
-import { ATTRIBUTE_LABELS, useWeightsStore, WEIGHT_CATEGORY_GROUPS } from '@/stores/weightsStore'
+import {
+  ATTRIBUTE_LABELS,
+  PRESET_WEIGHT_PROFILES,
+  useWeightsStore,
+  WEIGHT_CATEGORY_GROUPS,
+} from '@/stores/weightsStore'
 import playerService from '../services/playerService'
 
 const DEFAULT_OPTION_VALUE = 'default'
@@ -223,24 +237,36 @@ export default defineComponent({
 
     const profileOptions = computed(() => [
       { label: 'Default (App Defaults)', value: DEFAULT_OPTION_VALUE },
+      ...PRESET_WEIGHT_PROFILES.map((p) => ({ label: p.name, value: p.id })),
       ...weightsStore.profiles.map((p) => ({ label: p.name, value: p.id })),
     ])
 
-    const selectedProfile = computed(() =>
-      selectedOption.value === DEFAULT_OPTION_VALUE
-        ? null
-        : weightsStore.profiles.find((p) => p.id === selectedOption.value) || null
+    // Presets ship built-in (like Default) and can't be overwritten or deleted --
+    // editing one and hitting "Save As" spins off a new custom profile instead.
+    const selectedPreset = computed(
+      () => PRESET_WEIGHT_PROFILES.find((p) => p.id === selectedOption.value) || null
     )
 
-    const baselineWeights = computed(() =>
-      selectedProfile.value ? selectedProfile.value.weights : weightsStore.defaultWeights
+    const selectedCustomProfile = computed(
+      () => weightsStore.profiles.find((p) => p.id === selectedOption.value) || null
+    )
+
+    // Kept as an alias for template/legacy readability: "the saved profile behind
+    // the current selection, if any" -- used for the Delete button.
+    const selectedProfile = selectedCustomProfile
+
+    const baselineWeights = computed(
+      () =>
+        selectedCustomProfile.value?.weights ||
+        selectedPreset.value?.weights ||
+        weightsStore.defaultWeights
     )
 
     const isDirty = computed(
       () => JSON.stringify(editorWeights.value) !== JSON.stringify(baselineWeights.value)
     )
 
-    const canSave = computed(() => !!selectedProfile.value && isDirty.value)
+    const canSave = computed(() => !!selectedCustomProfile.value && isDirty.value)
 
     function categoryAttributeKeys(categoryId) {
       const fromEditor = Object.keys(editorWeights.value[categoryId] || {})
@@ -303,17 +329,18 @@ export default defineComponent({
     }
 
     function saveCurrentProfile() {
-      if (!selectedProfile.value) return
-      weightsStore.updateProfileWeights(selectedProfile.value.id, editorWeights.value)
+      if (!selectedCustomProfile.value) return
+      weightsStore.updateProfileWeights(selectedCustomProfile.value.id, editorWeights.value)
       activateWeights(editorWeights.value)
     }
 
     function promptSaveAs() {
+      const currentName = selectedCustomProfile.value?.name || selectedPreset.value?.name
       $q.dialog({
         title: 'Save Weight Set As',
         message: 'Give this weight set a name so you can pick it from the dropdown later.',
         prompt: {
-          model: selectedProfile.value?.name ? `${selectedProfile.value.name} copy` : '',
+          model: currentName ? `${currentName} copy` : '',
           type: 'text',
         },
         cancel: true,
@@ -384,6 +411,7 @@ export default defineComponent({
       profileOptions,
       selectedOption,
       selectedProfile,
+      selectedPreset,
       editorWeights,
       isDirty,
       canSave,
@@ -499,6 +527,13 @@ export default defineComponent({
 
 .dirty-badge {
     font-weight: 600;
+}
+
+.preset-description {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: -0.75rem 0 1rem 0;
 }
 
 .weights-tabs {
