@@ -31,7 +31,7 @@ func fmSaveImportHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	info, err := ParseFMSave(file)
 	if err != nil {

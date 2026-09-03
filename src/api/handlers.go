@@ -310,7 +310,7 @@ func uploadPreflightHandler(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, r, "file_retrieval_failed", "Choose an HTML or CSV export to check.", nil, http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	content, err := io.ReadAll(http.MaxBytesReader(w, file, getMaxUploadSize()))
 	if err != nil {
@@ -360,13 +360,13 @@ func extractExportHeaders(filename string, content []byte) (string, []string, er
 			}
 			return "csv", normalizeCSVHeaders(strings.Split(strings.TrimSuffix(line, "\r"), ";")), nil
 		}
-		return "csv", nil, fmt.Errorf("We could not find column headings in this CSV export.")
+		return "csv", nil, fmt.Errorf("We could not find column headings in this CSV export.") //nolint:staticcheck // user-facing message, not an internal error meant for wrapping
 	}
 	if strings.HasSuffix(strings.ToLower(filename), ".html") || strings.HasSuffix(strings.ToLower(filename), ".htm") {
 		headers, err := extractHTMLHeaders(content)
 		return "html", headers, err
 	}
-	return "", nil, fmt.Errorf("Choose an HTML or CSV export from Football Manager.")
+	return "", nil, fmt.Errorf("Choose an HTML or CSV export from Football Manager.") //nolint:staticcheck // user-facing message, not an internal error meant for wrapping
 }
 
 func normalizeCSVHeaders(rawHeaders []string) []string {
@@ -398,9 +398,9 @@ func extractHTMLHeaders(content []byte) ([]string, error) {
 				if len(headers) > 0 {
 					return headers, nil
 				}
-				return nil, fmt.Errorf("We could not find a player table with column headings in this HTML export.")
+				return nil, fmt.Errorf("We could not find a player table with column headings in this HTML export.") //nolint:staticcheck // user-facing message, not an internal error meant for wrapping
 			}
-			return nil, fmt.Errorf("We could not read this HTML export.")
+			return nil, fmt.Errorf("We could not read this HTML export.") //nolint:staticcheck // user-facing message, not an internal error meant for wrapping
 		case html.StartTagToken:
 			switch token.Data {
 			case "table":
@@ -756,6 +756,17 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Use async storage for performance - data available immediately in memory
 	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
+
+	// Keep the Dataset Query Service's Parquet artifact in sync with what
+	// was just stored -- a no-op unless DATASET_QUERY_SERVICE_URL is set.
+	// Uses context.Background(), not ctx, since this goroutine outlives the
+	// request (ctx is cancelled once the response below is written).
+	go func() {
+		if err := materializeDataset(context.Background(), datasetID, playersList); err != nil {
+			logWarn(ctx, "failed to materialize dataset for dataset query service",
+				"dataset_id", datasetID, "error", err)
+		}
+	}()
 
 	// Store the file hash mapping for duplicate detection
 	storeDuplicateMapping(fileHash, datasetID)
