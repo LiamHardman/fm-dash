@@ -15,6 +15,7 @@ build/
 *.dylib
 *.dll
 bin/
+src/dataset-query/dataset-query-server
 
 # Environment files
 .env

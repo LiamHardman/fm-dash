@@ -61,6 +61,59 @@ jobs:
           version: v2.12.1
           working-directory: ./src/api
 
+  # Dataset Query Service Code Quality (Go, CGO/DuckDB)
+  dataset-query-code-quality:
+    name: Dataset Query Service Code Quality (Go)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: src/dataset-query/go.sum
+          check-latest: true
+
+      - name: Download and verify Go dependencies
+        working-directory: ./src/dataset-query
+        env:
+          CGO_ENABLED: 1
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.1
+          working-directory: ./src/dataset-query
+        env:
+          CGO_ENABLED: 1
+
+  # Dataset Query Service Tests
+  dataset-query-test:
+    name: Run Dataset Query Service Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: src/dataset-query/go.sum
+
+      - name: Run dataset-query tests
+        working-directory: ./src/dataset-query
+        env:
+          CGO_ENABLED: 1
+        run: go test ./...
+
   # Tests
   test:
     name: Run Tests

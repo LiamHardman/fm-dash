@@ -104,6 +104,24 @@ jobs:
             org.opencontainers.image.vendor=Liam Hardman
             org.opencontainers.image.licenses=MIT
 
+      # Extract metadata for fm-dash-dataset-query
+      - name: Extract metadata for dataset-query image
+        id: meta-dataset-query
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-dataset-query
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=test,enable={{is_default_branch}}
+          flavor: |
+            latest=false
+          labels: |
+            org.opencontainers.image.title=FM-Dash Dataset Query Service (Test)
+            org.opencontainers.image.description=FM-Dash shared DuckDB-backed dataset query service - Test Build
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
       # Build and push unified image
       - name: Build and push unified Docker image
         uses: docker/build-push-action@v5
@@ -151,6 +169,21 @@ jobs:
           provenance: false
           sbom: false
 
+      # Build and push dataset-query image
+      - name: Build and push dataset-query Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.dataset-query
+          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          tags: ${{ steps.meta-dataset-query.outputs.tags }}
+          labels: ${{ steps.meta-dataset-query.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-dataset-query:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-dataset-query:buildcache,mode=max
+          provenance: false
+          sbom: false
+
       - name: Docker build summary
         run: |
           echo "🐳 Docker Build Summary (Test/PR)"
@@ -171,6 +204,9 @@ jobs:
           echo ""
           echo "🏷️ Backend Image Tags:"
           echo "${{ steps.meta-backend.outputs.tags }}"
+          echo ""
+          echo "🏷️ Dataset Query Service Image Tags:"
+          echo "${{ steps.meta-dataset-query.outputs.tags }}"
           echo ""
           echo "📦 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}"
           echo "🏗️ Platforms: linux/amd64, linux/arm64"

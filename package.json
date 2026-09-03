@@ -103,7 +103,7 @@
       "biome check --write --files-ignore-unknown=true",
       "biome format --write --files-ignore-unknown=true"
     ],
-    "!(package-lock).json": [
+    "!(package-lock|**/dataset-query/**).json": [
       "biome check --write --files-ignore-unknown=true",
       "biome format --write --files-ignore-unknown=true"
     ],

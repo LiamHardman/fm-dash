@@ -1,0 +1,39 @@
+# Dataset Query Service Dockerfile
+# Requires CGO + a glibc runtime (DuckDB's Go driver has poor musl/Alpine
+# support) — deliberately not built on Alpine like Dockerfile.backend.
+FROM golang:1.26-bookworm AS go-builder
+LABEL stage=go-builder
+WORKDIR /app-go
+
+# build-essential provides gcc + g++ (DuckDB's engine is C++)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY src/dataset-query/go.mod src/dataset-query/go.sum ./
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && \
+    go mod verify
+
+COPY src/dataset-query/ ./
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/dataset-query-server .
+
+# cc-debian12 provides glibc + libgcc + libstdc++ — the minimum runtime a CGO
+# binary linking DuckDB's C++ engine needs. static-debian12 (used by
+# Dockerfile.backend) has no libc at all and will not run this binary;
+# base-debian12 has glibc but not libstdc++.
+FROM gcr.io/distroless/cc-debian12:nonroot
+LABEL stage=final-dataset-query
+WORKDIR /app
+
+COPY --from=go-builder /app-go/dataset-query-server .
+
+EXPOSE 8092
+ENV PORT=8092
+ENV DATASET_STORAGE_DIR=/data/datasets
+
+CMD ["./dataset-query-server"]
