@@ -441,9 +441,7 @@ const ALL_FIELDS = [
   },
 ]
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const overallField = ALL_FIELDS[0]
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const valueField = ALL_FIELDS[1]
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
@@ -533,7 +531,6 @@ function openPlayerDetail(progressionPlayer) {
   showPlayerDetail.value = true
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 function latestOf(progressionPlayer) {
   return progressionPlayer.snapshots[progressionPlayer.snapshots.length - 1]
 }
@@ -544,7 +541,6 @@ function fieldDelta(progressionPlayer, field) {
   return last - first
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 function deltaLabel(progressionPlayer, field) {
   const delta = fieldDelta(progressionPlayer, field)
   const sign = delta > 0 ? '+' : ''

@@ -442,10 +442,10 @@ func renderCompareSquadsTable(clubA string, statsA map[string]chatSquadBucketSta
 		a := statsA[bucket]
 		bb := statsB[bucket]
 		b.WriteByte('\n')
-		b.WriteString(fmt.Sprintf("%s|%d|%d|%d|%d", bucket, a.AvgOverall, a.Count, bb.AvgOverall, bb.Count))
+		_, _ = fmt.Fprintf(&b, "%s|%d|%d|%d|%d", bucket, a.AvgOverall, a.Count, bb.AvgOverall, bb.Count)
 	}
 	b.WriteByte('\n')
-	b.WriteString(fmt.Sprintf("bestXI (avg of each bucket's best player)|%d||%d|", bestXIA, bestXIB))
+	_, _ = fmt.Fprintf(&b, "bestXI (avg of each bucket's best player)|%d||%d|", bestXIA, bestXIB)
 	return b.String()
 }
 
@@ -972,7 +972,7 @@ func writeSSEEvent(w http.ResponseWriter, event string, payload any) {
 	if err != nil {
 		return
 	}
-	fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
+	_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
 }
 
 func writeChatbotPreStreamError(w http.ResponseWriter, r *http.Request, status int, message string) {

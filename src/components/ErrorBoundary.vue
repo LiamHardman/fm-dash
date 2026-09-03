@@ -58,15 +58,20 @@ const router = useRouter()
 const error = ref(null)
 const showErrorDetails = ref(false)
 const retryKey = ref(0)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const title = computed(() => 'This view needs a refresh')
 const message = computed(
   () => error.value?.message || 'Something went wrong while loading this feature.'
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const showRetry = computed(() => true)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const showDetails = computed(() => import.meta.env.DEV)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const contextSummary = computed(
   () => `Feature: ${String(route.name || 'page')} · Route: ${route.fullPath}`
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const errorDetails = computed(() =>
   JSON.stringify(
     {
@@ -79,11 +84,13 @@ const errorDetails = computed(() =>
     2
   )
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function handleRetry() {
   error.value = null
   showErrorDetails.value = false
   retryKey.value += 1
 }
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function goToRecovery() {
   error.value = null
   router.push('/upload')

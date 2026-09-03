@@ -431,7 +431,8 @@ export default {
     // Backend requires team/squadStatus/budgets (400s otherwise); block advancing past
     // Basics rather than letting the user finish the whole wizard and hit a dead end.
     const basicsValid = computed(
-      () => !!form.team && !!form.squadStatus && form.maxTransferBudgetM > 0 && form.maxWageBudgetK > 0
+      () =>
+        !!form.team && !!form.squadStatus && form.maxTransferBudgetM > 0 && form.maxWageBudgetK > 0
     )
     const goNext = () => {
       if (step.value === 1 && !basicsValid.value) return
