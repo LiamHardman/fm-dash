@@ -15,6 +15,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { computed } from 'vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import { Line } from 'vue-chartjs'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip)
@@ -28,6 +29,7 @@ const props = defineProps({
   showAxes: { type: Boolean, default: false },
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const chartData = computed(() => ({
   labels: props.labels,
   datasets: [
@@ -44,6 +46,7 @@ const chartData = computed(() => ({
   ],
 }))
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,

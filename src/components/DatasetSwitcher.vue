@@ -19,6 +19,7 @@ const router = useRouter()
 const playerStore = usePlayerStore()
 const recent = useRecentDatasetsStore()
 const entries = computed(() => recent.entries)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const options = computed(() =>
   entries.value.map((e) => ({
     value: e.datasetId,
@@ -26,10 +27,12 @@ const options = computed(() =>
     meta: `${e.playerCount || 0} players · ${new Date(e.uploadedAt).toLocaleDateString()}`,
   }))
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function switchDataset(id) {
   playerStore.setCurrentDatasetId(id)
   router.push(`/dataset/${id}`)
 }
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function rename() {
   const current = entries.value.find((e) => e.datasetId === playerStore.currentDatasetId)
   if (!current) return
@@ -39,6 +42,7 @@ function rename() {
     cancel: true,
   }).onOk((value) => recent.renameDataset(current.datasetId, value))
 }
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function remove() {
   const id = playerStore.currentDatasetId
   if (!id) return
