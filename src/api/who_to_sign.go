@@ -907,6 +907,18 @@ func callResponsesWithRetry(ctx context.Context, client *openai.Client, params r
 		return resp, nil
 	}
 
+	// A client-side timeout (localLLMTimeout, or the request's own context deadline)
+	// means the model call itself is stuck or too slow -- retrying immediately won't
+	// make it faster, and burning more time here risks losing the race against
+	// main.go's outer 120s RequestTimeoutMiddlewareFunc, whose own timeout path is
+	// broken for these SSE routes (see localLLMTimeout's comment). Fail once, cleanly,
+	// well inside that budget instead.
+	if errors.Is(err, context.DeadlineExceeded) {
+		logWarn(ctx, "who-to-sign OpenAI call timed out", "elapsed", time.Since(start).String())
+		RecordError(ctx, err, "LLM call timed out", WithFeature(feature), WithErrorCode("llm_timeout"))
+		return nil, &whoToSignError{http.StatusGatewayTimeout, "the AI assistant took too long to respond — the model may be overloaded or too slow for this request, try again or try a different model"}
+	}
+
 	var apiErr *openai.Error
 	if errors.As(err, &apiErr) {
 		logWarn(ctx, "who-to-sign OpenAI call failed", "status_code", apiErr.StatusCode, "code", apiErr.Code, "type", apiErr.Type, "message", apiErr.Message)

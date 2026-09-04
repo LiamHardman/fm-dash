@@ -246,9 +246,14 @@ Write-Host ""
 # A successful `ollama pull`/`create` exit code is necessary but NOT sufficient for
 # qwen-ridge/ling-tiny -- their research tickets found known upstream architecture-load
 # flakiness that only surfaces at run/generate time -- so every provisioning attempt ends
-# with a short smoke-test generate call before being trusted. Mirrors the docker/kubectl
-# fallback style throughout: never blocks dev startup, just warns and falls back to
-# gpt-5.6-luna on any failure.
+# with a smoke-test call before being trusted. That smoke test sends a real tool
+# definition + structured-output schema, not just a bare prompt (see
+# local_llm_failures.md #1): a bare "reply with the single word: ok" generate call
+# doesn't exercise Ollama's grammar compiler at all and passed cleanly for qwen-ridge even
+# though every real chatbot/who-to-sign/scout-report request -- which all send tool
+# defs/schemas -- failed instantly with "Failed to initialize samplers: failed to parse
+# grammar". Mirrors the docker/kubectl fallback style throughout: never blocks dev
+# startup, just warns and falls back to gpt-5.6-luna on any failure.
 #
 # Uses the HTTP API (not `ollama list`/`ollama ps`) for readiness/tag checks: the `ollama`
 # CLI's own client can block far longer than its process has any business taking when the
@@ -315,24 +320,62 @@ if ($LlmMode -eq 'local') {
             }
 
             if ($hasModel) {
-                Write-Host "  Smoke-testing '$ModelAlias'..."
+                Write-Host "  Smoke-testing '$ModelAlias' (tool-calling + structured output)..."
+                # Same shape every real feature sends: a function tool def plus a strict
+                # json_schema Text.Format (see src/api/chatbot.go, who_to_sign.go,
+                # scout_report.go). A bare generate call can't catch a grammar-compiler
+                # failure like qwen-ridge's because it never asks Ollama to compile a
+                # grammar in the first place. Run as a background job with its own
+                # timeout, same pattern as the old smoke test, since a cold/misbehaving
+                # model can hang the HTTP call itself.
                 $smokeJob = Start-Job -ScriptBlock {
                     param($tag)
-                    & ollama run $tag "reply with the single word: ok" *>$null
-                    $LASTEXITCODE
+                    $body = @{
+                        model = $tag
+                        input = "reply with the single word: ok"
+                        tools = @(@{
+                            type        = "function"
+                            name        = "dummy_smoke_test_tool"
+                            description = "A dummy tool used only to smoke-test tool-calling support."
+                            parameters  = @{
+                                type       = "object"
+                                properties = @{ x = @{ type = "string" } }
+                                required   = @("x")
+                            }
+                        })
+                        text  = @{
+                            format = @{
+                                type   = "json_schema"
+                                name   = "smoke_test_response"
+                                strict = $true
+                                schema = @{
+                                    type                 = "object"
+                                    properties           = @{ ok = @{ type = "boolean" } }
+                                    required             = @("ok")
+                                    additionalProperties = $false
+                                }
+                            }
+                        }
+                    } | ConvertTo-Json -Depth 10
+                    try {
+                        Invoke-RestMethod -Uri "http://127.0.0.1:11434/v1/responses" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 90 -ErrorAction Stop | Out-Null
+                        return $true
+                    } catch {
+                        return $false
+                    }
                 } -ArgumentList $ModelAlias
-                $null = Wait-Job -Job $smokeJob -Timeout 60
+                $null = Wait-Job -Job $smokeJob -Timeout 95
                 $smokeTimedOut = $smokeJob.State -eq 'Running'
-                $smokeExit = if ($smokeTimedOut) { $null } else { Receive-Job -Job $smokeJob -ErrorAction SilentlyContinue | Select-Object -Last 1 }
+                $smokeOk = if ($smokeTimedOut) { $false } else { Receive-Job -Job $smokeJob -ErrorAction SilentlyContinue | Select-Object -Last 1 }
                 Stop-Job -Job $smokeJob -ErrorAction SilentlyContinue | Out-Null
                 Remove-Job -Job $smokeJob -Force -ErrorAction SilentlyContinue
 
-                if (-not $smokeTimedOut -and $smokeExit -eq 0) {
+                if (-not $smokeTimedOut -and $smokeOk -eq $true) {
                     $localLLMReady = $true
                     $localLLMModelTag = $ModelAlias
                     Write-Host "  Using local LLM: http://localhost:11434/v1 (model: $ModelAlias)" -ForegroundColor Cyan
                 } else {
-                    Write-Warning "'$ModelAlias' failed to load/generate (see .scratch/local-llm-selector -- known architecture-load flakiness on some Ollama versions). Falling back to gpt-5.6-luna."
+                    Write-Warning "'$ModelAlias' failed a tool-calling/structured-output smoke test (see local_llm_failures.md -- known architecture-load/grammar-compiler flakiness on some Ollama versions). Falling back to gpt-5.6-luna."
                 }
             }
         }

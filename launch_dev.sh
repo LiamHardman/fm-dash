@@ -217,9 +217,14 @@ echo ""
 # A successful `ollama pull`/`create` exit code is necessary but NOT sufficient for
 # qwen-ridge/ling-tiny -- their research tickets found known upstream architecture-load
 # flakiness that only surfaces at run/generate time -- so every provisioning attempt ends
-# with a short smoke-test generate call before being trusted. Mirrors the docker/kubectl
-# fallback style throughout: never blocks dev startup, just warns and falls back to
-# gpt-5.6-luna on any failure.
+# with a smoke-test call before being trusted. That smoke test sends a real tool
+# definition + structured-output schema, not just a bare prompt (see
+# local_llm_failures.md #1): a bare "reply with the single word: ok" generate call
+# doesn't exercise Ollama's grammar compiler at all and passed cleanly for qwen-ridge even
+# though every real chatbot/who-to-sign/scout-report request -- which all send tool
+# defs/schemas -- failed instantly with "Failed to initialize samplers: failed to parse
+# grammar". Mirrors the docker/kubectl fallback style throughout: never blocks dev
+# startup, just warns and falls back to gpt-5.6-luna on any failure.
 #
 # Uses the HTTP API (not `ollama list`/`ollama ps`) for readiness/tag checks: the `ollama`
 # CLI's own client can block far longer than its process has any business taking when the
@@ -277,8 +282,15 @@ if [ "$LLM_MODE" = "local" ]; then
             fi
 
             if [ "$HAS_MODEL" = "true" ]; then
-                echo "  Smoke-testing '$MODEL_ALIAS'..."
-                if timeout 60 ollama run "$MODEL_ALIAS" "reply with the single word: ok" >/dev/null 2>&1; then
+                echo "  Smoke-testing '$MODEL_ALIAS' (tool-calling + structured output)..."
+                # Same shape every real feature sends: a function tool def plus a strict
+                # json_schema Text.Format (see src/api/chatbot.go, who_to_sign.go,
+                # scout_report.go). A bare generate call can't catch a grammar-compiler
+                # failure like qwen-ridge's because it never asks Ollama to compile a
+                # grammar in the first place.
+                SMOKE_PAYLOAD='{"model":"'"$MODEL_ALIAS"'","input":"reply with the single word: ok","tools":[{"type":"function","name":"dummy_smoke_test_tool","description":"A dummy tool used only to smoke-test tool-calling support.","parameters":{"type":"object","properties":{"x":{"type":"string"}},"required":["x"]}}],"text":{"format":{"type":"json_schema","name":"smoke_test_response","strict":true,"schema":{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"],"additionalProperties":false}}}}'
+                SMOKE_HTTP_CODE=$(curl -s -m 90 -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:11434/v1/responses -H "Content-Type: application/json" -d "$SMOKE_PAYLOAD")
+                if [ "$SMOKE_HTTP_CODE" = "200" ]; then
                     LOCAL_LLM_READY=true
                     LOCAL_LLM_MODEL_TAG="$MODEL_ALIAS"
                     export ENVIRONMENT=development
@@ -286,7 +298,7 @@ if [ "$LLM_MODE" = "local" ]; then
                     export LOCAL_LLM_MODEL="$MODEL_ALIAS"
                     echo "  Using local LLM: http://localhost:11434/v1 (model: $MODEL_ALIAS)"
                 else
-                    echo "  Warning: '$MODEL_ALIAS' failed to load/generate (see .scratch/local-llm-selector -- known architecture-load flakiness on some Ollama versions). Falling back to gpt-5.6-luna."
+                    echo "  Warning: '$MODEL_ALIAS' failed a tool-calling/structured-output smoke test (HTTP $SMOKE_HTTP_CODE; see local_llm_failures.md -- known architecture-load/grammar-compiler flakiness on some Ollama versions). Falling back to gpt-5.6-luna."
                 fi
             fi
         else

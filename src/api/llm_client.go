@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/openai/openai-go/v3"
@@ -65,7 +66,8 @@ func newLLMClient(apiKey string, cfg llmRequestConfig) (*openai.Client, error) {
 		return newHardenedLLMClient(apiKey, cfg.baseURL)
 	}
 	if local := localLLMBaseURL(); local != "" {
-		client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(local))
+		httpClient := &http.Client{Timeout: localLLMTimeout()}
+		client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(local), option.WithHTTPClient(httpClient))
 		return &client, nil
 	}
 	client := openai.NewClient(option.WithAPIKey(apiKey))
@@ -95,6 +97,35 @@ func localLLMModel() string {
 		return model
 	}
 	return "ornith"
+}
+
+// localLLMTimeout returns the HTTP client timeout for the local dev LLM path. Without
+// this, a local Ollama model that hangs mid-generation (observed with ling-tiny -- see
+// local_llm_failures.md #2) leaves the request -- and the UI's spinner -- stuck forever,
+// since (unlike newHardenedLLMClient) nothing here previously bounded it.
+//
+// This must stay well under 120s: main.go's RequestTimeoutMiddlewareFunc already puts a
+// 120s context deadline on /api/chatbot/, /api/who-to-sign/, and /api/scout-report/, and
+// that middleware has its own bug -- when its deadline fires it abandons the still-running
+// handler goroutine instead of waiting for it, and (for these SSE routes, which already
+// sent a 200 and started streaming before the LLM call even begins) its http.Error() call
+// lands as unparseable plain text mid-stream rather than a proper "event: error" frame, so
+// the frontend can't render it and the chat UI looks hung forever even though the
+// connection is actually closed. Confirmed live: a chatbot call against ling-tiny cut off
+// at exactly 120.001s with the literal body "Request timeout after 2m0s" and HTTP 200.
+// Racing that broken path is worse than avoiding it, so this timeout -- and
+// callResponsesWithRetry skipping its retry on a timeout, see below -- must let our own
+// call fail cleanly (a real "event: error" SSE frame) comfortably before 120s, every time,
+// including the tool-calling loops' several rounds. 45s balances that against the local
+// model actually getting to finish a normal call; override via LOCAL_LLM_TIMEOUT_SECONDS
+// for a deliberately slower setup, but keep it under 120s or you're back to the same bug.
+func localLLMTimeout() time.Duration {
+	if raw := os.Getenv("LOCAL_LLM_TIMEOUT_SECONDS"); raw != "" {
+		if seconds, err := strconv.Atoi(raw); err == nil && seconds > 0 {
+			return time.Duration(seconds) * time.Second
+		}
+	}
+	return 45 * time.Second
 }
 
 // newHardenedLLMClient builds a client for a user-suppliable custom endpoint. The
