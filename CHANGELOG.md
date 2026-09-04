@@ -56,6 +56,49 @@
 
 * Improved loading experience ([97fcd00](https://github.com/LiamHardman/fm-dash/commit/97fcd000b3a18efa2c988b7fc26ae3d26a3b4120))
 
+## [1.1.0](https://github.com/LiamHardman/fm-dash/compare/v1.0.2...v1.1.0) (2026-09-04)
+
+
+### Features
+
+* Added copy to clipboard button for player names ([#108](https://github.com/LiamHardman/fm-dash/issues/108)) ([d374b65](https://github.com/LiamHardman/fm-dash/commit/d374b65f44d30b30ce4a64ff826d34d3fc1e1508))
+* adding wishlists back ([5fc21c7](https://github.com/LiamHardman/fm-dash/commit/5fc21c7366415ca5580304d536067544cad10ca8))
+* compare players ([d1b6ede](https://github.com/LiamHardman/fm-dash/commit/d1b6edeac1c23105f3532fc1a75eca10a77bf184))
+* fm26 print screen support ([3b13322](https://github.com/LiamHardman/fm-dash/commit/3b133222a03815c8213677e072389fa7fe048c2e))
+* major performance improvements, UI enhancements, and storage refactoring ([9bddb8f](https://github.com/LiamHardman/fm-dash/commit/9bddb8f98011cee321c16470c1d243936bc09304))
+* optimizations ([0bc1f4e](https://github.com/LiamHardman/fm-dash/commit/0bc1f4e4500893501ac553a5d151cbeb8b71a5e8))
+* progression ([77a5a22](https://github.com/LiamHardman/fm-dash/commit/77a5a225abb6585996da73861126bedffe8d2510))
+* Recommend Signings ([543d6b1](https://github.com/LiamHardman/fm-dash/commit/543d6b126b8aecac04858d70ad098f5d52aa11ca))
+* stats working in csv ([72d88c5](https://github.com/LiamHardman/fm-dash/commit/72d88c5a2f321bd50dcc91bae1cf19531ca1a213))
+* UI redesign ([a624197](https://github.com/LiamHardman/fm-dash/commit/a624197fec028f34bc9c0255214e761bd82ab8ec))
+* wonderkids scatter plot ([c35342c](https://github.com/LiamHardman/fm-dash/commit/c35342cc704981eb1596885179ff98af01868246))
+
+
+### Bug Fixes
+
+* Added kustomization yaml ([#110](https://github.com/LiamHardman/fm-dash/issues/110)) ([53434d2](https://github.com/LiamHardman/fm-dash/commit/53434d2173f7517db8e1bddf9c57aa6d26cd6e1f))
+* automatically compares top5 division players to other top5 division players ([c661b26](https://github.com/LiamHardman/fm-dash/commit/c661b26be92e7607e56be29de4cfb4d0275832bb))
+* ci fix ([83170b4](https://github.com/LiamHardman/fm-dash/commit/83170b443df519e2965dd9b7738db5ac749b03e9))
+* docker speed optimizations ([#113](https://github.com/LiamHardman/fm-dash/issues/113)) ([bf20511](https://github.com/LiamHardman/fm-dash/commit/bf2051184b0e74b8ff14fa88cdceaa97b507a640))
+* implementation of automated removal of artifacts ([d9071f7](https://github.com/LiamHardman/fm-dash/commit/d9071f7e1ae3a2868086a8e825e8babe7bb840e4))
+* improved plot ([d2dac50](https://github.com/LiamHardman/fm-dash/commit/d2dac502ba3d3478579b48de74740d545be44042))
+* launch_dev.ps1 fix ([0177cf8](https://github.com/LiamHardman/fm-dash/commit/0177cf8c3159d09bcaabfb79185310b76e523be1))
+* linting issues ([20e0a7c](https://github.com/LiamHardman/fm-dash/commit/20e0a7c6a054787634c87cccc847f50327886443))
+* mem optimization ([09fb741](https://github.com/LiamHardman/fm-dash/commit/09fb7417a4bb54395bc530d5d83a7aa8bafd8ec1))
+* more playerdetaildialog optimization ([34e7831](https://github.com/LiamHardman/fm-dash/commit/34e7831a0d53d263931f47a57f6b4615bbdd99a4))
+* optimised token usage ([c8ee61d](https://github.com/LiamHardman/fm-dash/commit/c8ee61d1748892606806716c75180f41180c9473))
+* optimizations for loading datasets ([546bfc0](https://github.com/LiamHardman/fm-dash/commit/546bfc088f098223ee30fa596f6512a7cd574bab))
+* percentile optimization ([2995f2e](https://github.com/LiamHardman/fm-dash/commit/2995f2e3d55dc671c9174b62289448976a127f31))
+* removed duplicate fields from player struct ([1347d34](https://github.com/LiamHardman/fm-dash/commit/1347d347cf53040c4a13bf9583b30265f5dc1b78))
+* resolve 30 Dependabot security alerts (npm + Go) ([e5aec71](https://github.com/LiamHardman/fm-dash/commit/e5aec7182578d19e8f8b7f0662021d078d72e805))
+* resolve Dependabot security alerts in npm and Go dependencies ([4ea9471](https://github.com/LiamHardman/fm-dash/commit/4ea947191ee9edde5fd8deea9709dd81bc146d3c))
+* resolved division inconsistencies ([3dd8401](https://github.com/LiamHardman/fm-dash/commit/3dd8401bf79f28ab64cbbbdb6060f4dbfa106fe5))
+* resolved filter issues ([a8c7318](https://github.com/LiamHardman/fm-dash/commit/a8c7318047e8e1b460d835628850dc08f7a09234))
+* resolved upload text colour issues ([88ca34b](https://github.com/LiamHardman/fm-dash/commit/88ca34b3a28fdcff94215a6e02e9eb15ef594e0e))
+* resolving test issues ([e16103d](https://github.com/LiamHardman/fm-dash/commit/e16103d9e56c3e65d7d540eb88103bbf8da036c2))
+* stripped attributes from list ([21424d7](https://github.com/LiamHardman/fm-dash/commit/21424d7f3ca8fcbb4719c9fa431c594febaacd5d))
+* updated kustomization.yaml ([#111](https://github.com/LiamHardman/fm-dash/issues/111)) ([8f78ca4](https://github.com/LiamHardman/fm-dash/commit/8f78ca43d214704db56819edffa191ec43e55439))
+
 ## [1.0.2](https://github.com/LiamHardman/fm-dash/compare/v1.0.1...v1.0.2) (2025-08-06)
 
 
