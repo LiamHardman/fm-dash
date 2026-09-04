@@ -3,13 +3,100 @@
 # launch_dev.sh
 # Script to start both the Vue.js frontend and Go backend development servers.
 
-# --- Local LLM toggle ---
-# true  -> chatbot/who-to-sign/scout-report talk to the local Ollama "ornith" model
-#          (Ornith-1.0-35B-MTP-APEX, see ~/models/ornith). No API key or internet
-#          needed; requires Ollama installed with the model already created
-#          (ollama create ornith -f ~/models/ornith/Modelfile).
-# false -> normal behavior, talks to real OpenAI (gpt-5.6-luna / "Luna").
-USE_LOCAL_LLM=false
+# --- Local LLM selection ---
+# Interactively asks whether AI features (chatbot/who-to-sign/scout-report) should talk
+# to a local Ollama model or the real remote gpt-5.6-luna (OpenAI). Non-interactive
+# overrides:
+#   --llm=local|remote   Skip the interactive local/remote prompt.
+#   --model=<alias>      Skip the interactive model-choice prompt (implies --llm=local).
+#                        Valid aliases: qwen-ridge, ling-tiny, gemma4-e4b
+# See .scratch/local-llm-selector/map.md for the full design/provisioning rationale
+# (replaces the old hardcoded USE_LOCAL_LLM/"ornith" setup).
+model_source() {
+    case "$1" in
+        qwen-ridge) echo "hf.co/empero-ai/Qwen3.8-27B-Ridge-GGUF" ;;
+        ling-tiny)  echo "maternion/ling-3.0-tiny:8b" ;;
+        gemma4-e4b) echo "gemma4:e4b" ;;
+    esac
+}
+model_size() {
+    case "$1" in
+        qwen-ridge) echo "~12.6 GB" ;;
+        ling-tiny)  echo "~5.3 GB" ;;
+        gemma4-e4b) echo "~9.6 GB" ;;
+    esac
+}
+model_label() {
+    case "$1" in
+        qwen-ridge) echo "Qwen3.8-27B-Ridge (empero-ai, ~12.6GB, needs a beefy GPU/RAM)" ;;
+        ling-tiny)  echo "Ling-3.0-tiny:8b (inclusionAI, ~5.3GB)" ;;
+        gemma4-e4b) echo "Gemma 4 E4B (google, ~9.6GB)" ;;
+    esac
+}
+
+LLM_MODE=""
+MODEL_ALIAS=""
+for arg in "$@"; do
+    case "$arg" in
+        --llm=local|--llm=remote)
+            LLM_MODE="${arg#--llm=}"
+            ;;
+        --model=*)
+            candidate="${arg#--model=}"
+            case "$candidate" in
+                qwen-ridge|ling-tiny|gemma4-e4b) MODEL_ALIAS="$candidate" ;;
+                *)
+                    echo "Error: unknown --model alias '$candidate'. Valid: qwen-ridge, ling-tiny, gemma4-e4b" >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+        --help|-h)
+            cat <<'EOF'
+Usage: ./launch_dev.sh [--llm=local|remote] [--model=<alias>]
+
+  --llm=local|remote   Skip the interactive local/remote LLM prompt.
+  --model=<alias>      Skip the interactive model prompt (implies --llm=local).
+                        Valid aliases: qwen-ridge, ling-tiny, gemma4-e4b
+
+With no flags, both are asked interactively.
+EOF
+            exit 0
+            ;;
+        *)
+            echo "Warning: unknown argument '$arg' ignored." >&2
+            ;;
+    esac
+done
+if [ -n "$MODEL_ALIAS" ] && [ -z "$LLM_MODE" ]; then
+    LLM_MODE="local"
+fi
+
+if [ -z "$LLM_MODE" ]; then
+    echo "Use a local or remote LLM for AI features?"
+    echo "  1) Remote -- gpt-5.6-luna via OpenAI (default, needs OPENAI_API_KEY)"
+    echo "  2) Local  -- served through Ollama, no internet/API key needed"
+    read -r -p "Enter 1 or 2 [1]: " llm_choice
+    case "$llm_choice" in
+        2) LLM_MODE="local" ;;
+        *) LLM_MODE="remote" ;;
+    esac
+fi
+
+if [ "$LLM_MODE" = "local" ] && [ -z "$MODEL_ALIAS" ]; then
+    echo ""
+    echo "Which local model?"
+    echo "  1) qwen-ridge  -- $(model_label qwen-ridge)"
+    echo "  2) ling-tiny   -- $(model_label ling-tiny)"
+    echo "  3) gemma4-e4b  -- $(model_label gemma4-e4b)"
+    read -r -p "Enter 1-3 [3]: " model_choice
+    case "$model_choice" in
+        1) MODEL_ALIAS="qwen-ridge" ;;
+        2) MODEL_ALIAS="ling-tiny" ;;
+        *) MODEL_ALIAS="gemma4-e4b" ;;
+    esac
+fi
+echo ""
 
 # Function to clean up background processes on script exit (Ctrl+C)
 cleanup() {
@@ -124,20 +211,27 @@ else
 fi
 echo ""
 
-# --- Start local LLM (Ollama) if USE_LOCAL_LLM is enabled above ---
-# Mirrors the docker/kubectl fallback style: never blocks dev startup, just warns and
-# falls back to gpt-5.6-luna if Ollama or the "ornith" model aren't available.
+# --- Provision & start local LLM (Ollama) if LLM_MODE=local ---
+# Map decision (.scratch/local-llm-selector): models are auto-provisioned via Ollama on
+# first use rather than requiring manual pre-creation like the old "ornith" setup did.
+# A successful `ollama pull`/`create` exit code is necessary but NOT sufficient for
+# qwen-ridge/ling-tiny -- their research tickets found known upstream architecture-load
+# flakiness that only surfaces at run/generate time -- so every provisioning attempt ends
+# with a short smoke-test generate call before being trusted. Mirrors the docker/kubectl
+# fallback style throughout: never blocks dev startup, just warns and falls back to
+# gpt-5.6-luna on any failure.
 #
-# Uses the HTTP API (not `ollama list`/`ollama ps`) for every readiness/model check: the
-# `ollama` CLI's own client can block far longer than its process has any business taking
-# when the daemon is down -- observed hanging 60s+ on this machine -- which would stall
-# dev startup instead of failing over. A closed port here also doesn't fail the connect
-# fast (looks like Windows Firewall blackholing rather than RST'ing it), so each failed
-# HTTP attempt can eat its full timeout too; per-attempt timeouts and attempt counts below
-# are kept short/bounded so a genuinely stuck Ollama still fails over well under a minute.
+# Uses the HTTP API (not `ollama list`/`ollama ps`) for readiness/tag checks: the `ollama`
+# CLI's own client can block far longer than its process has any business taking when the
+# daemon is down -- observed hanging 60s+ on this machine -- which would stall dev startup
+# instead of failing over. A closed port here also doesn't fail the connect fast (looks
+# like Windows Firewall blackholing rather than RST'ing it), so each failed HTTP attempt
+# can eat its full timeout too; per-attempt timeouts and attempt counts below are kept
+# short/bounded so a genuinely stuck Ollama still fails over well under a minute.
 LOCAL_LLM_READY=false
-if [ "$USE_LOCAL_LLM" = "true" ]; then
-    echo "Local LLM enabled -- checking Ollama (model: ornith)..."
+LOCAL_LLM_MODEL_TAG=""
+if [ "$LLM_MODE" = "local" ]; then
+    echo "Local LLM enabled -- checking Ollama (model: $MODEL_ALIAS)..."
     if command -v ollama &>/dev/null; then
         ollama_reachable() { curl -s -m 1 http://localhost:11434/api/version >/dev/null 2>&1; }
 
@@ -154,13 +248,46 @@ if [ "$USE_LOCAL_LLM" = "true" ]; then
         fi
 
         if [ "$OLLAMA_UP" = "true" ]; then
-            if curl -s -m 2 http://localhost:11434/api/tags 2>/dev/null | grep -q '"name":"ornith'; then
-                LOCAL_LLM_READY=true
-                export ENVIRONMENT=development
-                export LOCAL_LLM_BASE_URL=http://localhost:11434/v1
-                echo "  Using local LLM: http://localhost:11434/v1 (model: ornith)"
-            else
-                echo "  Warning: Ollama is running but the 'ornith' model was not found. Falling back to gpt-5.6-luna. Run: ollama create ornith -f ~/models/ornith/Modelfile"
+            MODEL_SOURCE=$(model_source "$MODEL_ALIAS")
+            HAS_MODEL=false
+            if curl -s -m 2 http://localhost:11434/api/tags 2>/dev/null | grep -q "\"name\":\"${MODEL_ALIAS}"; then
+                HAS_MODEL=true
+            fi
+
+            USER_DECLINED=false
+            if [ "$HAS_MODEL" = "false" ]; then
+                echo "  '$MODEL_ALIAS' not found locally -- this needs a one-time download (approx. $(model_size "$MODEL_ALIAS"))."
+                read -r -p "  Proceed with download? [y/N]: " confirm_dl
+                case "$confirm_dl" in
+                    y|Y|yes|Yes) ;;
+                    *)
+                        echo "  Download declined -- falling back to gpt-5.6-luna."
+                        USER_DECLINED=true
+                        ;;
+                esac
+            fi
+
+            if [ "$HAS_MODEL" = "false" ] && [ "$USER_DECLINED" = "false" ]; then
+                echo "  Pulling $MODEL_SOURCE (this can take a while for larger models)..."
+                if ollama pull "$MODEL_SOURCE" && { [ "$MODEL_SOURCE" = "$MODEL_ALIAS" ] || ollama cp "$MODEL_SOURCE" "$MODEL_ALIAS"; }; then
+                    HAS_MODEL=true
+                else
+                    echo "  Warning: failed to pull/tag '$MODEL_ALIAS'. Falling back to gpt-5.6-luna."
+                fi
+            fi
+
+            if [ "$HAS_MODEL" = "true" ]; then
+                echo "  Smoke-testing '$MODEL_ALIAS'..."
+                if timeout 60 ollama run "$MODEL_ALIAS" "reply with the single word: ok" >/dev/null 2>&1; then
+                    LOCAL_LLM_READY=true
+                    LOCAL_LLM_MODEL_TAG="$MODEL_ALIAS"
+                    export ENVIRONMENT=development
+                    export LOCAL_LLM_BASE_URL=http://localhost:11434/v1
+                    export LOCAL_LLM_MODEL="$MODEL_ALIAS"
+                    echo "  Using local LLM: http://localhost:11434/v1 (model: $MODEL_ALIAS)"
+                else
+                    echo "  Warning: '$MODEL_ALIAS' failed to load/generate (see .scratch/local-llm-selector -- known architecture-load flakiness on some Ollama versions). Falling back to gpt-5.6-luna."
+                fi
             fi
         else
             echo "  Warning: Ollama did not come up in time. Falling back to gpt-5.6-luna."
@@ -171,7 +298,7 @@ if [ "$USE_LOCAL_LLM" = "true" ]; then
     # Deliberately not stopped in cleanup() -- Ollama is a shared system service (other
     # models/tools may depend on it), unlike the fmdash-only observability stack.
 else
-    echo "Local LLM disabled (USE_LOCAL_LLM=false) -- using gpt-5.6-luna."
+    echo "Local LLM disabled (remote selected) -- using gpt-5.6-luna."
 fi
 echo ""
 
@@ -212,7 +339,7 @@ else
         echo "Backend server process started with PID: $BACKEND_PID"
         echo "Go API should be available at http://localhost:8091 (usually proxied by Vite)"
         if [ "$LOCAL_LLM_READY" = "true" ]; then
-            echo "LLM features: local (ornith via Ollama)"
+            echo "LLM features: local ($LOCAL_LLM_MODEL_TAG via Ollama)"
         else
             echo "LLM features: gpt-5.6-luna (OpenAI)"
         fi
