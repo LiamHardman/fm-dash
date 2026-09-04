@@ -245,6 +245,21 @@ if [ "$LLM_MODE" = "local" ]; then
 
         if [ "$OLLAMA_UP" = "false" ]; then
             echo "  Starting Ollama server..."
+            # Ollama defaults every model to a 4096-token context window, and neither
+            # /v1/responses nor /v1/chat/completions accepts a per-request override for
+            # it (confirmed live: an explicit options.num_ctx on the request body is
+            # silently ignored -- `ollama ps` still reports 4096 after). It can only be
+            # raised server-wide via this env var at `ollama serve` startup, or per-model
+            # via a Modelfile -- see local_llm_failures.md #3. 4096 is too small for this
+            # app's real prompts: Scout Report's system prompt alone (division percentile
+            # table) already ran ~3500 input tokens in testing, and a reasoning-style
+            # model's own chain-of-thought before its answer easily pushes a single round
+            # over 4096 -- confirmed live: gemma4-e4b's usage.total_tokens landed at
+            # exactly 4096 with its final answer truncated to an empty string, mid-
+            # reasoning, for exactly this reason. 16384 comfortably fits that same prompt
+            # across several tool-calling rounds; only applies when this script starts
+            # the server itself, not to an already-running Ollama instance.
+            export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-16384}"
             nohup ollama serve >/dev/null 2>&1 &
             for i in $(seq 1 15); do
                 ollama_reachable && { OLLAMA_UP=true; break; }

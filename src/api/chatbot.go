@@ -1122,6 +1122,15 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 		return nil, nil, nil, apiErr
 	}
 
+	// Local-LLM mode can't rely on PreviousResponseID (see appendResponseOutputToHistory)
+	// so it instead resends the whole conversation explicitly every round, seeded here
+	// with the same system prompt + history round 0 sent via Instructions/Input.
+	localMode := isLocalLLMMode()
+	var localHistory []responses.ResponseInputItemUnionParam
+	if localMode {
+		localHistory = append(localHistory, items...)
+	}
+
 	var lastChart *ChatChart
 	var lastNavigate *ChatNavigate
 	searchCount := 0
@@ -1179,12 +1188,25 @@ func runChatbotLoop(ctx context.Context, client *openai.Client, datasetID, manag
 			}
 		}
 
-		nextParams := responses.ResponseNewParams{
-			Model:              model,
-			PreviousResponseID: openai.String(resp.ID),
-			Tools:              tools,
-			Text:               textFormat,
-			Input:              responses.ResponseNewParamsInputUnion{OfInputItemList: outputItems},
+		var nextParams responses.ResponseNewParams
+		if localMode {
+			localHistory = appendResponseOutputToHistory(localHistory, resp.Output)
+			localHistory = append(localHistory, outputItems...)
+			nextParams = responses.ResponseNewParams{
+				Model:        model,
+				Instructions: openai.String(systemPrompt),
+				Tools:        tools,
+				Text:         textFormat,
+				Input:        responses.ResponseNewParamsInputUnion{OfInputItemList: localHistory},
+			}
+		} else {
+			nextParams = responses.ResponseNewParams{
+				Model:              model,
+				PreviousResponseID: openai.String(resp.ID),
+				Tools:              tools,
+				Text:               textFormat,
+				Input:              responses.ResponseNewParamsInputUnion{OfInputItemList: outputItems},
+			}
 		}
 		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams, chatbotFeature, round+1)
 		if apiErr != nil {

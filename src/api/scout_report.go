@@ -528,6 +528,20 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, m
 		return nil, nil, apiErr
 	}
 
+	// Local-LLM mode can't rely on PreviousResponseID (see appendResponseOutputToHistory)
+	// so it instead resends the whole conversation explicitly every round, seeded here
+	// with the same system prompt round 0 sent as a plain string.
+	localMode := isLocalLLMMode()
+	var history []responses.ResponseInputItemUnionParam
+	if localMode {
+		history = []responses.ResponseInputItemUnionParam{{
+			OfMessage: &responses.EasyInputMessageParam{
+				Role:    responses.EasyInputMessageRoleUser,
+				Content: responses.EasyInputMessageContentUnionParam{OfString: openai.String(systemPrompt)},
+			},
+		}}
+	}
+
 	for round := 0; ; round++ {
 		var toolCalls []responses.ResponseFunctionToolCall
 		for i := range resp.Output {
@@ -586,14 +600,28 @@ func runScoutReportLoop(ctx context.Context, client *openai.Client, datasetID, m
 			}
 		}
 
-		nextParams := responses.ResponseNewParams{
-			Model:              model,
-			PreviousResponseID: openai.String(resp.ID),
-			Tools:              tools,
-			Text:               textFormat,
-			Input: responses.ResponseNewParamsInputUnion{
-				OfInputItemList: outputItems,
-			},
+		var nextParams responses.ResponseNewParams
+		if localMode {
+			history = appendResponseOutputToHistory(history, resp.Output)
+			history = append(history, outputItems...)
+			nextParams = responses.ResponseNewParams{
+				Model: model,
+				Tools: tools,
+				Text:  textFormat,
+				Input: responses.ResponseNewParamsInputUnion{
+					OfInputItemList: history,
+				},
+			}
+		} else {
+			nextParams = responses.ResponseNewParams{
+				Model:              model,
+				PreviousResponseID: openai.String(resp.ID),
+				Tools:              tools,
+				Text:               textFormat,
+				Input: responses.ResponseNewParamsInputUnion{
+					OfInputItemList: outputItems,
+				},
+			}
 		}
 		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams, scoutReportFeature, round+1)
 		if apiErr != nil {

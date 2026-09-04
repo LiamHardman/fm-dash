@@ -803,6 +803,20 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 		return nil, nil, nil, apiErr
 	}
 
+	// Local-LLM mode can't rely on PreviousResponseID (see appendResponseOutputToHistory)
+	// so it instead resends the whole conversation explicitly every round, seeded here
+	// with the same system prompt round 0 sent as a plain string.
+	localMode := isLocalLLMMode()
+	var history []responses.ResponseInputItemUnionParam
+	if localMode {
+		history = []responses.ResponseInputItemUnionParam{{
+			OfMessage: &responses.EasyInputMessageParam{
+				Role:    responses.EasyInputMessageRoleUser,
+				Content: responses.EasyInputMessageContentUnionParam{OfString: openai.String(systemPrompt)},
+			},
+		}}
+	}
+
 	// round counts response round-trips; the response is checked for a final answer
 	// both before the first tool call and after every subsequent one, so a legitimate
 	// answer on the Nth round is never missed. The model may batch several find_players
@@ -863,14 +877,28 @@ func runWhoToSignLoop(ctx context.Context, client *openai.Client, datasetID, mod
 			}
 		}
 
-		nextParams := responses.ResponseNewParams{
-			Model:              model,
-			PreviousResponseID: openai.String(resp.ID),
-			Tools:              tools,
-			Text:               textFormat,
-			Input: responses.ResponseNewParamsInputUnion{
-				OfInputItemList: outputItems,
-			},
+		var nextParams responses.ResponseNewParams
+		if localMode {
+			history = appendResponseOutputToHistory(history, resp.Output)
+			history = append(history, outputItems...)
+			nextParams = responses.ResponseNewParams{
+				Model: model,
+				Tools: tools,
+				Text:  textFormat,
+				Input: responses.ResponseNewParamsInputUnion{
+					OfInputItemList: history,
+				},
+			}
+		} else {
+			nextParams = responses.ResponseNewParams{
+				Model:              model,
+				PreviousResponseID: openai.String(resp.ID),
+				Tools:              tools,
+				Text:               textFormat,
+				Input: responses.ResponseNewParamsInputUnion{
+					OfInputItemList: outputItems,
+				},
+			}
 		}
 		resp, apiErr = callResponsesWithRetry(ctx, client, nextParams, whoToSignFeature, round+1)
 		if apiErr != nil {

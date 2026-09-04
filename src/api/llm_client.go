@@ -12,6 +12,7 @@ import (
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 // Configurable LLM endpoint & model (map decision, see .scratch/llm-refinements/issues/
@@ -126,6 +127,43 @@ func localLLMTimeout() time.Duration {
 		}
 	}
 	return 45 * time.Second
+}
+
+// isLocalLLMMode reports whether requests are being routed to a local dev LLM server
+// (see localLLMBaseURL). The three tool-calling loops (chatbot.go, who_to_sign.go,
+// scout_report.go) use it to decide how to carry conversation state across rounds —
+// see appendResponseOutputToHistory below for why.
+func isLocalLLMMode() bool {
+	return localLLMBaseURL() != ""
+}
+
+// appendResponseOutputToHistory folds one Responses API turn's output items into a
+// conversation history built as explicit input items, for local-LLM tool-calling loops
+// that resend the whole conversation each round instead of relying on
+// PreviousResponseID (see local_llm_failures.md #3: a live probe against Ollama's
+// /v1/responses showed it never actually persists a response server-side — even with
+// store:true explicitly set on the request, a follow-up call with previous_response_id
+// comes back having lost every prior turn, including the original system prompt, and
+// the model then either returns nothing or hallucinates generic content ungrounded in
+// the real conversation. Real OpenAI doesn't have this problem, so this path is only
+// exercised in local-dev mode; see isLocalLLMMode).
+//
+// Only assistant messages and function calls are carried forward — reasoning items are
+// dropped. The same live probe confirmed the model stays grounded without them, and
+// carrying every round's full chain-of-thought forward would balloon prompt size on
+// every subsequent round for no verified benefit.
+func appendResponseOutputToHistory(history []responses.ResponseInputItemUnionParam, output []responses.ResponseOutputItemUnion) []responses.ResponseInputItemUnionParam {
+	for _, item := range output {
+		switch item.Type {
+		case "function_call":
+			param := item.AsFunctionCall().ToParam()
+			history = append(history, responses.ResponseInputItemUnionParam{OfFunctionCall: &param})
+		case "message":
+			param := item.AsMessage().ToParam()
+			history = append(history, responses.ResponseInputItemUnionParam{OfOutputMessage: &param})
+		}
+	}
+	return history
 }
 
 // newHardenedLLMClient builds a client for a user-suppliable custom endpoint. The
