@@ -311,6 +311,7 @@ func main() {
 	mux.Handle("/api/shortlists", wrapHandler(http.HandlerFunc(shortlistsHandler), "shortlists"))
 	// API endpoint for installation-level saved filter recipes
 	mux.Handle("/api/saved-searches", wrapHandler(http.HandlerFunc(savedSearchesHandler), "saved-searches"))
+	mux.Handle("/api/colour-sets/", wrapHandler(http.HandlerFunc(colourSetsHandler), "colour-sets"))
 
 	// API endpoint for multi-snapshot player progression analysis
 	mux.Handle("/api/progression/analyze", wrapHandler(http.HandlerFunc(progressionAnalyzeHandler), "progression-analyze"))

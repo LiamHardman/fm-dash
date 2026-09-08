@@ -176,6 +176,7 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed, ref } from 'vue'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 import PlayerCards from './PlayerCards.vue'
 
 // Helper map to convert general formation slot roles to base position key prefixes
@@ -251,17 +252,7 @@ export default {
       }
     }
 
-    const getPlayerOverallClass = (overall, maxScale = 100) => {
-      const numValue = Number.parseInt(overall, 10)
-      if (Number.isNaN(numValue) || overall === null || overall === undefined) return 'rating-na'
-      const percentage = (numValue / maxScale) * 100
-      if (percentage >= 90) return 'rating-tier-6'
-      if (percentage >= 80) return 'rating-tier-5'
-      if (percentage >= 70) return 'rating-tier-4'
-      if (percentage >= 55) return 'rating-tier-3'
-      if (percentage >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    }
+    const getPlayerOverallClass = (overall, maxScale = 100) => ratingColourClass(overall, maxScale)
 
     const getCardPositionForSlot = (slotRole) => {
       const positionMap = {

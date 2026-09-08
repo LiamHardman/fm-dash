@@ -1,7 +1,9 @@
 import { createPinia } from 'pinia'
 import { Notify, Quasar } from 'quasar'
-import { createApp } from 'vue'
+import { createApp, watchEffect } from 'vue'
 import router from './router'
+import { useColourSetStore } from './stores/colourSetStore'
+import { applyColourVariables } from './utils/colourSets'
 import './css/app.scss'
 
 // Optimized CSS imports - only load what we need
@@ -36,6 +38,11 @@ app.use(Quasar, {
 
 app.use(pinia)
 app.use(router)
+
+watchEffect(() => applyColourVariables(document.documentElement.style))
+const colourSets = useColourSetStore(pinia)
+void colourSets.load('fm')
+void colourSets.load('fifa')
 
 // Mount the app
 app.mount('#app')

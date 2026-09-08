@@ -91,6 +91,7 @@
 import { computed, defineComponent, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/playerStore'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 import { debounce } from '../utils/debounce'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
@@ -252,18 +253,7 @@ export default defineComponent({
     }
 
     // Unified rating class function (same as used in PlayerDataTable)
-    const getUnifiedRatingClass = (value, maxScale) => {
-      const numValue = Number.parseInt(value, 10)
-      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-        return 'rating-na'
-      const percentage = (numValue / maxScale) * 100
-      if (percentage >= 90) return 'rating-tier-6'
-      if (percentage >= 80) return 'rating-tier-5'
-      if (percentage >= 70) return 'rating-tier-4'
-      if (percentage >= 55) return 'rating-tier-3'
-      if (percentage >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    }
+    const getUnifiedRatingClass = (value, maxScale) => ratingColourClass(value, maxScale)
 
     // Create a fast lookup cache for players by name
     const playerNameCache = computed(() => {

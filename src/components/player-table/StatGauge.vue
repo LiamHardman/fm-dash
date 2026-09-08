@@ -42,6 +42,7 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed } from 'vue'
+import { getRatingColour } from '../../utils/colourSets'
 
 export default {
   name: 'StatGauge',
@@ -81,16 +82,7 @@ export default {
       return props.size * 0.37
     })
 
-    const gaugeColor = computed(() => {
-      if (!hasValue.value) return '#9ca3af'
-      const pct = fraction.value
-      if (pct >= 0.9) return '#9333ea'
-      if (pct >= 0.8) return '#14b8a6'
-      if (pct >= 0.65) return '#22c55e'
-      if (pct >= 0.5) return '#3b82f6'
-      if (pct >= 0.3) return '#f97316'
-      return '#ef4444'
-    })
+    const gaugeColor = computed(() => getRatingColour(props.value, props.max))
 
     return {
       isDark,

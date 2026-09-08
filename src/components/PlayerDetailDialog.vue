@@ -1189,6 +1189,7 @@ import { fetchFullPlayerStats } from '../services/playerService.js'
 import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 import { formatCurrency } from '../utils/currencyUtils'
 import logger from '../utils/logger.js'
 import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
@@ -2201,18 +2202,7 @@ export default defineComponent({
       return keys.length > 0
     })
 
-    const getUnifiedRatingClass = (value, maxScale) => {
-      const numValue = Number.parseInt(value, 10)
-      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-        return 'rating-na'
-      const percentage = (numValue / maxScale) * 100
-      if (percentage >= 90) return 'rating-tier-6'
-      if (percentage >= 80) return 'rating-tier-5'
-      if (percentage >= 70) return 'rating-tier-4'
-      if (percentage >= 55) return 'rating-tier-3'
-      if (percentage >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    }
+    const getUnifiedRatingClass = (value, maxScale) => ratingColourClass(value, maxScale)
 
     const getBarFillStyle = (percentile) => {
       if (percentile === null || percentile === undefined || percentile < 0) {

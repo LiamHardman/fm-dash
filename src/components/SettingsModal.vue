@@ -108,6 +108,23 @@
 
                     <q-expansion-item
                         expand-separator
+                        icon="format_color_fill"
+                        label="Attribute colours"
+                        caption="FM and FIFA-style colour sets and bands"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <p class="section-description">Create independent colour sets for each stat style, with up to 20 bands. Saved sets and active selections are shared across this installation.</p>
+                                <ColourSetEditor scale="fm" />
+                                <ColourSetEditor scale="fifa" />
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
+                    <q-expansion-item
+                        expand-separator
                         icon="assessment"
                         label="Rating Calculation Method"
                         caption="Configure how player ratings are calculated"
@@ -616,10 +633,11 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useUiStore } from '@/stores/uiStore'
 import playerService from '../services/playerService'
 import AttributeWeightsDialog from './AttributeWeightsDialog.vue'
+import ColourSetEditor from './ColourSetEditor.vue'
 
 export default defineComponent({
   name: 'SettingsModal',
-  components: { AttributeWeightsDialog },
+  components: { AttributeWeightsDialog, ColourSetEditor },
   props: {
     modelValue: {
       type: Boolean,
@@ -1279,4 +1297,4 @@ export default defineComponent({
         min-width: auto;
     }
 }
-</style> 
+</style>

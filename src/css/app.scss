@@ -281,6 +281,18 @@ body.q-body--dark {
     }
 }
 
+// Saved attribute palettes use distinct classes from semantic scores (value,
+// totals, etc.). Variables update immediately when the active set changes.
+@each $scale in fm, fifa {
+    @for $band from 0 through 19 {
+        .attribute-colour.attribute-colour-#{$scale}-#{$band} {
+            background-color: var(--attribute-#{$scale}-#{$band}) !important;
+            color: var(--attribute-#{$scale}-#{$band}-text) !important;
+            border-color: var(--attribute-#{$scale}-#{$band}) !important;
+        }
+    }
+}
+
 // N/A or missing values
 .rating-na {
     background-color: #bdbdbd; // Grey

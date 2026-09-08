@@ -259,6 +259,7 @@ import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerUtils } from '../composables/usePlayerUtils'
 import { usePlayerStore } from '../stores/playerStore'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 
 export default {
   name: 'LeaguesPage',
@@ -869,18 +870,7 @@ export default {
       )
     }
 
-    const getOverallClass = (overall) => {
-      if (overall === null || overall === undefined || overall === 0) return 'rating-na'
-      const numericOverall = Number(overall)
-      if (Number.isNaN(numericOverall)) return 'rating-na'
-
-      if (numericOverall >= 90) return 'rating-tier-6'
-      if (numericOverall >= 80) return 'rating-tier-5'
-      if (numericOverall >= 70) return 'rating-tier-4'
-      if (numericOverall >= 55) return 'rating-tier-3'
-      if (numericOverall >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    }
+    const getOverallClass = (overall) => ratingColourClass(overall, 100)
 
     const getStarClass = (overall, starPosition) => {
       if (!overall || overall === 0) return 'star-empty'

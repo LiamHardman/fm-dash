@@ -349,6 +349,7 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 import { formatCurrency } from '../utils/currencyUtils'
 import EmptyState from './layout/EmptyState.vue'
 import SectionCard from './layout/SectionCard.vue'
@@ -439,30 +440,7 @@ export default defineComponent({
     })
 
     // Utility function to get unified rating class (matching PlayerFilters)
-    const getUnifiedRatingClass = (value, maxScale = 100) => {
-      const numValue = Number.parseInt(value, 10)
-      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-        return 'rating-na'
-
-      const percentage = (numValue / maxScale) * 100
-
-      if (maxScale === 20) {
-        if (numValue >= 18) return 'rating-tier-6'
-        if (numValue >= 15) return 'rating-tier-5'
-        if (numValue >= 13) return 'rating-tier-4'
-        if (numValue >= 10) return 'rating-tier-3'
-        if (numValue >= 7) return 'rating-tier-2'
-        if (numValue >= 1) return 'rating-tier-1'
-      } else {
-        if (percentage >= 90) return 'rating-tier-6'
-        if (percentage >= 80) return 'rating-tier-5'
-        if (percentage >= 70) return 'rating-tier-4'
-        if (percentage >= 55) return 'rating-tier-3'
-        if (percentage >= 40) return 'rating-tier-2'
-        if (percentage > 0) return 'rating-tier-1'
-      }
-      return 'rating-na'
-    }
+    const getUnifiedRatingClass = (value, maxScale = 100) => ratingColourClass(value, maxScale)
 
     // Computed property to transform bargain results for PlayerDataTable
     const playersForTable = computed(() => {
@@ -938,4 +916,4 @@ export default defineComponent({
         }
     }
 }
-</style> 
+</style>

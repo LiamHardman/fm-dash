@@ -166,6 +166,7 @@
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, ref, watch } from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 import { formatCurrency } from '../utils/currencyUtils'
 import EmptyState from './layout/EmptyState.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
@@ -303,15 +304,7 @@ export default defineComponent({
       }
     )
 
-    const getOverallClass = (overall) => {
-      if (!overall) return ''
-      if (overall >= 90) return 'rating-tier-6'
-      if (overall >= 80) return 'rating-tier-5'
-      if (overall >= 70) return 'rating-tier-4'
-      if (overall >= 55) return 'rating-tier-3'
-      if (overall >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    }
+    const getOverallClass = (overall) => ratingColourClass(overall, 100)
 
     const handlePlayerSelected = (player) => {
       selectedPlayer.value = player

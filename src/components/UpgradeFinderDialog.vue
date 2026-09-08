@@ -958,6 +958,7 @@ import { formationCache } from '@/utils/formationCache'
 import { formations, getFormationLayout } from '@/utils/formations'
 import { getFlagUrl, getPlayerFaceUrl, getTeamLogoUrl } from '@/utils/imageOptimization'
 import { fetchFullPlayerStats, fetchTeamData, findPlayerUpgrades } from '../services/playerService'
+import { getUnifiedRatingClass as ratingColourClass } from '../utils/colourSets'
 import EmptyState from './layout/EmptyState.vue'
 import SectionCard from './layout/SectionCard.vue'
 import PitchDisplay from './PitchDisplay.vue'
@@ -2776,30 +2777,7 @@ export default {
       return bestRole
     }
 
-    const getUnifiedRatingClass = (value, maxScale) => {
-      const numValue = Number.parseInt(value, 10)
-      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-        return 'rating-na'
-
-      // For FIFA stats (1-100 scale), calculate percentage correctly
-      if (maxScale === 20) {
-        const percentage = ((numValue - 1) / (maxScale - 1)) * 100
-        if (percentage >= 90) return 'rating-tier-6'
-        if (percentage >= 80) return 'rating-tier-5'
-        if (percentage >= 70) return 'rating-tier-4'
-        if (percentage >= 55) return 'rating-tier-3'
-        if (percentage >= 40) return 'rating-tier-2'
-        return 'rating-tier-1'
-      }
-      // For FIFA stats (1-100 scale) and overall ratings (0-100 scale)
-      const percentage = (numValue / maxScale) * 100
-      if (percentage >= 90) return 'rating-tier-6'
-      if (percentage >= 80) return 'rating-tier-5'
-      if (percentage >= 70) return 'rating-tier-4'
-      if (percentage >= 55) return 'rating-tier-3'
-      if (percentage >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    }
+    const getUnifiedRatingClass = (value, maxScale) => ratingColourClass(value, maxScale)
 
     // Get card rarity class based on overall rating
     const getCardRarityClass = (overall) => {
@@ -3873,5 +3851,4 @@ export default {
     }
 }
 </style>
-
 

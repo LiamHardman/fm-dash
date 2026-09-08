@@ -1,3 +1,4 @@
+import { getUnifiedRatingClass } from '../utils/colourSets'
 import { formatCurrency } from '../utils/currencyUtils'
 import { memoize } from './useMemoization'
 
@@ -11,27 +12,6 @@ export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGener
     def: 'spd', // Speed -> Defending
     phy: 'pos', // Positioning -> Physical
   }
-
-  // Memoized rating class calculation (called frequently in table rendering)
-  const getUnifiedRatingClass = memoize(
-    (value, maxScale) => {
-      const numValue = Number.parseInt(value, 10)
-      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-        return 'rating-na'
-      const percentage = (numValue / maxScale) * 100
-      if (percentage >= 90) return 'rating-tier-6'
-      if (percentage >= 80) return 'rating-tier-5'
-      if (percentage >= 70) return 'rating-tier-4'
-      if (percentage >= 55) return 'rating-tier-3'
-      if (percentage >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
-    },
-    {
-      maxSize: 200, // Cache up to 200 different rating calculations
-      keyGenerator: (value, maxScale) => `${value}-${maxScale}`,
-      cacheKey: 'unifiedRatingClass',
-    }
-  )
 
   // Custom rating class for TotalStats with specific ranges
   const getTotalStatsRatingClass = memoize(
@@ -148,7 +128,6 @@ export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGener
   }
 
   const clearCaches = () => {
-    getUnifiedRatingClass.clearCache()
     getTotalStatsRatingClass.clearCache()
     getPlayerValueMemoized.clearCache()
   }
