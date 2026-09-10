@@ -149,6 +149,14 @@ func RetrieveDataset(datasetID string) ([]Player, string, error) {
 		return nil, "", err
 	}
 
+	// Existing datasets may predate upload-time club normalization. Normalize the
+	// full dataset before callers filter, aggregate, or cache it. Storage backends
+	// can share the player slice with other readers, so copy the structs first;
+	// canonicalization only changes the Division and BasedIn string fields.
+	players := make([]Player, len(data.Players))
+	copy(players, data.Players)
+	CanonicalizePlayerClubMetadata(players)
+
 	SetSpanAttributes(ctx,
 		attribute.Int("dataset.player_count", len(data.Players)),
 		attribute.String("dataset.currency", data.CurrencySymbol),
@@ -156,7 +164,7 @@ func RetrieveDataset(datasetID string) ([]Player, string, error) {
 
 	RecordBusinessOperation(ctx, "dataset_retrieve", true, nil)
 
-	return data.Players, data.CurrencySymbol, nil
+	return players, data.CurrencySymbol, nil
 }
 
 // DeleteDataset deletes player data using the storage interface

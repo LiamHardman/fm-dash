@@ -709,6 +709,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	<-doneConsumingResults
 	LogDebug("Results consumer goroutine finished processing all items.")
 
+	// Normalize the parsed dataset before it branches into storage, the immediate
+	// upload response, and background percentile calculations. The storage setters
+	// normalize their own copies, which leaves the first-view response unchanged.
+	CanonicalizePlayerClubMetadata(playersList)
+
 	// Finish performance timing
 	parseTimer.Finish(int64(len(playersList)), 0) // No errors counted here since workers handle errors
 
