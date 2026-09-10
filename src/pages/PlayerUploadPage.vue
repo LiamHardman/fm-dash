@@ -422,7 +422,7 @@ export default {
     const loadDemoData = async () => {
       demoLoading.value = true
       try {
-        const response = await fetch('/upload-demo.html')
+        const response = await fetch('/demo.html')
         if (!response.ok) throw new Error('Demo data is unavailable')
         const blob = await response.blob()
         playerFile.value = new File([blob], 'fm-dash-demo.html', { type: 'text/html' })
