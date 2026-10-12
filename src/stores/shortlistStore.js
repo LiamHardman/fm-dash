@@ -23,7 +23,16 @@ export const useShortlistStore = defineStore('shortlist', () => {
     if (!value || value.version !== 1 || !Array.isArray(value.lists) || !value.lists.length) {
       return shortlistService.defaultDocument()
     }
-    return value
+    return {
+      ...value,
+      lists: value.lists.map((list) => ({
+        ...list,
+        currency: list.currency || 'USD',
+        wagePeriod: list.wagePeriod || 'week',
+        items: (list.items || []).map((item) => ({ ...item, tags: item.tags || [] })),
+        scenarios: list.scenarios || [],
+      })),
+    }
   }
 
   const load = async () => {
@@ -47,32 +56,44 @@ export const useShortlistStore = defineStore('shortlist', () => {
 
   const save = async () => {
     try {
-      document.value = normalize(await shortlistService.save(document.value))
+      await shortlistService.save(document.value)
       return true
     } catch (error) {
       console.error('Shortlist save failed:', error)
       Notify.create({
         type: 'negative',
-        message: 'Could not save Shortlists. Changes are kept in this browser.',
+        message: shortlistService.state.localDurable
+          ? 'Could not save Shortlists. A local draft is retained.'
+          : 'Could not save Shortlists. Keep this page open to retain your edits.',
       })
       return false
     }
   }
 
   const createList = async (name) => {
-    const list = { id: makeID(), name: name.trim(), items: [] }
+    if (!loaded.value) await load()
+    const list = {
+      id: makeID(),
+      name: name.trim(),
+      currency: 'USD',
+      wagePeriod: 'week',
+      items: [],
+      scenarios: [],
+    }
     document.value.lists.push(list)
     activeListId.value = list.id
     await save()
   }
 
   const renameActiveList = async (name) => {
+    if (!loaded.value) await load()
     if (!activeList.value || !name.trim()) return
     activeList.value.name = name.trim()
     await save()
   }
 
   const deleteActiveList = async () => {
+    if (!loaded.value) await load()
     if (!activeList.value || document.value.lists.length === 1) return false
     document.value.lists = document.value.lists.filter((list) => list.id !== activeListId.value)
     activeListId.value = document.value.lists[0].id
@@ -116,6 +137,24 @@ export const useShortlistStore = defineStore('shortlist', () => {
 
   return {
     document,
+    sync: shortlistService.state,
+    retry: () => shortlistService.retry(),
+    resolveConflict: async (choice) => {
+      document.value = normalize(await shortlistService.resolveConflict(choice))
+      if (!document.value.lists.some((list) => list.id === activeListId.value)) {
+        activeListId.value = document.value.lists[0].id
+      }
+    },
+    replaceDocument: async (value) => {
+      if (!loaded.value) await load()
+      document.value = normalize(value)
+      return save()
+    },
+    updatePlanning: async (patch) => {
+      if (!loaded.value) await load()
+      Object.assign(activeList.value, patch)
+      return save()
+    },
     activeListId,
     activeList,
     loading,

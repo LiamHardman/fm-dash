@@ -4,6 +4,7 @@
       <PageHeader title="Saved searches" subtitle="Reusable, private filter recipes that apply to any Dataset." icon="bookmarks">
         <template #actions><q-btn unelevated color="primary" icon="search" label="Browse players" :to="currentDatasetId ? `/dataset/${currentDatasetId}` : '/upload'" /></template>
       </PageHeader>
+      <ProfileSyncStatus :store="searchStore" />
 
       <q-banner v-if="draftFilters" rounded class="q-mb-md bg-blue-1 text-blue-10">
         This shared recipe is a draft. Choose a Dataset before applying it, then save it if you want to keep it.
@@ -35,13 +36,14 @@ import { computed, defineComponent, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EmptyState from '../components/layout/EmptyState.vue'
 import PageHeader from '../components/layout/PageHeader.vue'
+import ProfileSyncStatus from '../components/ProfileSyncStatus.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { useSavedSearchStore } from '../stores/savedSearchStore'
 import { decodeSearchRecipe, describeSavedSearch, encodeSearchRecipe } from '../utils/savedSearch'
 
 export default defineComponent({
   name: 'SavedSearchesPage',
-  components: { EmptyState, PageHeader },
+  components: { ProfileSyncStatus, EmptyState, PageHeader },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -51,7 +53,7 @@ export default defineComponent({
     const draftFilters = computed(() =>
       typeof route.query.recipe === 'string' ? decodeSearchRecipe(route.query.recipe) : null
     )
-    onMounted(() => searchStore.load())
+    onMounted(() => searchStore.load().catch(() => {}))
     const applySearch = (search) => {
       if (currentDatasetId.value)
         router.push({

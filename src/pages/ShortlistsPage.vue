@@ -3,14 +3,16 @@
     <div class="page-container">
       <PageHeader
         title="Shortlists"
-        subtitle="Plan recruitment across datasets. Player details are available only while their source dataset is loaded."
+        subtitle="Plan recruitment across datasets. Player details are resolved from their available source Datasets."
         icon="playlist_add_check"
       >
         <template #actions>
+          <ProfileBackupDialog />
           <q-btn flat icon="download" label="Export" @click="exportList" />
           <q-btn unelevated color="primary" icon="add" label="New shortlist" @click="openCreateDialog" />
         </template>
       </PageHeader>
+      <ProfileSyncStatus :store="shortlistStore" />
 
       <q-card flat bordered class="list-toolbar q-mb-md">
         <q-card-section class="row items-center q-col-gutter-md">
@@ -40,10 +42,15 @@
         </q-card-section>
       </q-card>
 
+      <q-card flat bordered class="q-mb-md"><q-card-section class="row q-gutter-md">
+        <q-select class="planning-unit" outlined dense label="Planning currency" :model-value="shortlistStore.activeList?.currency || 'USD'" :options="['USD', 'GBP', 'EUR', 'AUD', 'CAD', 'JPY', 'BRL', 'CHF']" @update:model-value="shortlistStore.updatePlanning({ currency: $event })" />
+        <q-select class="planning-unit" outlined dense label="Wage period" :model-value="shortlistStore.activeList?.wagePeriod || 'week'" :options="['week', 'month', 'year']" @update:model-value="shortlistStore.updatePlanning({ wagePeriod: $event })" />
+        <div class="text-caption">Amounts are entered in these planning units. Changing units does not convert existing numbers.</div>
+      </q-card-section></q-card>
       <div class="summary-grid q-mb-md">
         <StatTile icon="groups" label="Targets" :value="activeItems.length" />
         <StatTile icon="account_balance_wallet" label="Target fees" :value="formatMoney(targetFeeTotal)" />
-        <StatTile icon="payments" label="Target wages" :value="formatMoney(targetWageTotal)" />
+        <StatTile icon="payments" :label="`Target wages / ${shortlistStore.activeList?.wagePeriod || 'week'}`" :value="formatMoney(targetWageTotal)" />
         <StatTile icon="warning_amber" label="Unavailable references" :value="unavailableCount" />
       </div>
 
@@ -56,9 +63,11 @@
       </SectionCard>
 
       <q-banner v-if="unavailableCount" rounded class="q-mt-md bg-orange-1 text-orange-10">
-        {{ unavailableCount }} player reference{{ unavailableCount === 1 ? '' : 's' }} cannot be resolved because its source Dataset is not currently loaded. Planning metadata remains available.
+        {{ unavailableCount }} player reference{{ unavailableCount === 1 ? '' : 's' }} are loading or unavailable. Planning metadata remains available.
       </q-banner>
 
+      <q-btn flat dense icon="refresh" label="Refresh player references" @click="refreshReferences" />
+      <RecruitmentScenarios v-if="shortlistStore.loaded" :store="shortlistStore" :entries="entries" />
       <EmptyState
         v-if="!activeItems.length"
         class="q-mt-md"
@@ -78,7 +87,7 @@
       </EmptyState>
 
       <div v-else class="q-mt-md">
-        <section v-for="group in groupedItems" :key="group.status" class="status-section">
+        <section v-for="group in groupedItems" :key="group.value" class="status-section">
           <div class="status-heading">
             <h2>{{ group.label }}</h2>
             <q-badge color="primary" :label="group.items.length" />
@@ -89,12 +98,12 @@
                 <template v-if="entry.player">
                   <div class="text-subtitle1">{{ entry.player.name }}</div>
                   <div class="text-caption text-grey-7">
-                    {{ entry.player.club || 'No club' }} · {{ entry.player.pos || entry.player.Position || 'Position unavailable' }}
+                    {{ entry.player.club || 'No club' }} · {{ entry.player.position || entry.player.pos || entry.player.Position || 'Position unavailable' }}
                   </div>
                 </template>
                 <template v-else>
                   <div class="text-subtitle1">Player unavailable</div>
-                  <div class="text-caption text-grey-7">Source Dataset is not loaded</div>
+                  <div class="text-caption text-grey-7">{{ referenceStateLabel(entry.state) }}</div>
                 </template>
               </div>
               <q-select
@@ -123,7 +132,7 @@
                 dense
                 type="number"
                 min="0"
-                label="Target fee"
+                :label="`Target fee (${shortlistStore.activeList?.currency || 'USD'})`"
                 @update:model-value="saveItem(entry.item)"
               />
               <q-input
@@ -132,7 +141,7 @@
                 dense
                 type="number"
                 min="0"
-                label="Target wage"
+                :label="`Wage (${shortlistStore.activeList?.currency || 'USD'} / ${shortlistStore.activeList?.wagePeriod || 'week'})`"
                 @update:model-value="saveItem(entry.item)"
               />
               <q-btn flat round color="negative" icon="close" aria-label="Remove target" @click="removeItem(entry.item)" />
@@ -184,6 +193,10 @@ import EmptyState from '../components/layout/EmptyState.vue'
 import PageHeader from '../components/layout/PageHeader.vue'
 import SectionCard from '../components/layout/SectionCard.vue'
 import StatTile from '../components/layout/StatTile.vue'
+import ProfileBackupDialog from '../components/ProfileBackupDialog.vue'
+import ProfileSyncStatus from '../components/ProfileSyncStatus.vue'
+import RecruitmentScenarios from '../components/RecruitmentScenarios.vue'
+import { usePlayerReferences } from '../composables/usePlayerReferences'
 import { usePlayerStore } from '../stores/playerStore'
 import { useShortlistStore } from '../stores/shortlistStore'
 
@@ -203,7 +216,15 @@ const includedInBudget = new Set(['watching', 'scouting', 'bid_planned'])
 
 export default defineComponent({
   name: 'ShortlistsPage',
-  components: { EmptyState, PageHeader, SectionCard, StatTile },
+  components: {
+    ProfileSyncStatus,
+    RecruitmentScenarios,
+    ProfileBackupDialog,
+    EmptyState,
+    PageHeader,
+    SectionCard,
+    StatTile,
+  },
   setup() {
     const playerStore = usePlayerStore()
     const shortlistStore = useShortlistStore()
@@ -213,15 +234,14 @@ export default defineComponent({
     const listName = ref('')
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
     const activeItems = computed(() => shortlistStore.activeList?.items || [])
-    const playerByReference = computed(() => {
-      const datasetId = currentDatasetId.value
-      const players = playerStore.allPlayers || []
-      return new Map(players.map((player) => [`${datasetId}:${player.uid ?? player.UID}`, player]))
-    })
+    const { resolved, refresh: refreshReferences } = usePlayerReferences(() =>
+      activeItems.value.map((item) => item.playerRef)
+    )
     const entries = computed(() =>
       activeItems.value.map((item) => {
         const key = `${item.playerRef.datasetId}:${item.playerRef.playerUid}`
-        return { item, key, player: playerByReference.value.get(key) || null }
+        const live = resolved.value.get(key)
+        return { item, key, state: live?.state || 'loading', player: live?.player || null }
       })
     )
     const groupedItems = computed(() =>
@@ -255,7 +275,7 @@ export default defineComponent({
       shortlistStore.document.lists.map((list) => ({ label: list.name, value: list.id }))
     )
 
-    onMounted(() => shortlistStore.load())
+    onMounted(() => shortlistStore.load().catch(() => {}))
 
     const saveItem = (item) => shortlistStore.updateItem(item, {})
     const updateTags = (item, value) =>
@@ -288,15 +308,34 @@ export default defineComponent({
       await shortlistStore.deleteActiveList()
       showDeleteDialog.value = false
     }
+    const referenceStateLabel = (state) =>
+      ({
+        loading: 'Loading player?',
+        expired: 'Source Dataset expired or deleted',
+        missing: 'Player absent from source Dataset',
+        failed: 'Could not load source Dataset. Retry below.',
+      })[state] || 'Unavailable'
     const formatMoney = (value) =>
       new Intl.NumberFormat(undefined, {
         style: 'currency',
-        currency: 'USD',
+        currency: shortlistStore.activeList?.currency || 'USD',
         maximumFractionDigits: 0,
       }).format(value || 0)
     const csvCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
     const exportList = () => {
-      const rows = [['Player', 'Status', 'Priority', 'Target fee', 'Target wage', 'Tags', 'Notes']]
+      const rows = [
+        [
+          'Player',
+          'Status',
+          'Priority',
+          'Target fee',
+          'Target wage',
+          'Currency',
+          'Wage period',
+          'Tags',
+          'Notes',
+        ],
+      ]
       for (const entry of entries.value) {
         rows.push([
           entry.player?.name || 'Player unavailable',
@@ -304,6 +343,8 @@ export default defineComponent({
           entry.item.priority,
           entry.item.targetFee,
           entry.item.targetWage,
+          shortlistStore.activeList?.currency || 'USD',
+          shortlistStore.activeList?.wagePeriod || 'week',
           entry.item.tags.join(', '),
           entry.item.notes,
         ])
@@ -319,6 +360,9 @@ export default defineComponent({
 
     return {
       shortlistStore,
+      entries,
+      refreshReferences,
+      referenceStateLabel,
       currentDatasetId,
       activeItems,
       groupedItems,
@@ -350,6 +394,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .shortlists-page { min-height: 100vh; }
+.planning-unit { min-width: 180px; flex: 1 1 180px; }
 .page-container { max-width: var(--content-max-width); margin: 0 auto; padding: var(--page-gutter); }
 .list-toolbar, .target-card { background: var(--surface-card); }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--section-gap); }

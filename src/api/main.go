@@ -309,6 +309,8 @@ func main() {
 	mux.Handle("/api/wishlists/", wrapHandler(http.HandlerFunc(wishlistHandler), "wishlists"))
 	// API endpoint for installation-level, cross-dataset shortlists
 	mux.Handle("/api/shortlists", wrapHandler(http.HandlerFunc(shortlistsHandler), "shortlists"))
+	mux.Handle("/api/profile/validate-backup", wrapHandler(http.HandlerFunc(profileBackupValidateHandler), "profile-backup-validation"))
+	mux.Handle("/api/profile/player-references", wrapHandler(http.HandlerFunc(playerReferencesHandler), "player-references"))
 	// API endpoint for installation-level saved filter recipes
 	mux.Handle("/api/saved-searches", wrapHandler(http.HandlerFunc(savedSearchesHandler), "saved-searches"))
 	mux.Handle("/api/colour-sets/", wrapHandler(http.HandlerFunc(colourSetsHandler), "colour-sets"))

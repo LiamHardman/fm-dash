@@ -650,16 +650,12 @@ func TestProtobufStorage_InvalidProtobufData(t *testing.T) {
 		t.Fatalf("Failed to store invalid protobuf dataset: %v", err)
 	}
 
-	// Try to retrieve through protobuf storage (should fallback to JSON)
-	retrievedData, err := storage.Retrieve("invalid-protobuf-dataset")
-	if err != nil {
-		t.Fatalf("Failed to retrieve invalid protobuf dataset: %v", err)
+	// Corruption must be surfaced, never returned as a fake marker player.
+	data, err := storage.Retrieve("invalid-protobuf-dataset")
+	if err == nil || len(data.Players) != 0 {
+		t.Fatal("expected corrupt protobuf to fail without returning marker players")
 	}
 
-	// Should get the raw invalid dataset back (JSON fallback)
-	if retrievedData.CurrencySymbol != "__PROTOBUF_MARKER__" {
-		t.Errorf("Expected fallback to return raw dataset")
-	}
 }
 
 func TestProtobufStorage_LogFallbackEvent(_ *testing.T) {
@@ -1463,15 +1459,9 @@ func TestProtobufStorage_ErrorRecoveryIntegration(t *testing.T) {
 		t.Fatalf("Failed to store corrupt protobuf data: %v", err)
 	}
 
-	// Should fallback to JSON when retrieving corrupt protobuf data
-	retrievedCorruptData, err := storage.Retrieve("corrupt-protobuf-test")
-	if err != nil {
-		t.Fatalf("Should be able to retrieve corrupt protobuf data with fallback: %v", err)
-	}
-
-	// Should get the raw corrupt data back (JSON fallback)
-	if retrievedCorruptData.CurrencySymbol != "__PROTOBUF_MARKER__" {
-		t.Error("Should fallback to JSON for corrupt protobuf data")
+	data, err := storage.Retrieve("corrupt-protobuf-test")
+	if err == nil || len(data.Players) != 0 {
+		t.Fatal("expected corruption error without fabricated player data")
 	}
 
 	t.Log("Error recovery integration tests completed successfully")

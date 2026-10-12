@@ -625,10 +625,7 @@ func validatePlayerStructure(t *testing.T, player Player) {
 		t.Error("Player overall should not be negative")
 	}
 
-	// Validate maps are initialized
-	if player.Attributes == nil {
-		t.Error("Player attributes map should be initialized")
-	}
+	// Raw Attributes are deliberately excluded from the JSON contract; numericAttributes are public.
 
 	if player.NumericAttributes == nil {
 		t.Error("Player numeric attributes map should be initialized")

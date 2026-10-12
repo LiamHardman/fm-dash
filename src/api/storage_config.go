@@ -69,7 +69,7 @@ func (s *localConfigStorage) StoreConfig(name string, data []byte) error {
 	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return os.WriteFile(path, data, 0o644)
+	return atomicConfigWrite(path, data)
 }
 
 func (s *localConfigStorage) RetrieveConfig(name string) ([]byte, error) {
@@ -126,7 +126,11 @@ func (s *s3ConfigStorage) RetrieveConfig(name string) ([]byte, error) {
 			LogWarn("Config storage: failed to close S3 object: %v", closeErr)
 		}
 	}()
-	return io.ReadAll(obj)
+	data, err := io.ReadAll(obj)
+	if minio.ToErrorResponse(err).Code == "NoSuchKey" {
+		return nil, os.ErrNotExist
+	}
+	return data, err
 }
 
 func (s *s3ConfigStorage) DeleteConfig(name string) error {

@@ -36,19 +36,11 @@ func savedSearchesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func savedSearchesGetHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := configStorage.RetrieveConfig(savedSearchStorageKey)
-	if err != nil {
-		writeSavedSearchesResponse(w, SavedSearchDocument{Version: 1, Searches: []SavedSearch{}})
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(data); err != nil {
-		LogWarn("saved-searches: failed to write GET response: %v", err)
-	}
+	readProfileDocument(w, r, savedSearchStorageKey, SavedSearchDocument{Version: 1, Searches: []SavedSearch{}})
 }
 
 func savedSearchesPutHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, 2*1024*1024))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 2*1024*1024))
 	if err != nil {
 		WriteErrorResponse(w, r, "read_error", "Failed to read request body", nil, http.StatusBadRequest)
 		return
@@ -67,9 +59,7 @@ func savedSearchesPutHandler(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, r, "serialization_error", "Failed to save searches", nil, http.StatusInternalServerError)
 		return
 	}
-	if err := configStorage.StoreConfig(savedSearchStorageKey, data); err != nil {
-		LogWarn("saved-searches: failed to store: %v", err)
-		WriteErrorResponse(w, r, "storage_error", "Failed to save searches", nil, http.StatusInternalServerError)
+	if !writeProfileDocument(w, r, savedSearchStorageKey, data) {
 		return
 	}
 	writeSavedSearchesResponse(w, document)

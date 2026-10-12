@@ -52,7 +52,7 @@ export function useProtobufApi(initialBaseURL) {
 
     return {
       ...options,
-      signal: abortController.value.signal,
+      signal: options.signal || abortController.value.signal,
     }
   }
 
@@ -97,7 +97,7 @@ export function useProtobufApi(initialBaseURL) {
     } catch (error) {
       if (error.name === 'AbortError') {
         logger.info('Request aborted by user', { url })
-        return null
+        throw error
       }
 
       // Update failed request count
@@ -179,13 +179,14 @@ export function useProtobufApi(initialBaseURL) {
    * @param {Object} params - Query parameters
    * @param {string} messageType - Protobuf message type
    */
-  const get = async (url, params, messageType) => {
+  const get = async (url, params, messageType, options = {}) => {
     const queryString = new URLSearchParams(params).toString()
     const fullUrl = queryString ? `${url}?${queryString}` : url
 
     return protobufRequest(
       fullUrl,
       {
+        ...options,
         method: 'GET',
       },
       messageType
@@ -252,14 +253,14 @@ export function useProtobufApi(initialBaseURL) {
    * @param {string} datasetId - Dataset ID
    * @param {Object} params - Query parameters
    */
-  const getPlayerData = async (datasetId, params = {}) => {
+  const getPlayerData = async (datasetId, params = {}, options = {}) => {
     if (!datasetId) {
       throw new Error('Dataset ID is required.')
     }
 
     try {
       const url = `/api/players/${datasetId}`
-      return await get(url, params, 'api.PlayerDataResponse')
+      return await get(url, params, 'api.PlayerDataResponse', options)
     } catch (error) {
       logger.error('Error fetching player data:', error)
       throw error

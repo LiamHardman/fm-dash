@@ -27,7 +27,7 @@ func InitializeStorage(ctx context.Context) StorageInterface {
 		if err != nil {
 			logError(ctx, "Failed to initialize protobuf storage, falling back to JSON serialization",
 				"error", err, "duration_ms", time.Since(start).Milliseconds())
-			return baseStorage
+			return readableJSONStorage{baseStorage}
 		}
 		logInfo(ctx, "Storage initialization completed",
 			"storage_type", "protobuf",
@@ -38,7 +38,7 @@ func InitializeStorage(ctx context.Context) StorageInterface {
 	logDebug(ctx, "Storage initialization completed",
 		"storage_type", "json",
 		"duration_ms", time.Since(start).Milliseconds())
-	return baseStorage
+	return readableJSONStorage{baseStorage}
 }
 
 // CreateProtobufEnabledStorage creates a storage instance with protobuf serialization enabled
@@ -56,7 +56,7 @@ func CreateProtobufEnabledStorage(ctx context.Context, backend StorageInterface)
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
 func CreateJSONStorage(ctx context.Context) StorageInterface {
 	logInfo(ctx, "Creating JSON-only storage without protobuf wrapper")
-	return initializeBaseStorage(ctx)
+	return readableJSONStorage{initializeBaseStorage(ctx)}
 }
 
 // StorageConfiguration holds the validated storage configuration

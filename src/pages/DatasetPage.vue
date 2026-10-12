@@ -1063,7 +1063,19 @@ export default {
           }
         } else {
           // Fetch data from API
-          await playerStore.fetchPlayersByDatasetId(datasetId)
+          await playerStore.fetchPlayersByDatasetId(
+            datasetId,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'all',
+            null,
+            'all',
+            { signal }
+          )
+          if (signal?.aborted || route.params.datasetId !== datasetId) return
 
           // Add logging to see what data was received
           console.log('=== DATASET LOADED DEBUG ===')
@@ -1103,6 +1115,7 @@ export default {
           await playerStore.fetchAllAvailableRoles()
         }
 
+        if (signal?.aborted || route.params.datasetId !== datasetId) return
         await wishlistStore.initializeWishlistForDataset(datasetId)
         if (signal?.aborted) return
 
@@ -1117,15 +1130,15 @@ export default {
         currentFilters.value.maxSalary =
           initSalaryRange && initSalaryRange.max !== undefined ? initSalaryRange.max : 1000000
       } catch (err) {
+        if (signal?.aborted || route.params.datasetId !== datasetId) return
         pageLoadingError.value = `Failed to load dataset: ${err.message || 'Unknown server error'}.`
-        playerStore.resetState()
       } finally {
-        pageLoading.value = false
+        if (!signal?.aborted && route.params.datasetId === datasetId) pageLoading.value = false
       }
     }
 
     onMounted(async () => {
-      await savedSearchStore.load()
+      await savedSearchStore.load().catch(() => {})
       const datasetIdFromRoute = route.params.datasetId
       if (datasetIdFromRoute) {
         // Check if we have cached data for this dataset
@@ -1413,7 +1426,8 @@ export default {
         datasetFetchController?.abort()
         datasetFetchController = new AbortController()
         await fetchDataset(newId, datasetFetchController.signal)
-        await checkManagedTeam(newId)
+        if (!datasetFetchController.signal.aborted && route.params.datasetId === newId)
+          await checkManagedTeam(newId)
       }
     )
 

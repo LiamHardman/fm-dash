@@ -6,13 +6,24 @@ export const useProgressionProjectStore = defineStore('progressionProjects', () 
   const projects = ref([])
   const activeId = ref(null)
   const loading = ref(false)
+  const loaded = ref(false)
+  let loadPromise = null
   const error = ref('')
   const activeProject = computed(() => projects.value.find((p) => p.id === activeId.value) || null)
   async function load() {
+    if (loaded.value) return
+    if (loadPromise) return loadPromise
+    loadPromise = loadOnce().finally(() => {
+      loadPromise = null
+    })
+    return loadPromise
+  }
+  async function loadOnce() {
     loading.value = true
     try {
       const d = await service.list()
       projects.value = d.projects || []
+      loaded.value = true
       activeId.value ||= projects.value[0]?.id || null
     } catch (e) {
       error.value = e.message
@@ -21,10 +32,11 @@ export const useProgressionProjectStore = defineStore('progressionProjects', () 
     }
   }
   async function persist() {
-    const d = await service.save({ version: 1, projects: projects.value })
-    projects.value = d.projects || projects.value
+    await service.save({ version: 1, projects: projects.value })
   }
   async function create(name = 'Untitled progression') {
+    if (!loaded.value) await load()
+    if (!loaded.value) throw new Error('Load projects before creating one')
     const p = {
       id: `project-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
@@ -48,5 +60,30 @@ export const useProgressionProjectStore = defineStore('progressionProjects', () 
     if (activeId.value === id) activeId.value = projects.value[0]?.id || null
     await persist()
   }
-  return { projects, activeId, activeProject, loading, error, load, create, update, remove }
+  return {
+    projects,
+    activeId,
+    activeProject,
+    loading,
+    loaded,
+    error,
+    load,
+    create,
+    update,
+    remove,
+    sync: service.state,
+    retry: () => service.retry(),
+    resolveConflict: async (choice) => {
+      const d = await service.resolveConflict(choice)
+      projects.value = d.projects
+      activeId.value = projects.value[0]?.id || null
+    },
+    replaceDocument: async (value) => {
+      await load()
+      if (!loaded.value) throw new Error('Load projects first')
+      projects.value = value.projects
+      await persist()
+      return true
+    },
+  }
 })

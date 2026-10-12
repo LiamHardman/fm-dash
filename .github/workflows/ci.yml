@@ -80,7 +80,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Run frontend tests
-        run: npm run test:optional
+        run: npm run test:run
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -90,7 +90,7 @@ jobs:
 
       - name: Run backend tests
         working-directory: ./src/api
-        run: go test ./... || echo "No Go test packages found, skipping..."
+        run: go test -timeout=90s ./...
 
   # Build
   build:

@@ -33,6 +33,18 @@ All API responses follow a consistent structure:
 
 ## Core Data Endpoints
 
+### Profile document revisions
+
+`GET /api/shortlists`, `GET /api/saved-searches`, and `GET /api/progression/projects` return their document directly with an `ETag` header. Send that exact revision in `If-Match` when replacing the corresponding document with `PUT`. Successful writes return the new revision.
+
+- `428`: the revision header is missing; load the document first.
+- `412`: another writer changed the document; reload and review both versions before saving.
+- `503`: storage is unavailable; retain the local draft and retry later.
+
+Only missing documents return defaults. Deploy frontend and backend together when adopting this contract.
+
+`POST /api/profile/player-references` resolves player references across Datasets. `POST /api/profile/validate-backup` validates a versioned profile backup without writing it. Restore writes each profile document independently using the revision contract above.
+
 ### 1. Health Check
 
 Monitor API server health and performance metrics.
@@ -921,4 +933,4 @@ Official client libraries are available for:
 
 ---
 
-*For additional API support or feature requests, please open an issue on our GitHub repository.* 
+*For additional API support or feature requests, please open an issue on our GitHub repository.*

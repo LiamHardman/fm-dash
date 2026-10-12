@@ -34,18 +34,21 @@ export const useSavedSearchStore = defineStore('savedSearch', () => {
   }
   const saveDocument = async () => {
     try {
-      document.value = normalize(await savedSearchService.save(document.value))
+      await savedSearchService.save(document.value)
       return true
     } catch (error) {
       console.error('Saved-search save failed:', error)
       Notify.create({
         type: 'negative',
-        message: 'Could not save searches. Changes are kept in this browser.',
+        message: savedSearchService.state.localDurable
+          ? 'Could not save searches. A local draft is retained.'
+          : 'Could not save searches. Keep this page open to retain your edits.',
       })
       return false
     }
   }
   const create = async (name, filters) => {
+    if (!loaded.value) await load()
     const search = { id: makeID(), name: name.trim(), filters: cloneFilters(filters) }
     document.value = { ...document.value, searches: [...document.value.searches, search] }
     await saveDocument()
@@ -74,5 +77,25 @@ export const useSavedSearchStore = defineStore('savedSearch', () => {
     await saveDocument()
   }
   const getById = (id) => document.value.searches.find((search) => search.id === id)
-  return { document, loading, loaded, load, create, update, rename, remove, getById }
+  return {
+    document,
+    loading,
+    loaded,
+    load,
+    create,
+    update,
+    rename,
+    remove,
+    getById,
+    sync: savedSearchService.state,
+    retry: () => savedSearchService.retry(),
+    resolveConflict: async (choice) => {
+      document.value = normalize(await savedSearchService.resolveConflict(choice))
+    },
+    replaceDocument: async (value) => {
+      if (!loaded.value) await load()
+      document.value = normalize(value)
+      return saveDocument()
+    },
+  }
 })

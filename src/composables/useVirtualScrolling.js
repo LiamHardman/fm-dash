@@ -10,7 +10,7 @@ export function useOptimizedSorting() {
   const createSortFunction = (field, direction, customSortFn = null) => {
     const cacheKey = `${field}-${direction}-${customSortFn ? 'custom' : 'default'}`
 
-    if (sortCache.has(cacheKey)) {
+    if (!customSortFn && sortCache.has(cacheKey)) {
       return sortCache.get(cacheKey)
     }
 
@@ -44,7 +44,7 @@ export function useOptimizedSorting() {
       return 0
     }
 
-    sortCache.set(cacheKey, sortFn)
+    if (!customSortFn) sortCache.set(cacheKey, sortFn)
     return sortFn
   }
 
@@ -127,7 +127,8 @@ export function useOptimizedSorting() {
       }
     }
 
-    result.push(...arr1.slice(i), ...arr2.slice(j))
+    while (i < arr1.length) result.push(arr1[i++])
+    while (j < arr2.length) result.push(arr2[j++])
     return result
   }
 

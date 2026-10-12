@@ -1,3 +1,4 @@
+import { toValue } from 'vue'
 import { getUnifiedRatingClass } from '../utils/colourSets'
 import { formatCurrency } from '../utils/currencyUtils'
 import { memoize } from './useMemoization'
@@ -62,13 +63,13 @@ export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGener
   }
 
   const formatDisplayCurrency = (numericAmount, originalDisplayValue) => {
-    return formatCurrency(numericAmount, currencySymbol, originalDisplayValue)
+    return formatCurrency(numericAmount, toValue(currencySymbol), originalDisplayValue)
   }
 
   // Main player value getter for both display and sorting
   const getPlayerValue = (player, fieldKey, _columnName = null) => {
     // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
-    if (!isGoalkeeperView && player.position && player.position.includes('GK')) {
+    if (!toValue(isGoalkeeperView) && player.position && player.position.includes('GK')) {
       const mappedStat = gkStatMapping[fieldKey]
       if (mappedStat && player[mappedStat] !== undefined) {
         return player[mappedStat]
@@ -76,7 +77,7 @@ export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGener
     }
 
     // For goalkeeper view, all players should show goalkeeper stats
-    if (isGoalkeeperView) {
+    if (toValue(isGoalkeeperView)) {
       // Map outfield FIFA stats to goalkeeper stats
       const gkStatMappingReverse = {
         pac: 'div', // Pace -> Diving
@@ -112,9 +113,8 @@ export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGener
           playerUID = `${player.name || 'unknown'}-${player.club || 'unknown'}-${player.age || 'unknown'}-${player.position || 'unknown'}`
         }
 
-        return `gen${cacheGeneration.value}-${playerUID}-${fieldKey}-${columnName || ''}`
+        return `gen${cacheGeneration.value}-${toValue(isGoalkeeperView)}-${playerUID}-${fieldKey}-${columnName || ''}`
       },
-      cacheKey: 'playerValue',
     }
   )
 

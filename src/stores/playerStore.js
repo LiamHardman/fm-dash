@@ -6,6 +6,7 @@ import uploadFlowProfiler from '../utils/performanceProfiler.js'
 import { useRecentDatasetsStore } from './recentDatasetsStore.js'
 
 export const usePlayerStore = defineStore('player', () => {
+  let datasetRequestGeneration = 0
   const allPlayers = shallowRef([])
   const currentDatasetId = ref(sessionStorage.getItem('currentDatasetId') || null)
   const detectedCurrencySymbol = ref(sessionStorage.getItem('detectedCurrencySymbol') || '£')
@@ -353,13 +354,16 @@ export const usePlayerStore = defineStore('player', () => {
     maxSalaryFilter = null,
     divisionFilter = 'all',
     targetDivision = null,
-    positionCompare = 'all'
+    positionCompare = 'all',
+    options = {}
   ) {
     if (!datasetId) {
       resetState()
       return
     }
 
+    const generation = ++datasetRequestGeneration
+    const isCurrent = () => generation === datasetRequestGeneration && !options.signal?.aborted
     uploadFlowProfiler.markStep('fetch_players_start', { datasetId })
     const tracker = new PerformanceTracker('Fetch Players Data')
     loading.value = true
@@ -376,8 +380,12 @@ export const usePlayerStore = defineStore('player', () => {
         maxSalaryFilter,
         divisionFilter,
         targetDivision,
-        positionCompare
+        positionCompare,
+        0,
+        3,
+        options
       )
+      if (!isCurrent()) return null
       uploadFlowProfiler.markStep('api_call_end', {
         playerCount: response.players?.length || 0,
         hasProtobuf: !!response._protobuf,
@@ -451,6 +459,7 @@ export const usePlayerStore = defineStore('player', () => {
 
       return response
     } catch (e) {
+      if (!isCurrent() || e.name === 'AbortError') return null
       uploadFlowProfiler.markStep('fetch_players_error', { error: e.message })
       tracker.checkpoint('Error occurred')
 
@@ -465,10 +474,9 @@ export const usePlayerStore = defineStore('player', () => {
         error.value = `Failed to fetch player data: ${e.message || 'Unknown error'}`
       }
 
-      resetState()
       throw e
     } finally {
-      loading.value = false
+      if (generation === datasetRequestGeneration) loading.value = false
     }
   }
 
@@ -574,6 +582,8 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function resetState() {
+    datasetRequestGeneration++
+    loading.value = false
     allPlayers.value = []
     updateDatasetFacets([])
     currentDatasetId.value = null
@@ -804,6 +814,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function setCurrentDatasetId(datasetId) {
+    if (datasetId !== currentDatasetId.value) resetState()
     currentDatasetId.value = datasetId
     if (datasetId) sessionStorage.setItem('currentDatasetId', datasetId)
     else sessionStorage.removeItem('currentDatasetId')

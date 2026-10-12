@@ -88,6 +88,48 @@ describe('playerStore', () => {
   })
 
   describe('fetchPlayersByDatasetId', () => {
+    it('clears players when changing Dataset identity', () => {
+      store.allPlayers = [{ uid: 1, name: 'Old' }]
+      store.setCurrentDatasetId('new')
+      expect(store.allPlayers).toEqual([])
+    })
+    it('commits only the latest request', async () => {
+      let finishOld
+      playerService.getPlayersByDatasetId.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOld = resolve
+          })
+      )
+      const old = store.fetchPlayersByDatasetId('old')
+      playerService.getPlayersByDatasetId.mockResolvedValueOnce({
+        players: [{ uid: 2, name: 'New' }],
+      })
+      await store.fetchPlayersByDatasetId('new')
+      finishOld({ players: [{ uid: 1, name: 'Old' }] })
+      await old
+      expect(store.currentDatasetId).toBe('new')
+      expect(store.allPlayers[0].name).toBe('New')
+    })
+    it('ignores failures from obsolete requests', async () => {
+      let failOld
+      playerService.getPlayersByDatasetId.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            failOld = reject
+          })
+      )
+      const old = store.fetchPlayersByDatasetId('old')
+      playerService.getPlayersByDatasetId.mockResolvedValueOnce({
+        players: [{ uid: 2, name: 'New' }],
+      })
+      await store.fetchPlayersByDatasetId('new')
+      failOld(new Error('offline'))
+      await old
+      expect(store.currentDatasetId).toBe('new')
+      expect(store.error).toBe('')
+    })
+
     it('should handle protobuf responses', async () => {
       // Mock a protobuf response
       const protobufResponse = {

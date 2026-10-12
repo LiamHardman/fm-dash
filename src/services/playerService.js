@@ -120,7 +120,8 @@ export default {
     targetDivision = null,
     positionCompare = 'all',
     _retryCount = 0,
-    maxRetries = 3
+    maxRetries = 3,
+    options = {}
   ) {
     if (!datasetId) {
       return Promise.reject(new Error('Dataset ID is required.'))
@@ -171,7 +172,7 @@ export default {
       const { withRetry } = useErrorHandling()
 
       // Use withRetry to handle potential race conditions with exponential backoff
-      return await withRetry(() => getPlayerData(datasetId, params), {
+      return await withRetry(() => getPlayerData(datasetId, params, options), {
         retries: maxRetries,
         initialDelay: 200,
         onRetry: (attempt) => {

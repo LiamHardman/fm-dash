@@ -153,7 +153,14 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	start := time.Now()
 
 	// Try to retrieve protobuf data first
-	compressedData, err := s.retrieveProtobufBytes(ctx, datasetID)
+	dataset, err := s.backend.Retrieve(datasetID)
+	if err != nil {
+		return DatasetData{}, err
+	}
+	if len(dataset.RawBytes) == 0 && dataset.CurrencySymbol != "__PROTOBUF_MARKER__" {
+		return dataset, nil
+	}
+	compressedData, err := protobufBytesFromDataset(ctx, datasetID, dataset)
 	if err != nil {
 		retrievalErr := NewProtobufError(ctx, "retrieve", datasetID, "Failed to retrieve protobuf data", err)
 		return DatasetData{}, retrievalErr
@@ -372,15 +379,14 @@ func (s *ProtobufStorage) storeProtobufBytes(ctx context.Context, datasetID stri
 
 // retrieveProtobufBytes retrieves raw protobuf bytes by decoding from the special dataset
 func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID string) ([]byte, error) {
-	logDebug(ctx, "Retrieving protobuf bytes", "dataset_id", datasetID)
-
-	// Retrieve the special dataset
 	dataset, err := s.backend.Retrieve(datasetID)
 	if err != nil {
-		logDebug(ctx, "Failed to retrieve protobuf dataset", "error", err, "dataset_id", datasetID)
-		return nil, fmt.Errorf("failed to retrieve protobuf dataset: %w", err)
+		return nil, err
 	}
+	return protobufBytesFromDataset(ctx, datasetID, dataset)
+}
 
+func protobufBytesFromDataset(ctx context.Context, datasetID string, dataset DatasetData) ([]byte, error) {
 	if len(dataset.RawBytes) > 0 {
 		logDebug(ctx, "Successfully retrieved protobuf bytes natively", "dataset_id", datasetID, "size_bytes", len(dataset.RawBytes))
 		return dataset.RawBytes, nil

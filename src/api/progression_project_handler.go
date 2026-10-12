@@ -41,18 +41,12 @@ func progressionProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func progressionProjectsGet(w http.ResponseWriter, _ *http.Request) {
-	data, err := configStorage.RetrieveConfig(progressionProjectStorageKey)
-	if err != nil {
-		writeProgressionProjects(w, ProgressionProjectDocument{Version: 1, Projects: []ProgressionProject{}})
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(data)
+func progressionProjectsGet(w http.ResponseWriter, r *http.Request) {
+	readProfileDocument(w, r, progressionProjectStorageKey, ProgressionProjectDocument{Version: 1, Projects: []ProgressionProject{}})
 }
 
 func progressionProjectsPut(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, 2*1024*1024))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 2*1024*1024))
 	if err != nil {
 		WriteErrorResponse(w, r, "read_error", "Failed to read request body", nil, http.StatusBadRequest)
 		return
@@ -63,8 +57,7 @@ func progressionProjectsPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, _ := json.Marshal(document)
-	if err := configStorage.StoreConfig(progressionProjectStorageKey, data); err != nil {
-		WriteErrorResponse(w, r, "storage_error", "Failed to save progression projects", nil, http.StatusInternalServerError)
+	if !writeProfileDocument(w, r, progressionProjectStorageKey, data) {
 		return
 	}
 	writeProgressionProjects(w, document)

@@ -29,7 +29,6 @@ const options = computed(() =>
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 function switchDataset(id) {
-  playerStore.setCurrentDatasetId(id)
   router.push(`/dataset/${id}`)
 }
 // biome-ignore lint/correctness/noUnusedVariables: used in template

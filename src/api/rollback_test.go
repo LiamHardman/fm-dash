@@ -44,18 +44,18 @@ func TestImmediateRollbackCapability(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			start := time.Now()
-			
-			logInfo(ctx, "Starting rollback test", 
-				"test_name", tt.name, 
+
+			logInfo(ctx, "Starting rollback test",
+				"test_name", tt.name,
 				"storage_type", tt.storageType)
-			
+
 			// Create test dataset
 			testData := createTestDataset(ctx, "rollback-test", 100)
 			datasetID := "rollback-test-dataset"
 
 			// Step 1: Test with protobuf enabled
-			logInfo(ctx, "Step 1: Testing with protobuf enabled", 
-				"dataset_id", datasetID, 
+			logInfo(ctx, "Step 1: Testing with protobuf enabled",
+				"dataset_id", datasetID,
 				"player_count", len(testData.Players))
 			backend := tt.setupFunc()
 			protobufStorage := CreateProtobufStorage(backend)
@@ -63,8 +63,8 @@ func TestImmediateRollbackCapability(t *testing.T) {
 			// Store data using protobuf
 			err := protobufStorage.Store(datasetID, testData)
 			if err != nil {
-				logError(ctx, "Failed to store data with protobuf", 
-					"error", err, 
+				logError(ctx, "Failed to store data with protobuf",
+					"error", err,
 					"dataset_id", datasetID)
 			}
 			require.NoError(t, err, "Should store data successfully with protobuf")
@@ -76,20 +76,20 @@ func TestImmediateRollbackCapability(t *testing.T) {
 
 			// Step 2: Immediate rollback - disable protobuf, use JSON directly
 			logInfo(ctx, "Step 2: Testing immediate rollback to JSON", "dataset_id", datasetID)
-			jsonStorage := backend // Use the underlying backend directly (JSON mode)
+			jsonStorage := readableJSONStorage{backend} // Use the underlying backend directly (JSON mode)
 
 			// When data is stored using protobuf, it's stored in a special encoded format
 			// Direct JSON retrieval will get the encoded protobuf data, not the original data
 			retrievedDataJSON, err := jsonStorage.Retrieve(datasetID)
 			if err != nil {
-				logError(ctx, "Failed to retrieve data from backend during rollback", 
+				logError(ctx, "Failed to retrieve data from backend during rollback",
 					"error", err, "dataset_id", datasetID)
 				t.Fatalf("Should be able to retrieve data from backend: %v", err)
 			}
 
 			// Check if this is protobuf-encoded data (indicated by special marker)
 			if retrievedDataJSON.CurrencySymbol == "__PROTOBUF_MARKER__" {
-				logInfo(ctx, "Data is stored in protobuf format - testing protobuf storage can still handle retrieval", 
+				logInfo(ctx, "Data is stored in protobuf format - testing protobuf storage can still handle retrieval",
 					"dataset_id", datasetID)
 
 				// Test that protobuf storage can still retrieve and convert the data
@@ -98,7 +98,7 @@ func TestImmediateRollbackCapability(t *testing.T) {
 				assertDatasetEqual(t, testData, retrievedDataProtobuf)
 			} else {
 				// If it's regular JSON data, verify data integrity
-				logInfo(ctx, "Data is stored in JSON format - verifying data integrity", 
+				logInfo(ctx, "Data is stored in JSON format - verifying data integrity",
 					"dataset_id", datasetID)
 				assertDatasetEqual(t, testData, retrievedDataJSON)
 			}
@@ -110,14 +110,14 @@ func TestImmediateRollbackCapability(t *testing.T) {
 
 			err = jsonStorage.Store(newDatasetID, newTestData)
 			if err != nil {
-				logError(ctx, "Failed to store new data with JSON after rollback", 
+				logError(ctx, "Failed to store new data with JSON after rollback",
 					"error", err, "dataset_id", newDatasetID)
 			}
 			require.NoError(t, err, "Should store new data successfully with JSON after rollback")
 
 			retrievedNewData, err := jsonStorage.Retrieve(newDatasetID)
 			if err != nil {
-				logError(ctx, "Failed to retrieve new data with JSON", 
+				logError(ctx, "Failed to retrieve new data with JSON",
 					"error", err, "dataset_id", newDatasetID)
 			}
 			require.NoError(t, err, "Should retrieve new data successfully with JSON")
@@ -134,7 +134,7 @@ func TestImmediateRollbackCapability(t *testing.T) {
 			assert.Contains(t, datasets, newDatasetID, "New dataset should be listed")
 
 			duration := time.Since(start)
-			logInfo(ctx, "Rollback test completed successfully", 
+			logInfo(ctx, "Rollback test completed successfully",
 				"test_name", tt.name,
 				"storage_type", tt.storageType,
 				"duration_ms", duration.Milliseconds())
@@ -151,7 +151,7 @@ func TestImmediateRollbackCapability(t *testing.T) {
 func TestAutomaticFallbackBehavior(t *testing.T) {
 	ctx := context.Background()
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting automatic fallback behavior test")
 
 	// Create a mock storage that can simulate failures
@@ -232,7 +232,7 @@ func TestAutomaticFallbackBehavior(t *testing.T) {
 func TestDataIntegrityDuringRollback(t *testing.T) {
 	ctx := context.Background()
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting data integrity during rollback test")
 
 	tempDir := t.TempDir()
@@ -276,7 +276,7 @@ func TestDataIntegrityDuringRollback(t *testing.T) {
 
 	// Step 3: Simulate rollback by using JSON storage directly
 	logInfo(ctx, "Step 3: Testing rollback scenario with JSON storage")
-	jsonStorage := localStorage
+	jsonStorage := readableJSONStorage{localStorage}
 
 	// Try to retrieve data using JSON storage (this tests fallback mechanisms)
 	for datasetID, originalData := range datasets {
@@ -284,7 +284,7 @@ func TestDataIntegrityDuringRollback(t *testing.T) {
 		// If stored as protobuf, direct JSON retrieval might fail, which is expected
 		retrievedData, err := jsonStorage.Retrieve(datasetID)
 		if err != nil {
-			logDebug(ctx, "Direct JSON retrieval failed (expected if stored as protobuf)", 
+			logDebug(ctx, "Direct JSON retrieval failed (expected if stored as protobuf)",
 				"error", err, "dataset_id", datasetID)
 
 			// Verify that protobuf storage can still handle the retrieval
@@ -337,7 +337,7 @@ func TestDataIntegrityDuringRollback(t *testing.T) {
 	}
 
 	duration := time.Since(start)
-	logInfo(ctx, "Data integrity during rollback test completed", 
+	logInfo(ctx, "Data integrity during rollback test completed",
 		"dataset_count", len(datasets),
 		"duration_ms", duration.Milliseconds())
 
@@ -352,7 +352,7 @@ func TestDataIntegrityDuringRollback(t *testing.T) {
 func TestEnvironmentVariableRollback(t *testing.T) {
 	ctx := context.Background()
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting environment variable rollback test")
 
 	// Save original environment variable
@@ -441,7 +441,7 @@ func TestEnvironmentVariableRollback(t *testing.T) {
 func TestRollbackPerformanceImpact(t *testing.T) {
 	ctx := context.Background()
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting performance impact rollback test")
 
 	tempDir := t.TempDir()
@@ -513,7 +513,7 @@ func TestRollbackPerformanceImpact(t *testing.T) {
 		"JSON retrieve performance should be within acceptable bounds during rollback")
 
 	duration := time.Since(start)
-	logInfo(ctx, "Performance impact rollback test completed", 
+	logInfo(ctx, "Performance impact rollback test completed",
 		"duration_ms", duration.Milliseconds(),
 		"store_slowdown", storeSlowdown,
 		"retrieve_slowdown", retrieveSlowdown)
@@ -573,8 +573,8 @@ func createTestDataset(ctx context.Context, namePrefix string, playerCount int) 
 	}
 
 	duration := time.Since(start)
-	logDebug(ctx, "Test dataset creation completed", 
-		"name_prefix", namePrefix, 
+	logDebug(ctx, "Test dataset creation completed",
+		"name_prefix", namePrefix,
 		"player_count", playerCount,
 		"duration_ms", duration.Milliseconds())
 
@@ -628,20 +628,21 @@ func (m *MockStorageWithFailures) List() ([]string, error) {
 }
 
 // initializeStorageForTest simulates the storage initialization logic
+//
 //nolint:ireturn // This function is designed to return different storage implementations
 func initializeStorageForTest(backend StorageInterface) StorageInterface {
 	useProtobuf := os.Getenv("USE_PROTOBUF") == "true"
 	if useProtobuf {
 		return CreateProtobufStorage(backend)
 	}
-	return backend
+	return readableJSONStorage{backend}
 }
 
 // createTestDatasetWithSpecialChars creates a dataset with special characters for testing
 func createTestDatasetWithSpecialChars(ctx context.Context) DatasetData {
 	start := time.Now()
 	logDebug(ctx, "Creating test dataset with special characters")
-	
+
 	dataset := DatasetData{
 		Players: []Player{
 			{
@@ -670,7 +671,7 @@ func createTestDatasetWithSpecialChars(ctx context.Context) DatasetData {
 	}
 
 	duration := time.Since(start)
-	logDebug(ctx, "Test dataset with special characters creation completed", 
+	logDebug(ctx, "Test dataset with special characters creation completed",
 		"player_count", len(dataset.Players),
 		"duration_ms", duration.Milliseconds())
 

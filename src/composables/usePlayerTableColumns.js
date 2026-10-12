@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, toValue } from 'vue'
 
 export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) {
   // Column styles
@@ -304,7 +304,7 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
     ]
 
     // Add value score column if enabled
-    if (showValueScore) {
+    if (toValue(showValueScore)) {
       newOrderBase.push(baseColumnDefinitions.valueScore)
     }
 
@@ -314,7 +314,7 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
       newOrderBase.push(baseColumnDefinitions.CA)
     }
 
-    const fifaColumnsInOrder = isGoalkeeperView
+    const fifaColumnsInOrder = toValue(isGoalkeeperView)
       ? [
           allFifaStatDefinitions.DIV,
           allFifaStatDefinitions.HAN,

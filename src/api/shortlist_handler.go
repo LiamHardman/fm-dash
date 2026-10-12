@@ -28,9 +28,12 @@ type ShortlistDocument struct {
 }
 
 type Shortlist struct {
-	ID    string          `json:"id"`
-	Name  string          `json:"name"`
-	Items []ShortlistItem `json:"items"`
+	ID         string                `json:"id"`
+	Name       string                `json:"name"`
+	Items      []ShortlistItem       `json:"items"`
+	Currency   string                `json:"currency"`
+	WagePeriod string                `json:"wagePeriod"`
+	Scenarios  []RecruitmentScenario `json:"scenarios"`
 }
 
 type ShortlistItem struct {
@@ -72,20 +75,11 @@ func shortlistsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func shortlistsGetHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := configStorage.RetrieveConfig(shortlistStorageKey)
-	if err != nil {
-		writeShortlistsResponse(w, defaultShortlistDocument())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(data); err != nil {
-		LogWarn("shortlists: failed to write GET response: %v", err)
-	}
+	readProfileDocument(w, r, shortlistStorageKey, defaultShortlistDocument())
 }
 
 func shortlistsPutHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, 2*1024*1024))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 2*1024*1024))
 	if err != nil {
 		WriteErrorResponse(w, r, "read_error", "Failed to read request body", nil, http.StatusBadRequest)
 		return
@@ -106,9 +100,7 @@ func shortlistsPutHandler(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, r, "serialization_error", "Failed to save shortlist", nil, http.StatusInternalServerError)
 		return
 	}
-	if err := configStorage.StoreConfig(shortlistStorageKey, data); err != nil {
-		LogWarn("shortlists: failed to store: %v", err)
-		WriteErrorResponse(w, r, "storage_error", "Failed to save shortlist", nil, http.StatusInternalServerError)
+	if !writeProfileDocument(w, r, shortlistStorageKey, data) {
 		return
 	}
 
@@ -131,6 +123,15 @@ func validateShortlistDocument(document *ShortlistDocument) error {
 		list := &document.Lists[listIndex]
 		list.ID = strings.TrimSpace(list.ID)
 		list.Name = strings.TrimSpace(list.Name)
+		if list.Currency == "" {
+			list.Currency = "USD"
+		}
+		if list.WagePeriod == "" {
+			list.WagePeriod = "week"
+		}
+		if !validPlanningCurrency(list.Currency) || (list.WagePeriod != "week" && list.WagePeriod != "month" && list.WagePeriod != "year") || !validateRecruitmentScenarios(list.Scenarios) {
+			return errInvalidShortlist
+		}
 		if list.ID == "" || list.Name == "" || len(list.Name) > 80 || seenLists[list.ID] || len(list.Items) > 2000 {
 			return errInvalidShortlist
 		}

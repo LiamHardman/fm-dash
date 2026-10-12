@@ -14,6 +14,7 @@ func TestShortlistsGetReturnsDefaultDocument(t *testing.T) {
 	t.Cleanup(func() { configStorage = previousStorage })
 
 	req := httptest.NewRequest(http.MethodGet, "/api/shortlists", nil)
+	req.Header.Set("If-Match", `"missing"`)
 	response := httptest.NewRecorder()
 	shortlistsHandler(response, req)
 
@@ -33,6 +34,7 @@ func TestShortlistsPutRejectsPlayerSnapshots(t *testing.T) {
 
 	body := `{"version":1,"lists":[{"id":"default","name":"My shortlist","items":[{"playerRef":{"datasetId":"ce27fb2f-5d0f-4a09-b11c-591dcbf25d91","playerUid":7},"status":"watching","priority":"medium","tags":[],"notes":"","targetFee":0,"targetWage":0,"player":{"name":"Must not persist"}}]}]}`
 	req := httptest.NewRequest(http.MethodPut, "/api/shortlists", strings.NewReader(body))
+	req.Header.Set("If-Match", `"missing"`)
 	response := httptest.NewRecorder()
 	shortlistsHandler(response, req)
 
@@ -52,6 +54,7 @@ func TestShortlistsPutRejectsInvalidStatus(t *testing.T) {
 
 	body := `{"version":1,"lists":[{"id":"default","name":"My shortlist","items":[{"playerRef":{"datasetId":"ce27fb2f-5d0f-4a09-b11c-591dcbf25d91","playerUid":7},"status":"maybe","priority":"medium","tags":[],"notes":"","targetFee":0,"targetWage":0}]}]}`
 	req := httptest.NewRequest(http.MethodPut, "/api/shortlists", strings.NewReader(body))
+	req.Header.Set("If-Match", `"missing"`)
 	response := httptest.NewRecorder()
 	shortlistsHandler(response, req)
 

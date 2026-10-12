@@ -1274,11 +1274,11 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 			expectedRetries: 1,
 		},
 		{
-			name:            "Partial Response with Protobuf Accept",
+			name:            "Malformed successful body is validated by the decoder",
 			scenario:        "partial_response",
 			acceptHeader:    "application/x-protobuf",
 			expectedStatus:  http.StatusOK,
-			expectedRetries: 1,
+			expectedRetries: 0,
 		},
 		{
 			name:            "Permanent Error with Protobuf Accept",
@@ -1320,6 +1320,16 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 				t.Errorf("Expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
 			}
 
+			// A generic streaming HTTP transport cannot validate protobuf schemas.
+			if tc.scenario == "partial_response" {
+				data, readErr := io.ReadAll(resp.Body)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				if proto.Unmarshal(data, &pb.PlayerDataResponse{}) == nil {
+					t.Fatal("decoder must reject the incomplete response")
+				}
+			}
 			// Check the number of requests made (original + retries)
 			expectedRequests := tc.expectedRetries + 1
 			if requestCount != expectedRequests {

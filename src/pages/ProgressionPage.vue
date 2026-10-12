@@ -7,6 +7,7 @@
         icon="trending_up"
       />
 
+      <ProfileSyncStatus :store="projectStore" />
       <SectionCard title="Progression project" icon="folder_open" class="q-mb-md">
         <div class="row items-center q-gutter-sm">
           <q-select dense outlined emit-value map-options style="min-width: 240px" label="Project"
@@ -356,6 +357,7 @@ import SectionCard from '../components/layout/SectionCard.vue'
 import StatTile from '../components/layout/StatTile.vue'
 // biome-ignore lint/correctness/noUnusedImports: used in template
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import ProfileSyncStatus from '../components/ProfileSyncStatus.vue'
 // biome-ignore lint/correctness/noUnusedImports: used in template
 import ProgressionTrendChart from '../components/ProgressionTrendChart.vue'
 // biome-ignore lint/correctness/noUnusedImports: used in template

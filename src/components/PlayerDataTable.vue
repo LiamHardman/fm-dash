@@ -159,11 +159,9 @@
 import { useQuasar } from 'quasar'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { memoize } from '../composables/useMemoization'
+import { usePlayerSorting } from '../composables/usePlayerSorting'
 import { usePlayerTableCells } from '../composables/usePlayerTableCells'
 import { usePlayerTableColumns } from '../composables/usePlayerTableColumns'
-import { useOptimizedSorting } from '../composables/useVirtualScrolling'
-import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
 import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useShortlistStore } from '../stores/shortlistStore'
@@ -228,16 +226,14 @@ export default {
     const virtualScrollItemSize = computed(() => (uiStore.density === 'compact' ? 50 : 68))
 
     // Initialize optimized sorting and web workers
-    const { sortLargeArray, clearSortCache } = useOptimizedSorting()
-    const { sortPlayers: sortPlayersWorker } = usePlayerCalculationWorker()
 
     // Cache generation key that changes when players data changes
     const cacheGeneration = ref(0)
 
     // Initialize composables
     const { currentColumns, getColumnLabel, getSortFieldKey } = usePlayerTableColumns(
-      props.isGoalkeeperView,
-      props.showValueScore,
+      () => props.isGoalkeeperView,
+      () => props.showValueScore,
       showCA
     )
 
@@ -289,18 +285,17 @@ export default {
       getDisplayValue,
       getPlayerValue,
       clearCaches,
-    } = usePlayerTableCells(props.isGoalkeeperView, props.currencySymbol, cacheGeneration)
+    } = usePlayerTableCells(
+      () => props.isGoalkeeperView,
+      () => props.currencySymbol,
+      cacheGeneration
+    )
 
     const contextMenu = ref(null)
     const sortField = ref(props.defaultSortField)
     const sortDirection = ref(props.defaultSortDirection)
     const rowsPerPageOptions = ref([10, 15, 20, 50, 0]) // Keep for internal logic, but selector is removed
     const maxPagesToShow = 7
-    const totalSortedCount = ref(0)
-    const isAsyncSorting = ref(false)
-    const isSliced = ref(false)
-    const currentSortController = ref(null) // For cancelling sort operations
-
     const pagination = ref({
       sortBy: props.defaultSortField,
       descending: props.defaultSortDirection === 'desc',
@@ -316,348 +311,23 @@ export default {
       (_newPlayers, _oldPlayers) => {
         pagination.value.page = 1 // Reset to first page when player list changes
       },
-      { deep: true }
-    )
-
-    const positionSortOrder = [
-      'GK',
-      'DR',
-      'DC',
-      'DL',
-      'WBR',
-      'WBL',
-      'DM',
-      'MR',
-      'MC',
-      'ML',
-      'AMR',
-      'AMC',
-      'AML',
-      'ST',
-    ]
-
-    // Memoized position index calculation (expensive string processing)
-    const getPositionIndex = memoize(
-      (positionString) => {
-        if (!positionString || typeof positionString !== 'string') {
-          return positionSortOrder.length + 2 // Place invalid/empty last
-        }
-        let processedString = positionString.toUpperCase()
-        processedString = processedString.replace(/\bST\s*\(C\)/g, 'ST')
-        processedString = processedString.replace(/\bM\s*\(C\)/g, 'MC')
-        processedString = processedString.replace(/\bAM\s*\(C\)/g, 'AMC')
-        processedString = processedString.replace(/\bDM\s*\(C\)/g, 'DM')
-        processedString = processedString.replace(/\bD\s*\(C\)/g, 'DC')
-        processedString = processedString.replace(/\bGK\s*\(C\)/g, 'GK')
-
-        let minFoundIndex = positionSortOrder.length
-        const sideMatch = processedString.match(/\(([^)]+)\)$/)
-        let mainPart = processedString
-        const sidesSpecified = []
-
-        if (sideMatch?.[1]) {
-          mainPart = processedString.substring(0, sideMatch.index).trim()
-          const sideSpec = sideMatch[1]
-          if (sideSpec.includes('R')) sidesSpecified.push('R')
-          if (sideSpec.includes('L')) sidesSpecified.push('L')
-        }
-
-        mainPart = mainPart.replace(/\s*\(.*?\)\s*/g, '').trim()
-        const basePositionCodes = mainPart
-          .split(/[,/]/)
-          .map((p) => p.trim())
-          .filter((p) => p.length > 0)
-        const rolesToEvaluate = new Set()
-
-        for (const baseCode of basePositionCodes) {
-          if (sidesSpecified.length > 0) {
-            for (const side of sidesSpecified) {
-              rolesToEvaluate.add(baseCode + side)
-            }
-          }
-          rolesToEvaluate.add(baseCode)
-        }
-
-        if (rolesToEvaluate.size === 0 && positionString.trim() !== '') {
-          rolesToEvaluate.add(processedString.replace(/\s*\(.*?\)\s*/g, '').trim())
-        }
-        if (rolesToEvaluate.size === 0) return positionSortOrder.length + 1
-
-        for (const role of rolesToEvaluate) {
-          const index = positionSortOrder.indexOf(role)
-          if (index !== -1 && index < minFoundIndex) {
-            minFoundIndex = index
-          }
-        }
-        return minFoundIndex === positionSortOrder.length
-          ? positionSortOrder.length + 1
-          : minFoundIndex
-      },
-      {
-        maxSize: 100, // Cache position calculations
-        keyGenerator: (positionString) => positionString,
-        cacheKey: 'positionIndex',
-      }
+      { deep: false }
     )
 
     const onPaginationUpdate = (newPagination) => {
       pagination.value = newPagination
     }
 
-    // Cache for sorted results to avoid re-sorting on pagination changes
-    const sortedPlayersCache = ref(null)
-    const lastSortKey = ref('')
-
-    // Separate reactive flag to prevent infinite loops
-    const sortKeyChanged = ref('')
-    const asyncSortTimeout = ref(null)
-
-    const sortedPlayers = computed(() => {
-      if (!props.players || props.players.length === 0) {
-        totalSortedCount.value = 0
-        isSliced.value = false
-        sortedPlayersCache.value = null
-        return []
-      }
-
-      const fieldKey = getSortFieldKey(sortField.value || 'Overall')
-      const direction = sortDirection.value
-      const currentSortKey = `${fieldKey}-${direction}-${props.players.length}-${cacheGeneration.value}`
-
-      // Return cached result if sort parameters haven't changed
-      if (sortedPlayersCache.value && lastSortKey.value === currentSortKey) {
-        return sortedPlayersCache.value
-      }
-
-      // Custom sort function for complex sorting logic
-      const customSortFn = (a, b, field, dir) => {
-        // Use getPlayerValue to ensure GK stat mapping is applied for sorting
-        let vA = getPlayerValue(a, field, sortField.value)
-        let vB = getPlayerValue(b, field, sortField.value)
-        const aIsNull = vA === null || vA === undefined
-        const bIsNull = vB === null || vB === undefined
-
-        if (aIsNull && bIsNull) return 0
-        if (aIsNull) return dir === 'asc' ? 1 : -1
-        if (bIsNull) return dir === 'asc' ? -1 : 1
-
-        if (field === 'position') {
-          const indexA = getPositionIndex(vA)
-          const indexB = getPositionIndex(vB)
-          return dir === 'asc' ? indexA - indexB : indexB - indexA
-        }
-        if (typeof vA === 'number' && typeof vB === 'number') {
-          return dir === 'asc' ? vA - vB : vB - vA
-        }
-        if (typeof vA === 'string' && typeof vB === 'string') {
-          vA = vA.toLowerCase()
-          vB = vB.toLowerCase()
-          if (vA < vB) return dir === 'asc' ? -1 : 1
-          if (vA > vB) return dir === 'asc' ? 1 : -1
-          return 0
-        }
-        return 0
-      }
-
-      // For small arrays, use synchronous sorting
-      if (props.players.length <= 500) {
-        const playersToSort = [...props.players]
-        const fullSortedList = playersToSort.sort((a, b) => customSortFn(a, b, fieldKey, direction))
-
-        totalSortedCount.value = fullSortedList.length
-        let result
-        let sliced = false
-
-        if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
-          sliced = true
-          result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS)
-        } else {
-          result = fullSortedList
-        }
-
-        isSliced.value = sliced
-        sortedPlayersCache.value = result
-        lastSortKey.value = currentSortKey
-
-        // Make sure async sorting flag is false for small datasets
-        isAsyncSorting.value = false
-
-        return result
-      }
-
-      // For large arrays, return unsorted data immediately and trigger async sort
-      // This prevents blocking the UI thread on initial load
-      if (sortKeyChanged.value !== currentSortKey) {
-        sortKeyChanged.value = currentSortKey
-
-        // Clear any existing timeout
-        if (asyncSortTimeout.value) {
-          clearTimeout(asyncSortTimeout.value)
-        }
-
-        // If this is the initial load, show unsorted data immediately
-        if (!sortedPlayersCache.value) {
-          const initialDisplay = [...props.players].slice(0, MAX_DISPLAY_PLAYERS)
-          sortedPlayersCache.value = initialDisplay
-          totalSortedCount.value = props.players.length
-          isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS
-          lastSortKey.value = currentSortKey
-
-          // Defer sorting to next tick to avoid blocking UI
-          nextTick(() => {
-            triggerAsyncSort(fieldKey, direction, customSortFn, currentSortKey)
-          })
-
-          return initialDisplay
-        }
-
-        // Debounce async sorting to prevent rapid successive calls
-        asyncSortTimeout.value = setTimeout(() => {
-          if (!isAsyncSorting.value && sortKeyChanged.value === currentSortKey) {
-            triggerAsyncSort(fieldKey, direction, customSortFn, currentSortKey)
-          }
-        }, 100) // 100ms debounce
-      }
-
-      // CRITICAL: Always return the current cache during sorting to prevent layout shifts
-      // This ensures the table maintains exactly the same data structure and length
-      if (sortedPlayersCache.value && sortedPlayersCache.value.length > 0) {
-        return sortedPlayersCache.value
-      }
-      // If no cache yet, create a stable fallback that matches the expected display size
-      // This prevents any change in table height or structure during initial sort
-      const targetLength = Math.min(MAX_DISPLAY_PLAYERS, props.players.length)
-      const stableFallback = [...props.players].slice(0, targetLength)
-
-      // Set initial cache to prevent further changes during sorting
-      if (!sortedPlayersCache.value) {
-        sortedPlayersCache.value = stableFallback
-        totalSortedCount.value = props.players.length
-        isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS
-      }
-
-      return stableFallback
-    })
-
-    // Async sorting for large datasets using web workers
-    const triggerAsyncSort = async (fieldKey, direction, customSortFn, sortKey) => {
-      // Prevent concurrent async sorting operations
-      if (isAsyncSorting.value) {
-        return
-      }
-
-      // Cancel any previous sort operation
-      if (currentSortController.value) {
-        currentSortController.value.cancelled = true
-      }
-
-      // Create new controller for this sort operation
-      const sortController = { cancelled: false }
-      currentSortController.value = sortController
-
-      // Set async sorting flag AFTER ensuring cache stability
-      isAsyncSorting.value = true
-
-      try {
-        let fullSortedList
-        const playerCount = props.players.length
-
-        // Tiered sorting strategy based on dataset size
-        if (playerCount >= 2000) {
-          try {
-            fullSortedList = await sortPlayersWorker(
-              [...props.players],
-              fieldKey,
-              direction,
-              sortField.value,
-              props.isGoalkeeperView
-            )
-          } catch (_workerError) {
-            // Fallback to main thread if Web Worker fails
-            fullSortedList = await sortLargeArray(
-              [...props.players],
-              fieldKey,
-              direction,
-              customSortFn,
-              2000
-            )
-          }
-        } else {
-          fullSortedList = await sortLargeArray(
-            [...props.players],
-            fieldKey,
-            direction,
-            customSortFn,
-            2000
-          )
-        }
-
-        // Check if this sort was cancelled
-        if (sortController.cancelled) {
-          return
-        }
-
-        totalSortedCount.value = fullSortedList.length
-        let result
-        let sliced = false
-
-        if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
-          sliced = true
-          result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS)
-        } else {
-          result = fullSortedList
-        }
-
-        isSliced.value = sliced
-
-        // Update cache in a way that doesn't trigger layout recalculation
-        nextTick(() => {
-          sortedPlayersCache.value = result
-          lastSortKey.value = sortKey
-        })
-      } catch (_error) {
-        if (sortController.cancelled) {
-          return
-        }
-
-        // Show user-friendly error notification
-        $q.notify({
-          type: 'warning',
-          message: 'Sorting was interrupted. Showing unsorted data.',
-          position: 'top',
-          timeout: 3000,
-        })
-
-        // Fallback to direct assignment if async sorting fails
-        const fallbackResult = [...props.players].slice(0, MAX_DISPLAY_PLAYERS)
-        nextTick(() => {
-          sortedPlayersCache.value = fallbackResult
-          totalSortedCount.value = props.players.length
-          isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS
-          lastSortKey.value = sortKey
-        })
-      } finally {
-        // Always clear the sorting flag and controller, regardless of outcome
-        isAsyncSorting.value = false
-        currentSortController.value = null
-      }
-    }
-
-    // Cancel current async sort operation
-    const _cancelAsyncSort = () => {
-      if (currentSortController.value) {
-        currentSortController.value.cancelled = true
-      }
-      isAsyncSorting.value = false
-      currentSortController.value = null
-
-      $q.notify({
-        type: 'info',
-        message: 'Sorting cancelled',
-        position: 'top',
-        timeout: 2000,
-      })
-    }
+    const sortSpecification = computed(() => ({
+      field: getSortFieldKey(sortField.value || 'Overall'),
+      direction: sortDirection.value,
+      goalkeeper: props.isGoalkeeperView,
+    }))
+    const { sortedPlayers, isAsyncSorting, totalSortedCount, isSliced } = usePlayerSorting(
+      () => props.players || [],
+      sortSpecification,
+      MAX_DISPLAY_PLAYERS
+    )
 
     const pagesNumber = computed(() => {
       if (
@@ -740,24 +410,6 @@ export default {
     }
 
     const sortTable = (fieldName) => {
-      // Prevent rapid clicking during sort operations
-      if (isAsyncSorting.value) {
-        return
-      }
-
-      // Clear any pending async sorting
-      if (asyncSortTimeout.value) {
-        clearTimeout(asyncSortTimeout.value)
-        asyncSortTimeout.value = null
-      }
-
-      // Clear sort cache when sort parameters change
-      clearSortCache()
-      // Don't clear sortedPlayersCache immediately to prevent layout shift
-      // It will be updated when the new sort completes
-      lastSortKey.value = ''
-      sortKeyChanged.value = ''
-
       const actualSortKey = getSortFieldKey(fieldName)
       let newDirection
       if (sortField.value === fieldName) {
@@ -918,9 +570,6 @@ export default {
       () => {
         nextTick(() => {
           cacheGeneration.value++
-          // Clear sorted players cache to force recalculation
-          sortedPlayersCache.value = null
-          lastSortKey.value = ''
         })
       },
       { deep: false }
@@ -932,7 +581,6 @@ export default {
       () => {
         // Clear all memoization caches when dataset changes
         clearCaches()
-        getPositionIndex.clearCache()
       }
     )
 
@@ -950,12 +598,6 @@ export default {
     onUnmounted(() => {
       // Clear all caches on component cleanup
       clearCaches()
-      getPositionIndex.clearCache()
-
-      // Clear async sort timeout
-      if (asyncSortTimeout.value) {
-        clearTimeout(asyncSortTimeout.value)
-      }
     })
 
     // Create a computed property for the table key

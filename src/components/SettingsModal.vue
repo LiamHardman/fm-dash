@@ -32,6 +32,7 @@
 
             <q-card-section class="settings-content">
                 <div class="settings-sections">
+                    <ProfileBackupDialog />
                     <!-- Rating Calculation Section -->
                     <!-- Appearance Section -->
                     <q-expansion-item
@@ -634,10 +635,11 @@ import { useUiStore } from '@/stores/uiStore'
 import playerService from '../services/playerService'
 import AttributeWeightsDialog from './AttributeWeightsDialog.vue'
 import ColourSetEditor from './ColourSetEditor.vue'
+import ProfileBackupDialog from './ProfileBackupDialog.vue'
 
 export default defineComponent({
   name: 'SettingsModal',
-  components: { AttributeWeightsDialog, ColourSetEditor },
+  components: { ProfileBackupDialog, AttributeWeightsDialog, ColourSetEditor },
   props: {
     modelValue: {
       type: Boolean,
