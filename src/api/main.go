@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -101,6 +102,16 @@ func validateEnvironmentVariables() error {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] != "serve" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		code := RunCLI(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr)
+		stop()
+		os.Exit(code)
+	}
+	if len(os.Args) > 2 {
+		slog.Error("serve does not accept positional arguments")
+		os.Exit(2)
+	}
 	// Validate environment variables first
 	if err := validateEnvironmentVariables(); err != nil {
 		slog.Error("Environment validation failed", "error", err)

@@ -30,6 +30,15 @@ build:
 	@echo "Building application..."
 	go build -o bin/api .
 
+CLI_BINARY = fmdash
+ifeq ($(OS),Windows_NT)
+CLI_BINARY = fmdash.exe
+endif
+
+.PHONY: build-cli
+build-cli:
+	go build -o bin/$(CLI_BINARY) .
+
 # Run tests
 .PHONY: test
 test:

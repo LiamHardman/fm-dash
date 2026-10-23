@@ -41,6 +41,14 @@ type FMSaveInfo struct {
 // format (see .scratch/fm-save-parsing/map.md). There is no known record schema, so results are
 // an ordered list of whatever plausible strings were found, not a fixed set of named fields.
 func ParseFMSave(r io.Reader) (*FMSaveInfo, error) {
+	inspection, err := inspectFMSaveReader(r)
+	if err != nil {
+		return nil, err
+	}
+	return &FMSaveInfo{Fields: inspection.Fields}, nil
+}
+
+func inspectFMSaveReader(r io.Reader) (*FMSaveInspection, error) {
 	header := make([]byte, fmSaveHeaderSize)
 	if _, err := io.ReadFull(r, header); err != nil {
 		return nil, fmt.Errorf("reading fm save header: %w", err)
@@ -49,20 +57,24 @@ func ParseFMSave(r io.Reader) (*FMSaveInfo, error) {
 		return nil, fmt.Errorf("not a recognized .fm save file (missing %q magic)", fmSaveMagic)
 	}
 
-	dec, err := zstd.NewReader(r)
+	dec, err := zstd.NewReader(r, zstd.WithDecoderMaxMemory(512<<20), zstd.WithDecoderConcurrency(1))
 	if err != nil {
 		return nil, fmt.Errorf("opening zstd stream: %w", err)
 	}
 	defer dec.Close()
 
-	window := make([]byte, fmSaveScanWindow)
-	n, err := io.ReadFull(dec, window)
-	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+	window, err := io.ReadAll(io.LimitReader(dec, fmSaveScanWindow+1))
+	if err != nil {
 		return nil, fmt.Errorf("decompressing fm save: %w", err)
 	}
-	window = window[:n]
-
-	return &FMSaveInfo{Fields: scanLengthPrefixedStrings(window)}, nil
+	n := len(window)
+	truncated := n > fmSaveScanWindow
+	window = window[:min(n, fmSaveScanWindow)]
+	fields := scanLengthPrefixedStrings(window)
+	if fields == nil {
+		fields = []FMSaveField{}
+	}
+	return &FMSaveInspection{Mode: "strings", Fields: fields, ScannedBytes: len(window), ScanLimit: fmSaveScanWindow, Truncated: truncated, OffsetOrigin: "decompressed archive", MinStringLength: fmSaveMinStringLen, MaxStringLength: fmSaveMaxStringLen}, nil
 }
 
 // scanLengthPrefixedStrings walks data looking for the confirmed encoding: a little-endian

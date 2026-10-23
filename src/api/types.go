@@ -47,14 +47,14 @@ type Player struct {
 	KIC                     int                           `json:"kic,omitempty"`
 	SPD                     int                           `json:"spd,omitempty"`
 	POS                     int                           `json:"pos,omitempty"`
-	Overall              int                `json:"overall"`
-	TotalStats           int                `json:"totalStats"`
-	MBR                  int                `json:"mbr"`
-	CA                   int                `json:"ca"` // fm21-cas Current Ability estimate (0–200 scale)
-	BestRoleOverall      string             `json:"bestRoleOverall"`
-	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
-	TransferValueAmount  int64              `json:"transferValueAmount"`
-	WageAmount           int64              `json:"wageAmount"`
+	Overall                 int                           `json:"overall"`
+	TotalStats              int                           `json:"totalStats"`
+	MBR                     int                           `json:"mbr"`
+	CA                      int                           `json:"ca"` // fm21-cas Current Ability estimate (0–200 scale)
+	BestRoleOverall         string                        `json:"bestRoleOverall"`
+	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`
+	TransferValueAmount     int64                         `json:"transferValueAmount"`
+	WageAmount              int64                         `json:"wageAmount"`
 
 	// Mutex to protect concurrent access to maps
 	mu sync.RWMutex `json:"-"`
@@ -68,13 +68,15 @@ type PlayerParseResult struct {
 
 // UploadResponse is the JSON response sent after a successful file upload and parse.
 type UploadResponse struct {
-	DatasetID              string   `json:"datasetId"`
-	Message                string   `json:"message"`
-	DetectedCurrencySymbol string   `json:"detectedCurrencySymbol,omitempty"`
-	Players                []Player `json:"players,omitempty"` // Return processed players
-	Roles                  []string `json:"roles,omitempty"`   // Return available roles
-	PercentilesReady       bool     `json:"percentilesReady"`  // Indicate if percentiles are ready
-	PlayerCount            int      `json:"playerCount"`       // Total player count
+	DatasetID              string            `json:"datasetId"`
+	Message                string            `json:"message"`
+	DetectedCurrencySymbol string            `json:"detectedCurrencySymbol,omitempty"`
+	Players                []Player          `json:"players,omitempty"` // Return processed players
+	Roles                  []string          `json:"roles,omitempty"`   // Return available roles
+	PercentilesReady       bool              `json:"percentilesReady"`  // Indicate if percentiles are ready
+	PlayerCount            int               `json:"playerCount"`       // Total player count
+	ParseCounts            *ParseCounts      `json:"parseCounts,omitempty"`
+	ParseDiagnostics       []ParseDiagnostic `json:"parseDiagnostics,omitempty"`
 }
 
 // PlayerDataWithCurrency is the JSON response for fetching player data, including the currency.

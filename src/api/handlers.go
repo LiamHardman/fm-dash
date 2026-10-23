@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -354,13 +355,19 @@ func writeUploadPreflightResponse(w http.ResponseWriter, r *http.Request, status
 
 func extractExportHeaders(filename string, content []byte) (string, []string, error) {
 	if strings.HasSuffix(strings.ToLower(filename), ".csv") {
-		for _, line := range strings.Split(string(content), "\n") {
-			if strings.TrimSpace(line) == "" {
-				continue
+		var headers []string
+		stop := errors.New("headers read")
+		err := scanExport(context.Background(), bytes.NewReader(content), "csv", func(_ int, cells []string, header bool) error {
+			if header {
+				headers = normalizeCSVHeaders(cells)
+				return stop
 			}
-			return "csv", normalizeCSVHeaders(strings.Split(strings.TrimSuffix(line, "\r"), ";")), nil
+			return nil
+		})
+		if err != nil && !errors.Is(err, stop) {
+			return "csv", nil, err
 		}
-		return "csv", nil, fmt.Errorf("we could not find column headings in this CSV export")
+		return "csv", headers, nil
 	}
 	if strings.HasSuffix(strings.ToLower(filename), ".html") || strings.HasSuffix(strings.ToLower(filename), ".htm") {
 		headers, err := extractHTMLHeaders(content)
@@ -372,7 +379,7 @@ func extractExportHeaders(filename string, content []byte) (string, []string, er
 func normalizeCSVHeaders(rawHeaders []string) []string {
 	headers := make([]string, 0, len(rawHeaders))
 	for _, rawHeader := range rawHeaders {
-		header := strings.TrimSpace(rawHeader)
+		header := strings.TrimSpace(strings.TrimPrefix(rawHeader, "\ufeff"))
 		if canonical, ok := csvHeaderNormalize[header]; ok {
 			header = canonical
 		}
@@ -612,132 +619,29 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
 	duplicateSpan.End()
 
-	// Process all files synchronously
-	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
 	parseStartTime := time.Now()
-	// Optimized pre-allocation based on file size estimation
-	if estimatedPlayerCount == 0 {
-		estimatedPlayerCount = 100 // Minimum reasonable estimate
-	}
-	optimalCapacity := calculateOptimalSliceCapacity(estimatedPlayerCount)
-	playersList := make([]Player, 0, optimalCapacity)
-	var processingError error
-
-	// Ensure configuration is initialized before processing players to avoid slow fallback path
 	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
-		logWarn(ctx, "Configuration initialization timeout, proceeding with defaults", "error", err)
+		logWarn(ctx, "Using fallback calculation configuration", "error", err)
 	}
-
-	numWorkers := runtime.NumCPU()
-	if numWorkers == 0 {
-		numWorkers = 1
+	format := "html"
+	if strings.HasSuffix(strings.ToLower(handler.Filename), ".csv") {
+		format = "csv"
 	}
-	SetSpanAttributes(ctx,
-		attribute.Int("workers.count", numWorkers),
-		attribute.String("processing.phase", "setup"),
-	)
-
-	// Dynamic buffer sizing based on available memory and system resources
-	bufferSize := calculateOptimalBufferSize(numWorkers, actualFileSize)
-	rowCellsChan := make(chan []string, bufferSize)
-	resultsChan := make(chan PlayerParseResult, bufferSize)
-	var wg sync.WaitGroup
-
-	var headersSnapshot []string
-
-	doneConsumingResults := make(chan struct{})
-	go func() {
-		defer close(doneConsumingResults)
-		for result := range resultsChan {
-			if result.Err == nil {
-				playersList = append(playersList, result.Player)
-			} else {
-				logWarn(ctx, "Skipping row due to error from worker", "error", result.Err)
-			}
-		}
-		LogDebug("Finished collecting results from resultsChan.")
-	}()
-
-	// Start performance timer for parsing
 	parseTimer := CreateParseTimerWithContext(ctx, "file_parsing")
-
-	isCSV := strings.HasSuffix(strings.ToLower(handler.Filename), ".csv")
-
-	// Wrap file parsing in a child span using the already-read content
-	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
-		contentReader := bytes.NewReader(fileContent)
-		if isCSV {
-			return ParseCSVPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
-		}
-		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+	parsed, err := ParsePlayers(ctx, bytes.NewReader(fileContent), ParseOptions{
+		Format: format, Stage: "enhanced", Workers: min(runtime.NumCPU(), 256),
 	})
-	processingError = err
-
-	// Note: rowCellsChan is now closed by the parser to prevent race conditions
-	LogDebug("File parsing attempt finished - channel closed by parser.")
-
-	if processingError != nil {
-		logError(ctx, "Error during file parsing or worker setup", "error", processingError)
-		if len(headersSnapshot) > 0 {
-			logInfo(ctx, "Waiting for any potentially started workers after parsing error...")
-			wg.Wait()
-		}
-		close(resultsChan)
-		<-doneConsumingResults
-		WriteErrorResponse(w, r, "parse_error", processingError.Error(), nil, http.StatusInternalServerError)
+	if parsed != nil {
+		parseTimer.Finish(int64(parsed.Counts.Accepted), int64(parsed.Counts.Errors))
+	} else {
+		parseTimer.Finish(0, 1)
+	}
+	if err != nil {
+		WriteErrorResponse(w, r, "parse_error", err.Error(), nil, http.StatusUnprocessableEntity)
 		return
 	}
-
-	if len(headersSnapshot) == 0 {
-		logError(ctx, "Critical: No headers were parsed from the HTML file")
-		SetSpanAttributes(ctx, attribute.String("error.type", "no_headers_parsed"))
-		close(resultsChan)
-		<-doneConsumingResults
-		WriteErrorResponse(w, r, "no_headers_parsed", "Could not parse table headers, no data processed.", nil, http.StatusInternalServerError)
-		return
-	}
-
-	AddSpanEvent(ctx, "workers.waiting_for_completion")
-	LogDebug("Waiting for all player data parser workers to finish...")
-	wg.Wait()
-	AddSpanEvent(ctx, "workers.completed")
-	LogDebug("All workers have completed (wg.Wait() returned).")
-
-	close(resultsChan)
-	LogDebug("ResultsChan closed after all workers finished.")
-
-	<-doneConsumingResults
-	LogDebug("Results consumer goroutine finished processing all items.")
-
-	// Normalize the parsed dataset before it branches into storage, the immediate
-	// upload response, and background percentile calculations. The storage setters
-	// normalize their own copies, which leaves the first-view response unchanged.
-	CanonicalizePlayerClubMetadata(playersList)
-
-	// Finish performance timing
-	parseTimer.Finish(int64(len(playersList)), 0) // No errors counted here since workers handle errors
-
-	finalDatasetCurrencySymbol := "$" // Default
-	if len(playersList) > 0 {
-		var foundSymbol bool
-		for i := range playersList {
-			_, _, tvSymbol := ParseMonetaryValueGo(playersList[i].TransferValue) // Assumes ParseMonetaryValueGo is in parsing.go
-			if tvSymbol != "" {
-				finalDatasetCurrencySymbol = tvSymbol
-				foundSymbol = true
-				break
-			}
-			_, _, wSymbol := ParseMonetaryValueGo(playersList[i].Wage)
-			if wSymbol != "" {
-				finalDatasetCurrencySymbol = wSymbol
-				foundSymbol = true
-				break
-			}
-		}
-		if !foundSymbol {
-			logInfo(ctx, "No currency symbol detected from parsed player monetary values, using default '$'")
-		}
-	}
+	playersList := parsed.Players
+	finalDatasetCurrencySymbol := parsed.Currency
 
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
@@ -790,7 +694,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		Roles:                  roles,                               // Return available roles
 		PercentilesReady:       false,                               // Percentiles will be calculated asynchronously
 
-		PlayerCount: len(playersList),
+		PlayerCount:      len(playersList),
+		ParseCounts:      &parsed.Counts,
+		ParseDiagnostics: parsed.Diagnostics,
 	}
 
 	// Debug logging for upload response

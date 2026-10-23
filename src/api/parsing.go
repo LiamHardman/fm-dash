@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	apperrors "api/errors"
-
-	"golang.org/x/net/html"
 )
 
 // Comprehensive list of world currencies used in Football Manager
@@ -190,188 +186,24 @@ func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 // ParseHTMLPlayerTable tokenizes an HTML file stream (typically a player squad view)
 // and sends extracted table headers and row data (as slices of strings) to respective channels.
 // It manages the HTML parsing state machine with optimized performance.
-func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) (processingError error) {
-	// Use larger buffered reader for better performance
-	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize)
-	tokenizer := html.NewTokenizer(bufferedReader)
+func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) error {
+	return parseLegacyTable(file, "html", headersSnapshot, rowCellsChan, numWorkers, resultsChan, wg)
+}
 
-	var currentHeaders []string // Temporary headers collected
-	var currentCells []string   // Cells for the current <tr> being processed
-	inHeaderRow := false        // True if currently inside a <tr> identified as a header row
-	inDataRow := false          // True if currently inside a <tr> identified as a data row
-	inTable := false            // True if currently inside a <table> element
-	inTHead := false            // True if currently inside a <thead> element
-	inTBody := false            // True if currently inside a <tbody> element
-
-	// Use optimized string builder for better performance
-	cellBuilder := getOptimizedStringBuilder()
-	defer putOptimizedStringBuilder(cellBuilder)
-
-	workersStarted := false
-	channelClosed := false             // Track channel state to prevent double-close
-	var localHeadersForWorker []string // To pass to workers once finalized
-
-	// Helper function to safely close the channel
-	closeChannelOnce := func() {
-		if !channelClosed {
-			channelClosed = true
-			close(rowCellsChan)
-		}
-	}
-
-tokenLoop:
-	for {
-		tt := tokenizer.Next()
-		token := tokenizer.Token()
-
-		switch tt {
-		case html.ErrorToken:
-			err := tokenizer.Err()
-			if err == io.EOF {
-				if inDataRow && len(currentCells) > 0 && workersStarted && !channelClosed {
-					sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second)
-				}
-				break tokenLoop
+func parseLegacyTable(file io.Reader, format string, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) error {
+	defer close(rowCellsChan)
+	return scanExport(context.Background(), file, format, func(_ int, cells []string, header bool) error {
+		if header {
+			*headersSnapshot = normalizeCSVHeaders(cells)
+			wg.Add(numWorkers)
+			for i := 0; i < numWorkers; i++ {
+				go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, *headersSnapshot)
 			}
-			LogWarn("HTML tokenization error occurred during parsing")
-			processingError = apperrors.WrapErrTokenizingHTML(err)
-			break tokenLoop
-		case html.StartTagToken:
-			switch token.Data {
-			case "table":
-				inTable = true
-			case "thead":
-				if inTable {
-					inTHead = true
-				}
-			case "tbody":
-				if inTable {
-					inTBody = true
-					if !workersStarted && len(currentHeaders) > 0 {
-						localHeadersForWorker = make([]string, len(currentHeaders))
-						copy(localHeadersForWorker, currentHeaders)
-						*headersSnapshot = localHeadersForWorker
-						LogDebug("Headers found (tbody start), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
-						wg.Add(numWorkers)
-						for i := 0; i < numWorkers; i++ {
-							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
-						}
-						workersStarted = true
-					}
-				}
-			case "tr":
-				currentCells = make([]string, 0, defaultCellCapacity) // defaultCellCapacity from config.go
-				// Determine if this TR is a header row or data row
-				switch {
-				case inTHead:
-					inHeaderRow = true
-					inDataRow = false
-				case inTable && !workersStarted && len(currentHeaders) == 0 && !inTBody:
-					// If in a table, workers haven't started, no headers collected yet, AND not in <tbody>:
-					// Treat this as a potential header row.
-					inHeaderRow = true
-					inDataRow = false
-				default:
-					// Otherwise (e.g., in tbody, or workers started, or headers already found), it's a data row.
-					inHeaderRow = false
-					inDataRow = true
-				}
-			case "th":
-				if inHeaderRow || inDataRow {
-					cellBuilder.Reset()
-				}
-			case "td":
-				if inHeaderRow || inDataRow { // Cell content applies to both header and data rows
-					cellBuilder.Reset()
-				}
-			}
-		case html.TextToken:
-			if inHeaderRow || inDataRow {
-				cellBuilder.WriteString(token.Data)
-			}
-		case html.EndTagToken:
-			switch token.Data {
-			case "th":
-				if inHeaderRow {
-					headerContent := strings.TrimSpace(cellBuilder.String())
-					if headerContent != "" { // Only add non-empty headers
-						currentHeaders = append(currentHeaders, headerContent)
-					}
-					cellBuilder.Reset()
-				} else if inDataRow {
-					currentCells = append(currentCells, strings.TrimSpace(cellBuilder.String()))
-					cellBuilder.Reset()
-				}
-			case "td":
-				if inHeaderRow {
-					headerContent := strings.TrimSpace(cellBuilder.String())
-					if headerContent != "" { // Only add non-empty headers
-						currentHeaders = append(currentHeaders, headerContent)
-					}
-					cellBuilder.Reset()
-				} else if inDataRow {
-					currentCells = append(currentCells, strings.TrimSpace(cellBuilder.String()))
-					cellBuilder.Reset()
-				}
-			case "tr":
-				if inHeaderRow && len(currentHeaders) > 0 {
-					// Header row finished, potentially start workers if not started
-					if !workersStarted && inTable && !inTBody {
-						// Headers found and no <tbody> yet, so start workers now
-						localHeadersForWorker = make([]string, len(currentHeaders))
-						copy(localHeadersForWorker, currentHeaders)
-						*headersSnapshot = localHeadersForWorker
-						LogDebug("Headers found (tr end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
-						wg.Add(numWorkers)
-						for i := 0; i < numWorkers; i++ {
-							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
-						}
-						workersStarted = true
-					}
-				} else if inDataRow && len(currentCells) > 0 && workersStarted && !channelClosed {
-					// Data row finished, send to workers with backpressure handling (only if channel not closed)
-					sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second)
-				}
-				// Reset row state
-				inHeaderRow = false
-				inDataRow = false
-			case "table":
-				inTable = false
-				// End of table, ensure workers are started if headers were found
-				if !workersStarted && len(currentHeaders) > 0 {
-					localHeadersForWorker = make([]string, len(currentHeaders))
-					copy(localHeadersForWorker, currentHeaders)
-					*headersSnapshot = localHeadersForWorker
-					LogDebug("Headers found (table end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
-					wg.Add(numWorkers)
-					for i := 0; i < numWorkers; i++ {
-						go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
-					}
-					workersStarted = true
-				}
-			case "thead":
-				inTHead = false
-			case "tbody":
-				inTBody = false
-			}
-		}
-	}
-
-	// Final cleanup and worker notification
-	if workersStarted {
-		LogDebug("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
-		closeChannelOnce() // Safe channel close
-	} else {
-		LogWarn("No workers were started during HTML parsing - headers_found: %t", len(currentHeaders) > 0)
-		if len(currentHeaders) == 0 {
-			processingError = apperrors.ErrNoTableHeadersFound
 		} else {
-			processingError = apperrors.ErrHeadersFoundButWorkersNotStarted
+			rowCellsChan <- cells
 		}
-		closeChannelOnce() // Ensure channel is closed even on error
-	}
-
-	return processingError
+		return nil
+	})
 }
 
 // csvHeaderNormalize maps CSV-specific header names to the canonical header names
@@ -433,11 +265,11 @@ var csvHeaderNormalize = map[string]string{
 	"Technique":        "Tec",
 
 	// Performance stat name differences (CSV vs HTML)
-	"KP/90":                  "K Ps/90",
-	"Crs A/90":               "CRS A/90",
-	"Goals per 90 minutes":   "Gls/90",
-	"Average Rating Club":    "Av Rat",
-	"Fouls Against":          "FA",
+	"KP/90":                "K Ps/90",
+	"Crs A/90":             "CRS A/90",
+	"Goals per 90 minutes": "Gls/90",
+	"Average Rating Club":  "Av Rat",
+	"Fouls Against":        "FA",
 
 	// Goalkeeper attributes
 	"Aerial Reach":           "Aer",
@@ -456,63 +288,6 @@ var csvHeaderNormalize = map[string]string{
 // ParseCSVPlayerTable parses a semicolon-delimited CSV player export (as produced by FM's
 // "Export to CSV" view option) and feeds rows into the same worker pipeline used by
 // ParseHTMLPlayerTable. The first non-empty line is treated as the header row.
-func ParseCSVPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) (processingError error) {
-	scanner := bufio.NewScanner(file)
-
-	var headers []string
-	workersStarted := false
-	channelClosed := false
-
-	closeChannelOnce := func() {
-		if !channelClosed {
-			channelClosed = true
-			close(rowCellsChan)
-		}
-	}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		if headers == nil {
-			// First non-empty line is the header row.
-			rawHeaders := strings.Split(line, ";")
-			headers = make([]string, len(rawHeaders))
-			for i, h := range rawHeaders {
-				normalized := strings.TrimSpace(h)
-				if canonical, ok := csvHeaderNormalize[normalized]; ok {
-					normalized = canonical
-				}
-				headers[i] = normalized
-			}
-			*headersSnapshot = headers
-
-			wg.Add(numWorkers)
-			for i := 0; i < numWorkers; i++ {
-				go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, headers)
-			}
-			workersStarted = true
-			continue
-		}
-
-		cells := strings.Split(line, ";")
-		sendRowWithBackpressure(rowCellsChan, cells, 5*time.Second)
-	}
-
-	if err := scanner.Err(); err != nil {
-		processingError = err
-	}
-
-	if workersStarted {
-		closeChannelOnce()
-	} else {
-		if processingError == nil {
-			processingError = apperrors.ErrNoTableHeadersFound
-		}
-		closeChannelOnce()
-	}
-
-	return processingError
+func ParseCSVPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) error {
+	return parseLegacyTable(file, "csv", headersSnapshot, rowCellsChan, numWorkers, resultsChan, wg)
 }

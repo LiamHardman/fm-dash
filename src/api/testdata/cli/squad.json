@@ -1,0 +1,181 @@
+{
+  "players": [
+    {
+      "uid": 1,
+      "name": "Flexible",
+      "shortPositions": [
+        "DR",
+        "WBR"
+      ],
+      "Overall": 86,
+      "overall": 86,
+      "roleSpecificOveralls": [
+        {
+          "roleName": "DR - Wing Back",
+          "score": 86
+        },
+        {
+          "roleName": "WBR - Wing Back",
+          "score": 84
+        }
+      ]
+    },
+    {
+      "uid": 2,
+      "name": "Right back",
+      "shortPositions": [
+        "DR"
+      ],
+      "Overall": 80,
+      "overall": 80,
+      "roleSpecificOveralls": [
+        {
+          "roleName": "DR - Full Back",
+          "score": 80
+        }
+      ]
+    },
+    {
+      "uid": 3,
+      "name": "Keeper",
+      "shortPositions": [
+        "GK"
+      ],
+      "Overall": 82,
+      "overall": 82,
+      "roleSpecificOveralls": [
+        {
+          "roleName": "GK - Goalkeeper",
+          "score": 82
+        }
+      ]
+    },
+    {
+      "uid": 4,
+      "name": "Midfielder",
+      "shortPositions": [
+        "MC"
+      ],
+      "Overall": 77,
+      "overall": 77,
+      "roleSpecificOveralls": [
+        {
+          "roleName": "MC - Playmaker",
+          "score": 77
+        }
+      ]
+    }
+  ],
+  "slots": [
+    {
+      "id": "rb",
+      "role": "D (R)"
+    },
+    {
+      "id": "rwb",
+      "role": "WB (R)"
+    },
+    {
+      "id": "gk",
+      "role": "GK"
+    },
+    {
+      "id": "cm",
+      "role": "M (C)"
+    }
+  ],
+  "expected": {
+    "squadComposition": {
+      "rb": [
+        {
+          "player": {
+            "uid": 2,
+            "name": "Right back",
+            "shortPositions": [
+              "DR"
+            ],
+            "Overall": 80,
+            "overall": 80,
+            "roleSpecificOveralls": [
+              {
+                "roleName": "DR - Full Back",
+                "score": 80
+              }
+            ]
+          },
+          "overallInRole": 80,
+          "exactMatch": true
+        }
+      ],
+      "rwb": [
+        {
+          "player": {
+            "uid": 1,
+            "name": "Flexible",
+            "shortPositions": [
+              "DR",
+              "WBR"
+            ],
+            "Overall": 86,
+            "overall": 86,
+            "roleSpecificOveralls": [
+              {
+                "roleName": "DR - Wing Back",
+                "score": 86
+              },
+              {
+                "roleName": "WBR - Wing Back",
+                "score": 84
+              }
+            ]
+          },
+          "overallInRole": 84,
+          "exactMatch": true
+        }
+      ],
+      "gk": [
+        {
+          "player": {
+            "uid": 3,
+            "name": "Keeper",
+            "shortPositions": [
+              "GK"
+            ],
+            "Overall": 82,
+            "overall": 82,
+            "roleSpecificOveralls": [
+              {
+                "roleName": "GK - Goalkeeper",
+                "score": 82
+              }
+            ]
+          },
+          "overallInRole": 82,
+          "exactMatch": true
+        }
+      ],
+      "cm": [
+        {
+          "player": {
+            "uid": 4,
+            "name": "Midfielder",
+            "shortPositions": [
+              "MC"
+            ],
+            "Overall": 77,
+            "overall": 77,
+            "roleSpecificOveralls": [
+              {
+                "roleName": "MC - Playmaker",
+                "score": 77
+              }
+            ]
+          },
+          "overallInRole": 77,
+          "exactMatch": true
+        }
+      ]
+    },
+    "bestTeamAverageOverall": 81
+  }
+}

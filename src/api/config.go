@@ -268,6 +268,11 @@ var (
 
 // init is called when the package is loaded but only does minimal setup
 func init() {
+	// CLI commands initialize only their required services. Go tests keep the
+	// existing initialization so package-level compatibility tests are unchanged.
+	if len(os.Args) > 1 && os.Args[1] != "serve" && !strings.HasPrefix(os.Args[1], "-test.") {
+		return
+	}
 	// Metrics default ON — ENABLE_METRICS=false is the only way to opt out. Previously
 	// defaulted off via a separate flag from OTEL_ENABLED, which meant every custom
 	// metric instrument (fm24_*, including all the tracing-map LLM ones) silently never

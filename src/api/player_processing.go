@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -163,6 +164,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		case "Media Handling":
 			player.MediaHandling = cellValue
 			isAnAttributeField = false
+		case "Nationality":
+			player.Nationality = cellValue
+			isAnAttributeField = false
 		case "Nat": // This header is ambiguous: could be Nationality (3-letter code) or Natural Fitness (attribute)
 			// Handle masked Natural Fitness attribute first
 			if cellValue == "-" {
@@ -258,11 +262,15 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 // such as numeric attributes, FIFA stats, overall scores, parsed positions, etc.
 // It modifies the player struct pointed to.
 func EnhancePlayerWithCalculations(player *Player) {
-	// Add panic recovery for any remaining race conditions
+	if err := enhancePlayerWithCalculations(player); err != nil {
+		LogWarn("Player enhancement failed: %v", err)
+	}
+}
+
+func enhancePlayerWithCalculations(player *Player) (processingErr error) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Log the panic but don't crash the server
-			LogWarn("Race condition detected in EnhancePlayerWithCalculations, player: %s, error: %v", player.Name, r)
+			processingErr = fmt.Errorf("player calculation panic: %v", r)
 		}
 	}()
 	// Ensure maps are initialized and create working copies to prevent race conditions
@@ -652,6 +660,10 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 	// Set the best role name
 	player.BestRoleOverall = bestRoleName
+	if len(player.RoleSpecificOveralls) > 0 {
+		// Equal-scoring roles used to depend on randomized map iteration order.
+		player.BestRoleOverall = player.RoleSpecificOveralls[0].RoleName
+	}
 
 	// Calculate overall as the mean of every distinct role-style category (duty variants like
 	// Cover/Defend/Stopper collapsed to their best score) — see CalculateMeanCategoryOverall.
@@ -699,6 +711,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 			}
 		}
 	}
+	return nil
 }
 
 // RecalculatePlayerRatings recalculates all ratings for a player based on the current calculation method setting
@@ -841,6 +854,9 @@ func RecalculatePlayerRatings(player *Player) {
 
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
+	if len(player.RoleSpecificOveralls) > 0 {
+		player.BestRoleOverall = player.RoleSpecificOveralls[0].RoleName
+	}
 	if meanRoleBasedOverall > 0 || player.Overall == 0 {
 		player.Overall = meanRoleBasedOverall
 	}

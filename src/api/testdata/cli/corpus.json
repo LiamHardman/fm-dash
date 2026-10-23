@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "csv",
+      "path": "players.csv",
+      "sha256": "2f6231d9e5eb5b596f138d08a9ea334c3482827e1b047020053b120a3e237938",
+      "expectedCount": 2,
+      "expectedRejected": 0,
+      "expectedDiagnostics": [],
+      "expected": [
+        {
+          "path": "/players/0/name",
+          "value": "Fern\u00e1ndez"
+        },
+        {
+          "path": "/players/0/uid",
+          "value": 101
+        },
+        {
+          "path": "/players/1/uid",
+          "value": 102
+        }
+      ]
+    },
+    {
+      "name": "html",
+      "path": "players.html",
+      "sha256": "cc5e716925ccb4709082a815bb1408d69750661dfec5316a5f73b0f9181915cc",
+      "expectedCount": 2,
+      "expectedRejected": 0,
+      "expectedDiagnostics": [],
+      "expected": [
+        {
+          "path": "/players/0/name",
+          "value": "Fern\u00e1ndez"
+        },
+        {
+          "path": "/players/0/uid",
+          "value": 101
+        },
+        {
+          "path": "/players/1/uid",
+          "value": 102
+        }
+      ]
+    }
+  ]
+}

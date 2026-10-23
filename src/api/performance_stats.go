@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"math"
@@ -453,8 +454,12 @@ func isPlayerInTargetDivision(player *Player, divisionFilter DivisionFilter, tar
 // This is a 3-tier system: Global, Broad Positional (e.g., "Defenders"), and Detailed (e.g., "Centre-backs")
 // Optimized version with caching and reduced redundant work
 func CalculatePlayerPerformancePercentiles(players []Player) {
+	_ = CalculatePlayerPerformancePercentilesContext(context.Background(), players)
+}
+
+func CalculatePlayerPerformancePercentilesContext(ctx context.Context, players []Player) error {
 	if len(players) == 0 {
-		return
+		return nil
 	}
 
 	// Acquire write lock for protecting the entire players slice during percentile calculations
@@ -464,31 +469,13 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	startTime := time.Now()
 	LogDebug("🔄 Calculating global percentiles for %d players", len(players))
 
-	// Try to get from cache first (use empty datasetID for global cache)
-	if cachedPercentiles, found := getCachedPercentiles("global", players); found {
-		LogDebug("⚡ Using cached percentiles, skipping calculation")
-		// Apply cached percentiles to all players
-		for i := range players {
-			if players[i].PerformancePercentiles == nil {
-				players[i].PerformancePercentiles = make(map[string]map[string]float64)
-			}
-			// Copy cached percentiles
-			for group, stats := range cachedPercentiles {
-				if players[i].PerformancePercentiles[group] == nil {
-					players[i].PerformancePercentiles[group] = make(map[string]float64)
-				}
-				for stat, percentile := range stats {
-					players[i].PerformancePercentiles[group][stat] = percentile
-				}
-			}
-		}
-		duration := time.Since(startTime)
-		LogDebug("⚡ Cached percentile application completed in %v for %d players", duration, len(players))
-		return
-	}
-
+	// Player-specific ranks cannot be cached as one shared template: the old
+	// template contained zero placeholders and corrupted every repeated parse.
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if players[i].PerformancePercentiles == nil {
 			players[i].PerformancePercentiles = make(map[string]map[string]float64)
 		}
@@ -503,8 +490,14 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 	// Collect all global stat values in one pass
 	for _, statKey := range PerformanceStatKeys {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		values := make([]float64, 0, len(players))
 		for i := range players {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if val, ok := players[i].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
 				values = append(values, val)
 			}
@@ -517,9 +510,15 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 	// --- Global Percentiles ---
 	for _, statKey := range PerformanceStatKeys {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		sortedValues, hasData := statValues[statKey]
 
 		for i := range players {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if !hasData {
 				players[i].PerformancePercentiles["Global"][statKey] = -1
 				continue
@@ -537,16 +536,28 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	// Pre-group players by position groups to avoid repeated checks
 	playersByGroup := make(map[string][]int)
 	for i := range players {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		for _, groupName := range players[i].PositionGroups {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			playersByGroup[groupName] = append(playersByGroup[groupName], i)
 		}
 	}
 
 	for _, groupName := range PositionGroupsForPercentiles {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		groupPlayerIndices := playersByGroup[groupName]
 
 		// Initialize percentile maps for this group
 		for i := range players {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if players[i].PerformancePercentiles[groupName] == nil {
 				players[i].PerformancePercentiles[groupName] = make(map[string]float64)
 			}
@@ -555,8 +566,14 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		// Collect stat values for this group
 		groupStatValues := make(map[string][]float64, len(PerformanceStatKeys))
 		for _, statKey := range PerformanceStatKeys {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			values := make([]float64, 0, len(groupPlayerIndices))
 			for _, idx := range groupPlayerIndices {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
 					values = append(values, val)
 				}
@@ -569,10 +586,16 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 		// Calculate percentiles for this group
 		for _, statKey := range PerformanceStatKeys {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			sortedValues, hasData := groupStatValues[statKey]
 
 			// Only process players in this group
 			for _, idx := range groupPlayerIndices {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if !hasData {
 					players[idx].PerformancePercentiles[groupName][statKey] = -1
 					continue
@@ -591,9 +614,21 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	// Pre-group players by detailed position groups
 	playersByDetailedGroup := make(map[string][]int)
 	for i := range players {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		for detailedGroupName, shortPositions := range DetailedPositionGroupsForPercentiles {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			for _, playerShortPos := range players[i].ShortPositions {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				for _, requiredShortPos := range shortPositions {
+					if err := ctx.Err(); err != nil {
+						return err
+					}
 					if playerShortPos == requiredShortPos {
 						playersByDetailedGroup[detailedGroupName] = append(playersByDetailedGroup[detailedGroupName], i)
 						goto nextDetailedGroup // Break out of nested loops
@@ -605,12 +640,18 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	}
 
 	for detailedGroupName, groupPlayerIndices := range playersByDetailedGroup {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if len(groupPlayerIndices) == 0 {
 			continue
 		}
 
 		// Initialize percentile maps for this detailed group
 		for _, idx := range groupPlayerIndices {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if players[idx].PerformancePercentiles[detailedGroupName] == nil {
 				players[idx].PerformancePercentiles[detailedGroupName] = make(map[string]float64)
 			}
@@ -619,8 +660,14 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		// Collect stat values for this detailed group
 		detailedGroupStatValues := make(map[string][]float64, len(PerformanceStatKeys))
 		for _, statKey := range PerformanceStatKeys {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			values := make([]float64, 0, len(groupPlayerIndices))
 			for _, idx := range groupPlayerIndices {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
 					values = append(values, val)
 				}
@@ -633,9 +680,15 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 		// Calculate percentiles for this detailed group
 		for _, statKey := range PerformanceStatKeys {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			sortedValues, hasData := detailedGroupStatValues[statKey]
 
 			for _, idx := range groupPlayerIndices {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if !hasData {
 					players[idx].PerformancePercentiles[detailedGroupName][statKey] = -1
 					continue
@@ -652,8 +705,14 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 	// Final cleanup: remove empty percentile groups
 	for i := range players {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if players[i].PerformancePercentiles != nil {
 			for group, stats := range players[i].PerformancePercentiles {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if len(stats) == 0 {
 					delete(players[i].PerformancePercentiles, group)
 				}
@@ -661,22 +720,9 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		}
 	}
 
-	// Cache the calculated percentiles for future use
-	if len(players) > 0 {
-		// Create a sample of percentiles for caching (using first player as template)
-		cachedPercentiles := make(map[string]map[string]float64)
-		for group, stats := range players[0].PerformancePercentiles {
-			cachedPercentiles[group] = make(map[string]float64)
-			for stat := range stats {
-				// Store placeholder - actual percentiles are player-specific
-				cachedPercentiles[group][stat] = 0
-			}
-		}
-		setCachedPercentiles("global", players, cachedPercentiles)
-	}
-
 	duration := time.Since(startTime)
 	LogDebug("⚡ Optimized global percentile calculation completed in %v for %d players", duration, len(players))
+	return ctx.Err()
 }
 
 // CalculatePlayerPerformancePercentilesWithDivisionFilter computes and populates percentile ranks with division filtering
