@@ -293,6 +293,7 @@ func CreateConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor
 
 // ProcessLeaguesAsync processes league data with concurrent team calculations
 func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, players []Player) []League {
+	players = playersWithClubMetadata(players)
 	ctx, span := StartSpan(ctx, "async.process_leagues")
 	defer span.End()
 

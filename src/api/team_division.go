@@ -1,17 +1,18 @@
 package main
 
-// CanonicalizePlayerClubMetadata normalizes each player's Division and BasedIn fields to
-// their club's most common (majority) values.
-//
-// FM exports routinely contain a handful of rows per club whose Division/BasedIn disagree
-// with the rest of the squad - most commonly players out on loan, whose row still lists the
-// parent Club but a Division/BasedIn belonging to wherever they're actually playing. Left
-// alone, that per-row noise leaks into every place that treats "division" as a club-level
-// fact: team aggregation picks whichever stray row it happens to see first, and league
-// grouping treats a division as "ambiguous" (splitting it into bogus per-country fragments)
-// the moment a single noisy row disagrees on country. Canonicalizing once, right after
-// parsing and before storage, means every downstream consumer (leagues, teams, team view,
-// Team of the Season, the player table) sees one consistent Division/BasedIn per club.
+// playersWithClubMetadata returns a private projection for club-level grouping.
+// Only string fields change; shared maps and slices must remain read-only.
+// Player records in parsing, storage and player responses keep their source values.
+func playersWithClubMetadata(players []Player) []Player {
+	projection := make([]Player, len(players))
+	copy(projection, players)
+	CanonicalizePlayerClubMetadata(projection)
+	return projection
+}
+
+// CanonicalizePlayerClubMetadata normalizes a private aggregation projection to
+// each club's most common Division and BasedIn values. Loan rows can disagree
+// with club-level metadata; never apply this transformation to source records.
 func CanonicalizePlayerClubMetadata(players []Player) {
 	type voteCounts struct {
 		counts    map[string]int

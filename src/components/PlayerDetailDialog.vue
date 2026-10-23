@@ -1460,6 +1460,10 @@ const goalkeepingAttrsOrdered = [
 const performanceStatMap = {
   'Asts/90': 'Assists per 90',
   'Av Rat': 'Average Rating',
+  'Average Rating Club': 'Club Average Rating',
+  'Sprints/90': 'Sprints per 90',
+  'K Hdrs/90': 'Key Headers per 90',
+  'Aer A/90': 'Aerial Attempts per 90',
   'Blk/90': 'Blocks per 90',
   'Ch C/90': 'Chances Created per 90',
   'Clr/90': 'Clearances per 90',
@@ -1500,7 +1504,7 @@ const performanceStatMap = {
 }
 
 const performanceStatCategories = {
-  General: ['Av Rat', 'Apps', 'Mins', 'Clean Sheets'],
+  General: ['Av Rat', 'Average Rating Club', 'Apps', 'Mins', 'Clean Sheets', 'Sprints/90'],
   Offensive: ['Gls/90', 'xG/90', 'NP-xG/90', 'Shot/90', 'ShT/90', 'Conv %', 'Drb/90'],
   Passing: [
     'Asts/90',
@@ -1523,6 +1527,8 @@ const performanceStatCategories = {
     'Clr/90',
     'Blk/90',
     'Hdrs W/90',
+    'K Hdrs/90',
+    'Aer A/90',
     'Pres C/90',
     'Poss Won/90',
     'Fls',

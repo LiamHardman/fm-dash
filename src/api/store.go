@@ -149,13 +149,9 @@ func RetrieveDataset(datasetID string) ([]Player, string, error) {
 		return nil, "", err
 	}
 
-	// Existing datasets may predate upload-time club normalization. Normalize the
-	// full dataset before callers filter, aggregate, or cache it. Storage backends
-	// can share the player slice with other readers, so copy the structs first;
-	// canonicalization only changes the Division and BasedIn string fields.
+	// Keep source player metadata intact. Club summaries derive their own metadata.
 	players := make([]Player, len(data.Players))
 	copy(players, data.Players)
-	CanonicalizePlayerClubMetadata(players)
 
 	SetSpanAttributes(ctx,
 		attribute.Int("dataset.player_count", len(data.Players)),
@@ -587,10 +583,6 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		LogDebug("Enhanced %d players before legacy storage for dataset %s", enhancedCount, datasetID)
 	}
 
-	// Normalize each player's Division/BasedIn to their club's majority values so every
-	// downstream consumer sees one consistent division per club (see team_division.go).
-	CanonicalizePlayerClubMetadata(enhancedPlayers)
-
 	// Store in legacy format
 	AddSpanEvent(ctx, "store.legacy_store")
 	storeMutex.Lock()
@@ -650,10 +642,6 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 	if enhancedCount > 0 {
 		LogDebug("Enhanced %d players before storage for dataset %s", enhancedCount, datasetID)
 	}
-
-	// Normalize each player's Division/BasedIn to their club's majority values so every
-	// downstream consumer sees one consistent division per club (see team_division.go).
-	CanonicalizePlayerClubMetadata(enhancedPlayers)
 
 	// Store in legacy format immediately (fast, in-memory operation)
 	AddSpanEvent(ctx, "store.legacy_store_immediate")

@@ -401,7 +401,6 @@ func ParsePlayers(ctx context.Context, input io.Reader, options ParseOptions) (*
 	if err = ctx.Err(); err != nil {
 		return result, err
 	}
-	CanonicalizePlayerClubMetadata(result.Players)
 	if options.Stage == "complete" {
 		datasetStart := time.Now()
 		NormalizeMBRScoresRelativeToMax(result.Players)

@@ -225,7 +225,7 @@ func cliWorkflow(ctx context.Context, command string, args []string, o cliOption
 		return CreateConcurrentLeagueProcessor(max(1, o.workers)).ProcessLeaguesAsync(ctx, players), nil
 	case "divisions list":
 		names := map[string]bool{}
-		for _, p := range players {
+		for _, p := range playersWithClubMetadata(players) {
 			names[p.Division] = true
 		}
 		return cliSortedKeys(names), nil

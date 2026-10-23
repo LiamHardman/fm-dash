@@ -168,6 +168,7 @@ var defaultRoleSpecificOverallWeightsGo = map[string]map[string]int{
 
 // PerformanceStatKeys lists the column headers for player performance statistics.
 var PerformanceStatKeys = []string{
+	"Average Rating Club", "Sprints/90", "K Hdrs/90", "Aer A/90",
 	"Asts/90", "Av Rat", "Blk/90", "Ch C/90", "Clr/90", "Cr C/90", "Drb/90",
 	"xA/90", "xG/90", "Gls/90", "Hdrs W/90", "Int/90", "K Ps/90", "Ps C/90",
 	"Shot/90", "Tck/90", "Poss Won/90", "ShT/90", "Pres C/90", "Poss Lost/90",

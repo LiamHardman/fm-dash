@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -165,7 +166,12 @@ func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericVal
 	// Parse as float to handle decimals
 	valFloat, err := strconv.ParseFloat(strings.TrimSpace(cleanValue), 64)
 	if err == nil {
-		numericValue = int64(valFloat * multiplier)
+		// Monetary amounts are whole currency units. Round after scaling so binary
+		// approximations such as 4.1 * 1e6 do not truncate to 4,099,999.
+		scaled := math.Round(valFloat * multiplier)
+		if scaled >= math.MinInt64 && scaled < math.MaxInt64 {
+			numericValue = int64(scaled)
+		}
 	} else {
 		numericValue = 0
 	}
@@ -265,11 +271,32 @@ var csvHeaderNormalize = map[string]string{
 	"Technique":        "Tec",
 
 	// Performance stat name differences (CSV vs HTML)
-	"KP/90":                "K Ps/90",
-	"Crs A/90":             "CRS A/90",
-	"Goals per 90 minutes": "Gls/90",
-	"Average Rating Club":  "Av Rat",
-	"Fouls Against":        "FA",
+	"KP/90":                        "K Ps/90",
+	"Crs A/90":                     "CRS A/90",
+	"Goals per 90 minutes":         "Gls/90",
+	"Fouls Against":                "FA",
+	"Pass Completion Percentage":   "Pas %",
+	"Save Percentage":              "Sv %",
+	"Passes Attempted per 90":      "Ps A/90",
+	"Tackle Completion Percentage": "Tck R",
+	"Tackles Completed per 90":     "Tck/90",
+	"Crosses Completed Ratio":      "Cr C/A",
+	"Chances Created per 90":       "Ch C/90",
+	"Crosses Completed per 90":     "Cr C/90",
+	"Minutes":                      "Mins",
+	"Headers Won per 90":           "Hdrs W/90",
+	"Crosses Attempted per 90":     "CRS A/90",
+	"Dribbles per 90":              "Drb/90",
+	"Key Passes per 90":            "K Ps/90",
+	"Key Tackles per 90":           "K Tck/90",
+	"Clearances per 90":            "Clr/90",
+	"Possession Won per 90":        "Poss Won/90",
+	"Interceptions per 90":         "Int/90",
+	"Shots on Target per 90":       "ShT/90",
+	"Possession Lost per 90":       "Poss Lost/90",
+	"Progressive Passes per 90":    "Pr passes/90",
+	"Passes Completed per 90":      "Ps C/90",
+	"Saves per 90":                 "Saves/90",
 
 	// Goalkeeper attributes
 	"Aerial Reach":           "Aer",

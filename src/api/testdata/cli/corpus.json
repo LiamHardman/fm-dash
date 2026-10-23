@@ -2,6 +2,30 @@
   "version": 1,
   "cases": [
     {
+      "name": "source-fidelity",
+      "path": "fidelity.csv",
+      "expectedCount": 2,
+      "expectedDiagnostics": [],
+      "expected": [
+        {"path": "/players/0/performanceStatsNumeric/Mins", "value": 4665},
+        {"path": "/players/0/performanceStatsNumeric/Pas %", "value": 94},
+        {"path": "/players/0/performanceStatsNumeric/Av Rat", "value": 7.1},
+        {"path": "/players/0/performanceStatsNumeric/Average Rating Club", "value": 6.2},
+        {"path": "/rawAttributes/0/Av Rat", "value": "7.10"},
+        {"path": "/rawAttributes/0/Average Rating Club", "value": "6.20"},
+        {"path": "/players/0/transferValueAmount", "value": 4100000},
+        {"path": "/players/1/transferValueAmount", "value": 8200000},
+        {"path": "/players/0/wageAmount", "value": 4100},
+        {"path": "/players/1/division", "value": "League B"},
+        {"path": "/players/1/basedIn", "value": "Country B"},
+        {"path": "/players/0/performanceStatsNumeric/Sprints~190", "value": 2.14},
+        {"path": "/players/0/performanceStatsNumeric/K Hdrs~190", "value": 0.09},
+        {"path": "/players/0/performanceStatsNumeric/Aer A~190", "value": 0.64},
+        {"path": "/players/0/performancePercentiles/Global/Sprints~190", "value": 25},
+        {"path": "/players/1/performancePercentiles/Global/Sprints~190", "value": 75}
+      ]
+    },
+    {
       "name": "csv",
       "path": "players.csv",
       "sha256": "2f6231d9e5eb5b596f138d08a9ea334c3482827e1b047020053b120a3e237938",

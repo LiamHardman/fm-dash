@@ -100,28 +100,14 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	if p.Attributes != nil {
 		// Include FM attributes for FIFA stat calculations
 		fmAttrs := []string{"Acc", "Aer", "Agg", "Agi", "Ant", "Bal", "Bra", "Cmd", "Cmp", "Cnt", "Com", "Cor", "Cro", "Dec", "Det", "Dri", "Ecc", "Fin", "Fir", "Fla", "Fre", "Han", "Hea", "Jum", "Kic", "1v1", "L Th", "Ldr", "Lon", "Mar", "Nat", "OtB", "Pac", "Pas", "Pen", "Pos", "Pun", "Ref", "Sta", "Str", "TRO", "Tck", "Tea", "Tec", "Thr", "Vis", "Wor"}
-		// Include all performance statistics for display and calculations
-		perfAttrs := []string{
-			// General stats
-			"Av Rat", "Apps", "Mins", "Clean Sheets",
-			// Offensive stats
-			"Gls/90", "xG/90", "NP-xG/90", "Shot/90", "ShT/90", "Conv %", "Drb/90",
-			// Passing stats
-			"Asts/90", "xA/90", "Ch C/90", "K Ps/90", "Ps C/90", "Ps A/90", "Pas %", "Pr passes/90", "Cr C/90", "CRS A/90", "Cr C/A", "Poss Lost/90",
-			// Defensive stats
-			"Tck/90", "Tck R", "Int/90", "Clr/90", "Blk/90", "Hdrs W/90", "Pres C/90", "Poss Won/90", "Fls", "FA",
-			// Goalkeeping stats
-			"Con/90", "Cln/90", "xGP/90", "Sv %",
-		}
-
 		// Add FM attributes first
 		for _, attr := range fmAttrs {
 			if value, exists := p.Attributes[attr]; exists {
 				essentialAttributes[attr] = value
 			}
 		}
-		// Add performance statistics
-		for _, attr := range perfAttrs {
+		// Use the parser's complete statistic list so protobuf coverage cannot drift.
+		for _, attr := range PerformanceStatKeys {
 			if value, exists := p.Attributes[attr]; exists {
 				essentialAttributes[attr] = value
 			}

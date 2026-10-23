@@ -1557,6 +1557,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 
 // processTeamsData returns detailed team data for a specific division
 func processTeamsData(players []Player, division, country string) []Team {
+	clubPlayers := playersWithClubMetadata(players)
 	// Pre-allocate division players with estimated capacity
 	estimatedDivisionPlayers := len(players) / 10 // Estimate ~10% of players in any given division
 	if estimatedDivisionPlayers < 50 {
@@ -1566,10 +1567,10 @@ func processTeamsData(players []Player, division, country string) []Team {
 
 	// Filter players by division (and country/BasedIn when the league name is ambiguous)
 	for i := range players {
-		if players[i].Division != division {
+		if clubPlayers[i].Division != division {
 			continue
 		}
-		if country != "" && players[i].BasedIn != country {
+		if country != "" && clubPlayers[i].BasedIn != country {
 			continue
 		}
 		divisionPlayers = append(divisionPlayers, players[i])
@@ -5992,6 +5993,7 @@ func getPlayerOverallForRole(player Player, role, position string) int {
 
 // processTopTeamsData returns the top teams across all divisions
 func processTopTeamsData(players []Player, limit int) []Team {
+	players = playersWithClubMetadata(players)
 	// Group all players by team
 	teamMap := make(map[string][]Player)
 	for i := range players {
@@ -6413,7 +6415,7 @@ func divisionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Extract unique divisions
 	divisionsMap := make(map[string]bool)
-	for _, player := range players {
+	for _, player := range playersWithClubMetadata(players) {
 		if player.Division != "" {
 			divisionsMap[player.Division] = true
 		}

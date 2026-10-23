@@ -76,23 +76,28 @@ func TestFreshUploadClubMetadata(t *testing.T) {
 			}
 			waitForPendingPercentileCalc(response.DatasetID)
 
-			assertClub := func(source string, players []Player) {
+			assertSource := func(source string, players []Player) {
 				t.Helper()
 				if len(players) != len(rows) {
 					t.Fatalf("%s: got %d players, want %d", source, len(players), len(rows))
 				}
 				for _, player := range players {
-					if player.Division != "2. Bundesliga" || player.BasedIn != "Germany" {
+					expected := rows[player.UID-1]
+					if player.Division != expected[3] || player.BasedIn != expected[4] {
 						t.Errorf("%s: %s at %s has division %q and country %q", source, player.Name, player.Club, player.Division, player.BasedIn)
 					}
 				}
 			}
-			assertClub("first-view upload response", response.Players)
+			assertSource("first-view upload response", response.Players)
 			players, _, found := GetPlayerData(response.DatasetID)
 			if !found {
 				t.Fatal("uploaded dataset not found")
 			}
-			assertClub("subsequent dataset load", players)
+			assertSource("subsequent dataset load", players)
+			teams := processTeamsData(players, "2. Bundesliga", "Germany")
+			if len(teams) != 1 || teams[0].PlayerCount != 3 {
+				t.Fatalf("club summary should group the whole squad: %+v", teams)
+			}
 		})
 	}
 }

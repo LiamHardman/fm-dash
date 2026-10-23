@@ -24,8 +24,8 @@ func TestStoredDatasetClubMetadata(t *testing.T) {
 				delete(playerDataStore, datasetID)
 				storeMutex.Unlock()
 			})
-			// Simulate an existing dataset persisted before club normalization.
-			// The expected division comes from this dataset's squad, not real-world standings.
+			// Player metadata must survive retrieval, caching and lightweight readers.
+			// Club aggregation separately derives the majority from the whole squad.
 			players := []Player{
 				{UID: 1, Name: "Adil Aouchiche", Club: "Schalke 04", Division: "Championnat Inferieures", BasedIn: "France"},
 				{UID: 2, Name: "Squad player A", Club: "Schalke 04", Division: "2. Bundesliga", BasedIn: "Germany"},
@@ -43,7 +43,8 @@ func TestStoredDatasetClubMetadata(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, player := range loaded {
-				if player.Division != "2. Bundesliga" || player.BasedIn != "Germany" {
+				expected := players[player.UID-1]
+				if player.Division != expected.Division || player.BasedIn != expected.BasedIn {
 					t.Errorf("dataset retrieval: %s has division %q and country %q", player.Name, player.Division, player.BasedIn)
 				}
 			}
@@ -63,14 +64,19 @@ func TestStoredDatasetClubMetadata(t *testing.T) {
 					t.Fatalf("%s: dataset not retrieved intact", read.name)
 				}
 				for _, player := range got {
-					if player.Division != "2. Bundesliga" {
-						t.Errorf("%s: %s at %s has division %q, want %q", read.name, player.Name, player.Club, player.Division, "2. Bundesliga")
+					expected := players[player.UID-1]
+					if player.Division != expected.Division {
+						t.Errorf("%s: %s at %s has division %q, want %q", read.name, player.Name, player.Club, player.Division, expected.Division)
 					}
 					// The lightweight search index intentionally omits BasedIn.
-					if player.BasedIn != "" && player.BasedIn != "Germany" {
-						t.Errorf("%s: %s has country %q, want Germany", read.name, player.Name, player.BasedIn)
+					if player.BasedIn != "" && player.BasedIn != expected.BasedIn {
+						t.Errorf("%s: %s has country %q, want %s", read.name, player.Name, player.BasedIn, expected.BasedIn)
 					}
 				}
+			}
+			teams := processTeamsData(loaded, "2. Bundesliga", "Germany")
+			if len(teams) != 1 || teams[0].PlayerCount != 3 {
+				t.Fatalf("club summary should group the whole squad: %+v", teams)
 			}
 			if players[0].Division != "Championnat Inferieures" || players[0].BasedIn != "France" {
 				t.Error("loading mutated the storage-owned player slice")
