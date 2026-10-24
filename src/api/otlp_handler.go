@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/trace"
@@ -70,25 +71,25 @@ func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
 	var logRecord log.Record
 	logRecord.SetTimestamp(record.Time)
 	logRecord.SetSeverity(severity)
-	logRecord.SetBody(log.StringValue(record.Message))
+	logRecord.SetBody(attribute.StringValue(record.Message))
 
 	// Add trace context if available
 	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
 		spanCtx := span.SpanContext()
 		logRecord.AddAttributes(
-			log.String("trace_id", spanCtx.TraceID().String()),
-			log.String("span_id", spanCtx.SpanID().String()),
+			attribute.String("trace_id", spanCtx.TraceID().String()),
+			attribute.String("span_id", spanCtx.SpanID().String()),
 		)
 	} else {
 		// Add debugging - check if we're getting context but no span
 		logRecord.AddAttributes(
-			log.String("debug_context", "no_valid_span_context"),
+			attribute.String("debug_context", "no_valid_span_context"),
 		)
 	}
 
 	// Add attributes from slog record
 	record.Attrs(func(attr slog.Attr) bool {
-		logRecord.AddAttributes(log.String(attr.Key, attr.Value.String()))
+		logRecord.AddAttributes(attribute.String(attr.Key, attr.Value.String()))
 		return true
 	})
 

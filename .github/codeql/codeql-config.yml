@@ -30,7 +30,7 @@ query-filters:
   # Filter out standard library alerts for recent Go versions
   - exclude:
       id: go/stdlib/net/http
-      reason: "Using Go 1.25.x with latest security patches"
+      reason: "Using Go 1.26.x with latest security patches"
   
   # Focus on high-severity issues only for HTTP/2
   - include:

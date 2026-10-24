@@ -37,7 +37,7 @@ jobs:
       if: matrix.language == 'go'
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25.x'
+        go-version: '1.26.x'
         cache-dependency-path: go.sum
 
     - name: Setup Node.js (for JavaScript analysis)

@@ -1,6 +1,6 @@
 # FMDash CLI
 
-Build from the Go module (Go 1.25 or newer):
+Build from the Go module (Go 1.26 or newer):
 
 ```powershell
 cd src/api
