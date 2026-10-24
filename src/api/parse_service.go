@@ -161,7 +161,6 @@ func scanExport(ctx context.Context, input io.Reader, format string, emit func(i
 			return err
 		}
 		kind := z.Next()
-		token := z.Token()
 		switch kind {
 		case html.ErrorToken:
 			if z.Err() != io.EOF {
@@ -175,7 +174,10 @@ func scanExport(ctx context.Context, input io.Reader, format string, emit func(i
 			}
 			return nil
 		case html.StartTagToken:
-			switch token.Data {
+			// Export decoding only needs tag names. Token would also allocate
+			// attribute slices for every cell's styling, which we never use.
+			tag, _ := z.TagName()
+			switch string(tag) {
 			case "table":
 				tableDepth++
 			case "tr":
@@ -198,10 +200,11 @@ func scanExport(ctx context.Context, input io.Reader, format string, emit func(i
 			}
 		case html.TextToken:
 			if inCell {
-				cell.WriteString(token.Data)
+				cell.Write(z.Text())
 			}
 		case html.EndTagToken:
-			switch token.Data {
+			tag, _ := z.TagName()
+			switch string(tag) {
 			case "td", "th":
 				if tableDepth == 1 {
 					flushCell()
@@ -317,6 +320,11 @@ func ParsePlayers(ctx context.Context, input io.Reader, options ParseOptions) (*
 		}
 	}
 	sort.Slice(records, func(i, j int) bool { return records[i].row < records[j].row })
+	// Decoding has finished, so the row count bounds the accepted output.
+	// Reserve once rather than repeatedly copying the large Player structs.
+	result.Players = make([]Player, 0, len(records))
+	result.RawAttributes = make([]map[string]string, 0, len(records))
+	result.SourceRows = make([]int, 0, len(records))
 	ids, currencies := make(map[int64]bool), make(map[string]bool)
 	for _, v := range records {
 		if v.err != nil {
