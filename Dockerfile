@@ -12,6 +12,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # Copy only necessary source files (dockerignore filters out the rest)
 COPY src ./src
 COPY public ./public
+COPY assets ./assets
 COPY index.html vite.config.js ./
 
 ARG VITE_API_BASE_URL=/api
