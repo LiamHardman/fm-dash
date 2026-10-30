@@ -2767,13 +2767,11 @@ $card-shadow-hover: var(--shadow-2);
 
     :deep(.player-card-slot) {
         width: 122px;
-        height: 183px;
+        aspect-ratio: 1100 / 1870;
     }
 
     :deep(.pitch-player-card) {
-        --card-scale: 0.43;
-        --card-hover-lift: -10px;
-        --card-transform-origin: top left;
+        width: 100%;
     }
 
     :deep(.empty-card-slot) {
@@ -2796,13 +2794,11 @@ $card-shadow-hover: var(--shadow-2);
 
         :deep(.player-card-slot) {
             width: 102px;
-            height: 153px;
+            aspect-ratio: 1100 / 1870;
         }
 
         :deep(.pitch-player-card) {
-            --card-scale: 0.36;
-            --card-hover-lift: -10px;
-            --card-transform-origin: top left;
+            width: 100%;
         }
 
         :deep(.empty-card-slot) {

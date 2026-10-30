@@ -180,7 +180,7 @@
 
                             <div class="row q-col-gutter-lg q-mb-md main-pick-row">
                                 <div class="col-auto">
-                                    <PlayerCards
+                                    <PlayerCards interactive
                                         v-if="fullPlayer(rec.mainPick.uid)"
                                         :player="fullPlayer(rec.mainPick.uid)"
                                         :currency-symbol="currencySymbol"

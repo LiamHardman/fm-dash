@@ -148,7 +148,7 @@
                                     :player="cardDisplayPlayer"
                                     :currency-symbol="currencySymbol"
                                     :dataset-id="datasetId"
-                                    :card-design-override="cardDisplayPlayer?.totsCardDesign"
+                                    :edition="cardDisplayPlayer?.cardEdition"
                                     :position-override="cardDisplayPlayer?.totsDisplayPosition"
                                     class="player-detail-card"
                                 />
@@ -4563,17 +4563,15 @@ export default defineComponent({
         margin-bottom: 16px; // ensure space below the card
         
         .player-detail-card {
-            --card-scale: 0.86;
-            --card-hover-lift: -10px;
-            transform-origin: top center;
+            width: 240px;
             margin-bottom: 12px;
             
             @media (max-width: 768px) {
-                --card-scale: 0.78;
+                width: 218px;
             }
             
             @media (max-width: 480px) {
-                --card-scale: 0.68;
+                width: 190px;
             }
         }
     }

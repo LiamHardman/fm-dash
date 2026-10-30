@@ -45,7 +45,11 @@
           <PlayerCards
             ref="cardRef"
             :player="state.previewPlayer.value"
-            :card-design-override="state.cardDesignOverride.value"
+             :edition="state.selectedTierKey.value"
+            :rare="state.selectedTier.value.rareToggle && state.rare.value"
+            :base-edition="state.baseEdition.value"
+            :playstyle-plus="state.playstylePlus.value"
+            :portrait-mode="state.portraitMode.value"
             :player-face-url="state.faceObjectUrl.value"
             :club-image-url="state.logoObjectUrl.value"
           />
@@ -75,6 +79,9 @@
                 color="amber"
               />
             </div>
+            <q-select v-if="state.selectedTierKey.value === 'squad-player'" dense outlined label="Base edition"
+              :model-value="state.baseEdition.value" @update:model-value="v => state.baseEdition.value = v"
+              :options="['bronze', 'silver', 'gold']" />
           </section>
 
           <section class="control-section">
@@ -108,6 +115,9 @@
 
           <section class="control-section">
             <div class="section-title">Images</div>
+            <q-select dense outlined label="Portrait style" :model-value="state.portraitMode.value"
+              @update:model-value="v => state.portraitMode.value = v" emit-value map-options
+              :options="[{label: 'Transparent cutout', value: 'cutout'}, {label: 'Rectangular photo', value: 'photo'}]" />
             <div class="upload-row">
               <q-btn outline dense icon="face" label="Upload player photo" @click="$refs.faceInput.click()" />
               <input ref="faceInput" type="file" accept="image/*" style="display: none" @change="onFace" />
@@ -120,6 +130,12 @@
             </div>
           </section>
 
+          <section class="control-section">
+            <div class="section-title">PlayStyle+</div>
+            <q-select dense outlined label="PlayStyle+" :model-value="state.playstylePlus.value"
+              @update:model-value="v => state.playstylePlus.value = v" :options="playstyleOptions" emit-value map-options />
+          </section>
+          <p v-if="state.exportError.value" role="alert">{{ state.exportError.value }}</p>
           <section class="control-section export-section">
             <q-btn
               color="primary"
@@ -127,7 +143,7 @@
               icon="download"
               label="Export as PNG"
               :loading="state.exporting.value"
-              @click="state.exportAsPng(cardRef?.$el, props.player?.name)"
+              @click="state.exportAsPng(cardRef, props.player?.name)"
             />
           </section>
         </div>
@@ -139,6 +155,7 @@
 
 <script>
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from 'vue'
+import { PLAYSTYLE_PLUS_CATALOG } from '../cards/playstyle-plus-catalog.mjs'
 import { useCardGenerator } from '../composables/useCardGenerator'
 import PlayerCards from './PlayerCards.vue'
 
@@ -178,6 +195,13 @@ export default defineComponent({
       state,
       cardRef,
       tierOptions,
+      playstyleOptions: [
+        { label: 'None', value: '' },
+        ...Object.entries(PLAYSTYLE_PLUS_CATALOG).map(([value, entry]) => ({
+          label: entry.label,
+          value,
+        })),
+      ],
       onFace,
       onLogo,
     }
@@ -335,5 +359,10 @@ export default defineComponent({
 .export-section {
   display: flex;
   justify-content: flex-end;
+}
+@media (max-width: 720px) {
+  .cardgen-body { grid-template-columns: 1fr; }
+  .preview-pane { position: static; }
+  .row-inline { flex-wrap: wrap; }
 }
 </style>

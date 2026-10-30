@@ -6,12 +6,16 @@
 // stats never auto-recomputes it. Uploaded image/logo are ephemeral object
 // URLs, never sent to the backend. See .scratch/card-generator/map.md for
 // the full set of decisions this implements.
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { applyTierBoost, CARD_TIERS, statKeysFor, statLabelsFor } from '../utils/cardGeneratorTiers'
 
 export function useCardGenerator(player) {
   const selectedTierKey = ref('gold')
   const rare = ref(false)
+  const baseEdition = ref('gold')
+  const playstylePlus = ref(player.value?.playstylePlus || '')
+  const portraitMode = ref('cutout')
+  const exportError = ref('')
   const editableStats = reactive({})
   const editableOverall = ref(0)
   const faceObjectUrl = ref(null)
@@ -25,6 +29,7 @@ export function useCardGenerator(player) {
   const statLabels = computed(() => statLabelsFor(player.value))
 
   function resetToTierBaseline() {
+    for (const key of Object.keys(editableStats)) delete editableStats[key]
     const { overall, ...stats } = applyTierBoost(player.value, selectedTier.value)
     editableOverall.value = overall
     for (const key of statKeys.value) {
@@ -32,7 +37,20 @@ export function useCardGenerator(player) {
     }
   }
 
-  watch(selectedTierKey, resetToTierBaseline, { immediate: true })
+  watch([selectedTierKey, player], resetToTierBaseline, { immediate: true })
+  watch(selectedTierKey, () => {
+    if (!selectedTier.value.rareToggle) rare.value = false
+  })
+  watch(player, () => {
+    onFaceFileSelected(null)
+    onLogoFileSelected(null)
+    playstylePlus.value = player.value?.playstylePlus || ''
+    exportError.value = ''
+  })
+  onBeforeUnmount(() => {
+    if (faceObjectUrl.value) URL.revokeObjectURL(faceObjectUrl.value)
+    if (logoObjectUrl.value) URL.revokeObjectURL(logoObjectUrl.value)
+  })
 
   function setStat(key, value) {
     editableStats[key] = Math.max(0, Math.min(99, Number(value) || 0))
@@ -59,37 +77,12 @@ export function useCardGenerator(player) {
     ...editableStats,
   }))
 
-  const cardDesignOverride = computed(() => {
-    if (selectedTier.value.design) return selectedTier.value.design
-    if (!selectedTier.value.rareToggle) return null
-    // Bronze/Silver/Gold don't carry their own design override — they mirror
-    // PlayerCards.vue's own designByTypeAndRarity lookup so the Rare toggle
-    // here maps to the same finishes it would auto-pick from real stats.
-    const rareDesigns = {
-      bronze: 'card-design--amber-facets',
-      silver: 'card-design--polished-silver',
-      gold: 'card-design--confetti-foil',
-    }
-    const nonRareDesigns = {
-      bronze: 'card-design--aged-plate',
-      silver: 'card-design--pale-geometric',
-      gold: 'card-design--antique-foil',
-    }
-    return (rare.value ? rareDesigns : nonRareDesigns)[selectedTier.value.key] || null
-  })
-
-  // Per .scratch/card-generator/issues/02-png-export-html2canvas-approach.md:
-  // html2canvas-pro over vanilla html2canvas, useCORS for the flagcdn.com
-  // nation-flag fallback, explicit scale rather than devicePixelRatio for
-  // deterministic output quality.
-  async function exportAsPng(cardEl, filenameHint) {
-    if (!cardEl) return
+  async function exportAsPng(card, filenameHint) {
+    exportError.value = ''
     exporting.value = true
     try {
-      const { default: html2canvas } = await import('html2canvas-pro')
-      const canvas = await html2canvas(cardEl, { scale: 3, useCORS: true, backgroundColor: null })
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
-      if (!blob) return
+      if (!card?.exportPng) throw new Error('The card is not ready to export.')
+      const blob = await card.exportPng(2)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -97,7 +90,9 @@ export function useCardGenerator(player) {
       document.body.appendChild(a)
       a.click()
       a.remove()
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch (error) {
+      exportError.value = error.message || 'Unable to export this card.'
     } finally {
       exporting.value = false
     }
@@ -120,7 +115,10 @@ export function useCardGenerator(player) {
     faceObjectUrl,
     logoObjectUrl,
     previewPlayer,
-    cardDesignOverride,
+    baseEdition,
+    playstylePlus,
+    portraitMode,
+    exportError,
     exporting,
     exportAsPng,
   }

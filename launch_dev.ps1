@@ -4,10 +4,10 @@
 
 # --- Local LLM selection ---
 # Interactively asks whether AI features (chatbot/who-to-sign/scout-report) should talk
-# to a local Ollama model or the real remote gpt-5.6-luna (OpenAI). Non-interactive
+# to a local Ollama model, remote gpt-5.6-luna (OpenAI), or skip LLM setup. Non-interactive
 # overrides (parsed from $args below, not a formal param() block, so the flag spelling
 # matches launch_dev.sh exactly):
-#   --llm=local|remote   Skip the interactive local/remote prompt.
+#   --llm=local|remote|none   Choose a provider or skip LLM setup.
 #   --model=<alias>      Skip the interactive model-choice prompt (implies --llm=local).
 #                        Valid aliases: qwen-ridge, ling-tiny, gemma4-e4b
 # See .scratch/local-llm-selector/map.md for the full design/provisioning rationale
@@ -32,7 +32,7 @@ $ModelSizes = @{
 $LlmMode = $null
 $ModelAlias = $null
 foreach ($rawArg in $args) {
-    if ($rawArg -match '^--llm=(local|remote)$') {
+    if ($rawArg -match '^--llm=(local|remote|none)$') {
         $LlmMode = $Matches[1]
     } elseif ($rawArg -match '^--model=(.+)$') {
         $candidate = $Matches[1]
@@ -43,13 +43,13 @@ foreach ($rawArg in $args) {
         $ModelAlias = $candidate
     } elseif ($rawArg -eq '--help' -or $rawArg -eq '-h') {
         Write-Host @"
-Usage: .\launch_dev.ps1 [--llm=local|remote] [--model=<alias>]
+Usage: .\launch_dev.ps1 [--llm=local|remote|none] [--model=<alias>]
 
-  --llm=local|remote   Skip the interactive local/remote LLM prompt.
+  --llm=local|remote|none   Choose a provider or skip LLM setup.
   --model=<alias>      Skip the interactive model prompt (implies --llm=local).
                         Valid aliases: qwen-ridge, ling-tiny, gemma4-e4b
 
-With no flags, both are asked interactively.
+With no flags, the provider is chosen interactively; local mode also asks for a model.
 "@
         exit 0
     } else {
@@ -59,11 +59,16 @@ With no flags, both are asked interactively.
 if ($ModelAlias -and -not $LlmMode) { $LlmMode = 'local' }
 
 if (-not $LlmMode) {
-    Write-Host "Use a local or remote LLM for AI features?"
+    Write-Host "Choose an LLM for AI features, or skip setup:"
     Write-Host "  1) Remote -- gpt-5.6-luna via OpenAI (default, needs OPENAI_API_KEY)"
     Write-Host "  2) Local  -- served through Ollama, no internet/API key needed"
-    $llmChoice = Read-Host "Enter 1 or 2 [1]"
-    if ($llmChoice -eq '2') { $LlmMode = 'local' } else { $LlmMode = 'remote' }
+    Write-Host "  3) None   -- skip LLM setup"
+    $llmChoice = Read-Host "Enter 1-3 [1]"
+    switch ($llmChoice) {
+        '2' { $LlmMode = 'local' }
+        '3' { $LlmMode = 'none' }
+        default { $LlmMode = 'remote' }
+    }
 }
 
 if ($LlmMode -eq 'local' -and -not $ModelAlias) {
@@ -399,6 +404,8 @@ if ($LlmMode -eq 'local') {
     }
     # Deliberately not stopped in Stop-DevServers -- Ollama is a shared system service
     # (other models/tools may depend on it), unlike the fmdash-only observability stack.
+} elseif ($LlmMode -eq 'none') {
+    Write-Host "LLM setup skipped -- no provider configured by this launcher." -ForegroundColor DarkGray
 } else {
     Write-Host "Local LLM disabled (remote selected) -- using gpt-5.6-luna." -ForegroundColor DarkGray
 }
@@ -448,7 +455,10 @@ try {
                     $env:OTEL_EXPORTER_OTLP_ENDPOINT = $using:otelEndpoint
                     $env:OTEL_EXPORTER_OTLP_INSECURE = $using:otelInsecure
                 }
-                if ($using:localLLMReady) {
+                if ($using:LlmMode -eq 'none') {
+                    # Clear inherited provider settings only in the backend job.
+                    Remove-Item Env:OPENAI_API_KEY, Env:LOCAL_LLM_BASE_URL, Env:LOCAL_LLM_MODEL -ErrorAction SilentlyContinue
+                } elseif ($using:localLLMReady) {
                     $env:ENVIRONMENT       = "development"
                     $env:LOCAL_LLM_BASE_URL = "http://localhost:11434/v1"
                     $env:LOCAL_LLM_MODEL    = $using:localLLMModelTag
@@ -459,7 +469,9 @@ try {
             if ($backendJob) {
                 Write-Host "Backend job started (ID: $($backendJob.Id))." -ForegroundColor Green
                 Write-Host "Backend: http://localhost:8091" -ForegroundColor Cyan
-                if ($localLLMReady) {
+                if ($LlmMode -eq 'none') {
+                    Write-Host "LLM features: no provider configured by this launcher" -ForegroundColor Cyan
+                } elseif ($localLLMReady) {
                     Write-Host "LLM features: local ($localLLMModelTag via Ollama)" -ForegroundColor Cyan
                 } else {
                     Write-Host "LLM features: gpt-5.6-luna (OpenAI)" -ForegroundColor Cyan

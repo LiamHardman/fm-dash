@@ -141,7 +141,7 @@
                         <div v-if="iconCardPlayer" class="prestige-card-wrapper">
                             <PlayerCards
                                 :player="iconCardPlayer"
-                                cardDesignOverride="card-design--parchment-frame"
+                                edition="icon"
                                 :positionOverride="getDisplayPosition(iconCardPlayer)"
                                 :datasetId="currentDatasetId"
                                 :currency-symbol="detectedCurrencySymbol"
@@ -151,7 +151,7 @@
                         <div v-if="heroCardPlayer" class="prestige-card-wrapper">
                             <PlayerCards
                                 :player="heroCardPlayer"
-                                cardDesignOverride="card-design--badge-poster"
+                                edition="hero"
                                 :positionOverride="getDisplayPosition(heroCardPlayer)"
                                 :datasetId="currentDatasetId"
                                 :currency-symbol="detectedCurrencySymbol"
@@ -161,7 +161,7 @@
                         <div v-if="motmCardPlayer" class="prestige-card-wrapper">
                             <PlayerCards
                                 :player="motmCardPlayer"
-                                cardDesignOverride="card-design--match-night-flare"
+                                edition="motm"
                                 :positionOverride="getDisplayPosition(motmCardPlayer)"
                                 :datasetId="currentDatasetId"
                                 :currency-symbol="detectedCurrencySymbol"
@@ -1948,13 +1948,11 @@ $border-radius-small: var(--radius-sm);
 
     :deep(.player-card-slot) {
         width: 122px;
-        height: 183px;
+        aspect-ratio: 1100 / 1870;
     }
 
     :deep(.pitch-player-card) {
-        --card-scale: 0.43;
-        --card-hover-lift: -10px;
-        --card-transform-origin: top left;
+        width: 100%;
     }
 
     :deep(.empty-card-slot) {
@@ -1977,13 +1975,11 @@ $border-radius-small: var(--radius-sm);
 
         :deep(.player-card-slot) {
             width: 102px;
-            height: 153px;
+            aspect-ratio: 1100 / 1870;
         }
 
         :deep(.pitch-player-card) {
-            --card-scale: 0.36;
-            --card-hover-lift: -10px;
-            --card-transform-origin: top left;
+            width: 100%;
         }
 
         :deep(.empty-card-slot) {

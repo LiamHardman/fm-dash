@@ -1,0 +1,30 @@
+import clubImageUrl from '../../assets/card-studio/club.svg'
+import nationFlagUrl from '../../assets/card-studio/portugal.svg'
+
+export const CARD_STUDIO_PLAYER = {
+  name: 'Tom\u00e1s de Albuquerque',
+  Overall: 87,
+  age: 21,
+  transferValueAmount: 24500000,
+  wageAmount: 38000,
+  position: 'AM (RLC), M (RL)',
+  nationality: 'Portugal',
+  nationalityIso: 'pt',
+  nationFlagUrl,
+  club: 'Clube do Mar',
+  clubImageUrl,
+  nationality_fifa_code: 'POR',
+  pac: 91,
+  sho: 83,
+  pas: 88,
+  dri: 92,
+  def: 42,
+  phy: 74,
+  div: 92,
+  han: 85,
+  kic: 82,
+  ref: 94,
+  spd: 61,
+  pos: 90,
+  playstylePlus: 'technical',
+}

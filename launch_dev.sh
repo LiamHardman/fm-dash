@@ -5,9 +5,9 @@
 
 # --- Local LLM selection ---
 # Interactively asks whether AI features (chatbot/who-to-sign/scout-report) should talk
-# to a local Ollama model or the real remote gpt-5.6-luna (OpenAI). Non-interactive
+# to a local Ollama model, remote gpt-5.6-luna (OpenAI), or skip LLM setup. Non-interactive
 # overrides:
-#   --llm=local|remote   Skip the interactive local/remote prompt.
+#   --llm=local|remote|none   Choose a provider or skip LLM setup.
 #   --model=<alias>      Skip the interactive model-choice prompt (implies --llm=local).
 #                        Valid aliases: qwen-ridge, ling-tiny, gemma4-e4b
 # See .scratch/local-llm-selector/map.md for the full design/provisioning rationale
@@ -38,7 +38,7 @@ LLM_MODE=""
 MODEL_ALIAS=""
 for arg in "$@"; do
     case "$arg" in
-        --llm=local|--llm=remote)
+        --llm=local|--llm=remote|--llm=none)
             LLM_MODE="${arg#--llm=}"
             ;;
         --model=*)
@@ -53,13 +53,13 @@ for arg in "$@"; do
             ;;
         --help|-h)
             cat <<'EOF'
-Usage: ./launch_dev.sh [--llm=local|remote] [--model=<alias>]
+Usage: ./launch_dev.sh [--llm=local|remote|none] [--model=<alias>]
 
-  --llm=local|remote   Skip the interactive local/remote LLM prompt.
+  --llm=local|remote|none   Choose a provider or skip LLM setup.
   --model=<alias>      Skip the interactive model prompt (implies --llm=local).
                         Valid aliases: qwen-ridge, ling-tiny, gemma4-e4b
 
-With no flags, both are asked interactively.
+With no flags, the provider is chosen interactively; local mode also asks for a model.
 EOF
             exit 0
             ;;
@@ -73,12 +73,14 @@ if [ -n "$MODEL_ALIAS" ] && [ -z "$LLM_MODE" ]; then
 fi
 
 if [ -z "$LLM_MODE" ]; then
-    echo "Use a local or remote LLM for AI features?"
+    echo "Choose an LLM for AI features, or skip setup:"
     echo "  1) Remote -- gpt-5.6-luna via OpenAI (default, needs OPENAI_API_KEY)"
     echo "  2) Local  -- served through Ollama, no internet/API key needed"
-    read -r -p "Enter 1 or 2 [1]: " llm_choice
+    echo "  3) None   -- skip LLM setup"
+    read -r -p "Enter 1-3 [1]: " llm_choice
     case "$llm_choice" in
         2) LLM_MODE="local" ;;
+        3) LLM_MODE="none" ;;
         *) LLM_MODE="remote" ;;
     esac
 fi
@@ -324,6 +326,10 @@ if [ "$LLM_MODE" = "local" ]; then
     fi
     # Deliberately not stopped in cleanup() -- Ollama is a shared system service (other
     # models/tools may depend on it), unlike the fmdash-only observability stack.
+elif [ "$LLM_MODE" = "none" ]; then
+    # Clear inherited provider settings in this launcher process, not the parent shell.
+    unset OPENAI_API_KEY LOCAL_LLM_BASE_URL LOCAL_LLM_MODEL
+    echo "LLM setup skipped -- no provider configured by this launcher."
 else
     echo "Local LLM disabled (remote selected) -- using gpt-5.6-luna."
 fi
@@ -365,7 +371,9 @@ else
     else
         echo "Backend server process started with PID: $BACKEND_PID"
         echo "Go API should be available at http://localhost:8091 (usually proxied by Vite)"
-        if [ "$LOCAL_LLM_READY" = "true" ]; then
+        if [ "$LLM_MODE" = "none" ]; then
+            echo "LLM features: no provider configured by this launcher"
+        elif [ "$LOCAL_LLM_READY" = "true" ]; then
             echo "LLM features: local ($LOCAL_LLM_MODEL_TAG via Ollama)"
         else
             echo "LLM features: gpt-5.6-luna (OpenAI)"

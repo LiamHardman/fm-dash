@@ -153,12 +153,12 @@
                                     class="tots-card-slot"
                                     :class="{ 'tots-card-slot--empty': !slot.player }"
                                 >
-                                    <PlayerCards
+                                    <PlayerCards interactive
                                         v-if="slot.player"
                                         :player="slot.player"
                                         :currency-symbol="detectedCurrencySymbol"
                                         :dataset-id="currentDatasetId"
-                                        :card-design-override="getTotsCardDesign(slot.player)"
+                                        edition="tots"
                                         :position-override="slot.player.totsDisplayPosition"
                                         @click="openPlayerDetail(slot.player)"
                                     />
@@ -599,7 +599,7 @@ export default {
         Overall: targetOverall,
         overall: targetOverall,
         totsBaseOverall: baseOverall,
-        totsCardDesign: getTotsCardDesignForOverall(targetOverall),
+        cardEdition: 'tots',
         totsDisplayPosition: displayPosition,
       }
 
@@ -856,20 +856,6 @@ export default {
       showPlayerDetailDialog.value = true
     }
 
-    const getTotsCardDesignForOverall = (overall) => {
-      const numericOverall = Number(overall)
-      if (Number.isNaN(numericOverall)) return 'card-design--tots-crown-aurora'
-      if (numericOverall < 65) return 'card-design--bronze-season-ribbon'
-      if (numericOverall < 75) return 'card-design--silver-season-laurel'
-      return 'card-design--tots-crown-aurora'
-    }
-
-    const getTotsCardDesign = (player) => {
-      return (
-        player?.totsCardDesign || getTotsCardDesignForOverall(player?.Overall || player?.overall)
-      )
-    }
-
     const getOverallClass = (overall) => ratingColourClass(overall, 100)
 
     const getStarClass = (overall, starPosition) => {
@@ -976,7 +962,6 @@ export default {
       handleTeamSelected,
       openPlayerDetail,
       teamOfSeasonLineup,
-      getTotsCardDesign,
       getOverallClass,
       getStarClass,
       getStarRating,
@@ -1033,7 +1018,7 @@ export default {
 
 // The Team of the Season lineup keeps its own bespoke pitch-themed palette
 // (deep teal/gold gradient) rather than the app-chrome tokens — it's a
-// decorative "trophy cabinet" treatment in the same spirit as the fifa-card
+// decorative "trophy cabinet" treatment alongside the player cards
 // design skins, not UI chrome, so it's intentionally left as-is here.
 .tots-lineup {
     border-radius: 8px;
@@ -1135,15 +1120,13 @@ export default {
 .tots-card-slot {
     position: relative;
     width: 154px;
-    height: 231px;
+    aspect-ratio: 1100 / 1870;
     display: flex;
     justify-content: center;
     align-items: flex-start;
 
-    :deep(.fifa-card) {
-        --card-scale: 0.55;
-        --card-hover-lift: -10px;
-        --card-transform-origin: top center;
+    :deep(.fm-player-card) {
+        width: 100%;
 
         flex: 0 0 auto;
     }
@@ -1388,11 +1371,10 @@ export default {
 
     .tots-card-slot {
         width: 92px;
-        height: 138px;
+        aspect-ratio: 1100 / 1870;
 
-        :deep(.fifa-card) {
-            --card-scale: 0.329;
-            --card-hover-lift: -10px;
+        :deep(.fm-player-card) {
+            width: 100%;
         }
 
         &--empty {
@@ -1421,11 +1403,10 @@ export default {
 
     .tots-card-slot {
         width: 68px;
-        height: 102px;
+        aspect-ratio: 1100 / 1870;
 
-        :deep(.fifa-card) {
-            --card-scale: 0.243;
-            --card-hover-lift: -10px;
+        :deep(.fm-player-card) {
+            width: 100%;
         }
     }
 }

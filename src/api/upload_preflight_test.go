@@ -31,6 +31,17 @@ func TestUploadPreflightAcceptsCompleteCSVProfile(t *testing.T) {
 	}
 }
 
+func TestUploadPreflightAcceptsProvidedHTMLExport(t *testing.T) {
+	content, err := os.ReadFile("../../fulldb.html")
+	if err != nil {
+		t.Skipf("provided export is not available in this checkout: %v", err)
+	}
+	response := runUploadPreflight(t, "fulldb.html", string(content))
+	if !response.Valid {
+		t.Fatalf("valid HTML export rejected: %s; missing %v", response.Message, response.MissingColumns)
+	}
+}
+
 func TestUploadPreflightAcceptsCompleteHTMLProfile(t *testing.T) {
 	headers := "<th>" + strings.Join(requiredExportHeaders, "</th><th>") + "</th>"
 	response := runUploadPreflight(t, "players.html", "<table><thead><tr>"+headers+"</tr></thead></table>")

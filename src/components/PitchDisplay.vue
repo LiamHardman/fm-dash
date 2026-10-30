@@ -56,11 +56,11 @@
                         @dragstart="handleDragStart($event, players[pos.id], pos.id)"
                         @dragend="handleDragEnd"
                     >
-                        <PlayerCards
+                        <PlayerCards interactive
                             :player="players[pos.id]"
                             :currency-symbol="currencySymbol"
                             :dataset-id="datasetId"
-                            :card-design-override="cardDesignOverride"
+                            :edition="cardEdition"
                             :position-override="getCardPositionForSlot(pos.role)"
                             class="pitch-player-card"
                             @click="$emit('player-click', players[pos.id])"
@@ -229,7 +229,7 @@ export default {
       type: String,
       default: null,
     },
-    cardDesignOverride: {
+    cardEdition: {
       type: String,
       default: null,
     },
@@ -645,7 +645,7 @@ export default {
 .player-card-slot {
     position: relative;
     width: 96px;
-    height: 144px;
+    aspect-ratio: 1100 / 1870;
     cursor: grab;
     transition: transform 0.18s ease;
 
@@ -654,9 +654,7 @@ export default {
     }
 
     :deep(.pitch-player-card) {
-        --card-scale: 0.34;
-        --card-hover-lift: -10px;
-        --card-transform-origin: top left;
+        width: 100%;
     }
 }
 

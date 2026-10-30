@@ -537,7 +537,7 @@
                                             :key="`${player.name}-${player.club}`"
                                             class="player-card-container"
                                         >
-                                            <PlayerCards 
+                                            <PlayerCards interactive
                                                 :player="player"
                                                 :currency-symbol="currencySymbol"
                                                 :nation-flag-url="getFlagUrl(player.nationalityIso || player.nationality_fifa_code)"
