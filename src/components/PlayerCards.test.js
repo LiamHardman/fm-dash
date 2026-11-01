@@ -35,6 +35,27 @@ function card(props = {}) {
 beforeEach(() => vi.clearAllMocks())
 
 describe('shared player card adapter', () => {
+  it('loads missing FM attributes even with a nation flag and exports the assigned badge', async () => {
+    fetchFullPlayerStats.mockResolvedValueOnce({
+      data: { player: { numericAttributes: { Fre: 17 } } },
+    })
+    const wrapper = card({
+      datasetId: 'dataset-1',
+      player: { ...player, nationalityIso: 'pt', numericAttributes: {} },
+    })
+    await settle()
+    expect(fetchFullPlayerStats).toHaveBeenCalledWith('dataset-1', '1')
+    expect(wrapper.get('[data-playstyle-plus="dead-ball"]').exists()).toBe(true)
+    await wrapper.vm.exportPng(2)
+    expect(
+      cardPngBlob.mock.calls[0][0].querySelector('[data-playstyle-plus="dead-ball"]')
+    ).not.toBeNull()
+    await wrapper.setProps({ playstylePlus: '' })
+    await settle()
+    expect(wrapper.find('[data-playstyle-plus]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('renders reactive host values with unique SVG identifiers per instance', async () => {
     const parent = mount(
       { render: () => h('div', [h(PlayerCards, { player }), h(PlayerCards, { player })]) },

@@ -1,6 +1,7 @@
 import { EDITION_MANIFEST } from '../cards/editions.mjs'
 import { PLAYSTYLE_PLUS_CATALOG } from '../cards/playstyle-plus-catalog.mjs'
 import { getFifaWeightedOverallByPosition } from './playerUtils'
+import { selectPlaystylePlus } from './playstylePlus'
 
 const POSITIONS = {
   GK: 'GK',
@@ -121,7 +122,11 @@ export function mapPlayerCard(player = {}, options = {}) {
   )
   const iso = player.nationalityIso || player.nationality_iso
   const nationLabel = player.nationality || player.nation || iso || player.nationality_fifa_code
-  const playstyle = options.playstylePlus ?? player.playstylePlus ?? player.playstyle_plus
+  const playstyle =
+    options.playstylePlus ??
+    player.playstylePlus ??
+    player.playstyle_plus ??
+    selectPlaystylePlus(player, { goalkeeper, positions: naturalPositions })
   return {
     name: player.name || '',
     rating,

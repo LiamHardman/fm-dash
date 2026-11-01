@@ -131,9 +131,10 @@
           </section>
 
           <section class="control-section">
-            <div class="section-title">PlayStyle+</div>
-            <q-select dense outlined label="PlayStyle+" :model-value="state.playstylePlus.value"
-              @update:model-value="v => state.playstylePlus.value = v" :options="playstyleOptions" emit-value map-options />
+            <div class="section-title">Playstyle+</div>
+            <q-select dense outlined label="Playstyle+" :model-value="state.playstylePlus.value"
+              @update:model-value="v => state.playstylePlus.value = v" :options="playstyleOptions" emit-value map-options
+              hint="Choose a Playstyle+ manually, or select None." />
           </section>
           <p v-if="state.exportError.value" role="alert">{{ state.exportError.value }}</p>
           <section class="control-section export-section">

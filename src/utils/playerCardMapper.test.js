@@ -70,7 +70,7 @@ describe('FMDash card mapping', () => {
     expect(statKeysFor(keeper)).toEqual(['div', 'han', 'kic', 'ref', 'spd', 'pos'])
   })
 
-  it('does not invent missing stats, ratings, identities or PlayStyle+ eligibility', () => {
+  it('does not invent missing stats, ratings, identities or Playstyle+ eligibility', () => {
     expect(mapPlayerCard({})).toMatchObject({
       rating: undefined,
       nation: undefined,

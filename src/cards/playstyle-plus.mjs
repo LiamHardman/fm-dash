@@ -26,8 +26,8 @@ export function resolvePlaystylePalette(theme) {
 
 export function playstylePlusLabel(id) {
   if (id == null || id === '') return '';
-  if (!Object.hasOwn(PLAYSTYLE_PLUS_CATALOG, id)) throw new TypeError(`Unknown PlayStyle+ identifier: ${String(id)}`);
-  return `${PLAYSTYLE_PLUS_CATALOG[id].label} PlayStyle+`;
+  if (!Object.hasOwn(PLAYSTYLE_PLUS_CATALOG, id)) throw new TypeError(`Unknown Playstyle+ identifier: ${String(id)}`);
+  return `${PLAYSTYLE_PLUS_CATALOG[id].label} Playstyle+`;
 }
 
 /** Exact supplied vector paths with resolved presentation attributes, ready for SVG/PNG. */

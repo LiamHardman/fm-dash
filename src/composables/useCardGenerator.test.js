@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
+import { mapPlayerCard } from '../utils/playerCardMapper'
 import { useCardGenerator } from './useCardGenerator'
 
 function studio() {
@@ -30,6 +31,27 @@ function studio() {
 afterEach(() => vi.restoreAllMocks())
 
 describe('Card Generator integration', () => {
+  it('starts with FM eligibility, preserves manual choices through edits, and resets for a new player', async () => {
+    const { state, player, wrapper } = studio()
+    state.playstylePlus.value = 'technical'
+    state.selectedTierKey.value = 'icon'
+    state.setStat('pac', 99)
+    await nextTick()
+    expect(state.playstylePlus.value).toBe('technical')
+    player.value = { ...player.value, numericAttributes: { Fre: 17 } }
+    await nextTick()
+    expect(state.playstylePlus.value).toBe('dead-ball')
+    state.playstylePlus.value = ''
+    expect(
+      mapPlayerCard(state.previewPlayer.value, { playstylePlus: state.playstylePlus.value })
+        .playstylePlus
+    ).toBeUndefined()
+    player.value = { position: 'GK', playstyle_plus: 'footwork' }
+    await nextTick()
+    expect(state.playstylePlus.value).toBe('footwork')
+    wrapper.unmount()
+  })
+
   it('resets edits on tier or player changes while keeping overall independent', async () => {
     const { state, player, wrapper } = studio()
     state.setStat('sho', 99)

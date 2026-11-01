@@ -1121,7 +1121,7 @@ export const PLAYSTYLE_PLUS_CATALOG = {
     ]
   },
   "rush-out": {
-    "label": "Rush Out",
+    "label": "1v1 Close Down",
     "source": "playstyles/rush-out.svg",
     "sha256": "c9689e4cc6f434531564b91c673269b000dae4267ef8206f59e93087a86761e0",
     "hull": "M560 228.961L280 541L0 228.961L127.68 31H432.32L560 228.961Z",

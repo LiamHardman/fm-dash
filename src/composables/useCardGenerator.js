@@ -8,12 +8,13 @@
 // the full set of decisions this implements.
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { applyTierBoost, CARD_TIERS, statKeysFor, statLabelsFor } from '../utils/cardGeneratorTiers'
+import { mapPlayerCard } from '../utils/playerCardMapper'
 
 export function useCardGenerator(player) {
   const selectedTierKey = ref('gold')
   const rare = ref(false)
   const baseEdition = ref('gold')
-  const playstylePlus = ref(player.value?.playstylePlus || '')
+  const playstylePlus = ref(mapPlayerCard(player.value).playstylePlus || '')
   const portraitMode = ref('cutout')
   const exportError = ref('')
   const editableStats = reactive({})
@@ -44,7 +45,7 @@ export function useCardGenerator(player) {
   watch(player, () => {
     onFaceFileSelected(null)
     onLogoFileSelected(null)
-    playstylePlus.value = player.value?.playstylePlus || ''
+    playstylePlus.value = mapPlayerCard(player.value).playstylePlus || ''
     exportError.value = ''
   })
   onBeforeUnmount(() => {

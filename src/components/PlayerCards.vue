@@ -41,7 +41,16 @@ watch(
     if (
       !props.datasetId ||
       !uid ||
-      (props.player.nationalityIso && (!props.selectedRole || props.player.roleSpecificOveralls))
+      (props.player.nationalityIso &&
+        (!props.selectedRole || props.player.roleSpecificOveralls) &&
+        (props.playstylePlus != null ||
+          props.player.playstylePlus != null ||
+          props.player.playstyle_plus != null ||
+          [
+            props.player.numericAttributes,
+            props.player.numeric_attributes,
+            props.player.attributes,
+          ].some((attributes) => attributes && Object.keys(attributes).length > 0)))
     )
       return
     const request = fetchFullPlayerStats(props.datasetId, uid)
@@ -95,6 +104,12 @@ const mappedPlayer = computed(() =>
       ...detail.value,
       ...Object.fromEntries(Object.entries(props.player).filter(([, value]) => value != null)),
       roleSpecificOveralls: props.player.roleSpecificOveralls || detail.value?.roleSpecificOveralls,
+      attributes: { ...detail.value?.attributes, ...props.player.attributes },
+      numeric_attributes: {
+        ...detail.value?.numeric_attributes,
+        ...props.player.numeric_attributes,
+      },
+      numericAttributes: { ...detail.value?.numericAttributes, ...props.player.numericAttributes },
     },
     {
       ...props,
