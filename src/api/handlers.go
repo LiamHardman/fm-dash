@@ -319,7 +319,13 @@ func uploadPreflightHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	format, headers, extractionErr := extractExportHeaders(handler.Filename, content)
+	filename, content, err := decodeCompressedUpload(handler.Filename, content)
+	if err != nil {
+		writeUploadPreflightResponse(w, r, http.StatusOK, UploadPreflightResponse{Valid: false, Format: "csv", Message: err.Error()})
+		return
+	}
+
+	format, headers, extractionErr := extractExportHeaders(filename, content)
 	if extractionErr != nil {
 		writeUploadPreflightResponse(w, r, http.StatusOK, UploadPreflightResponse{
 			Valid:   false,
@@ -560,6 +566,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The browser FM27 save import sends a gzipped CSV; inflate it before hashing so
+	// duplicate detection and format detection see the export itself.
+	uploadFilename, fileContent, err := decodeCompressedUpload(handler.Filename, fileContent)
+	if err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, errDecompressedUploadTooLarge) {
+			status = http.StatusRequestEntityTooLarge
+		}
+		WriteErrorResponse(w, r, "decompression_failed", err.Error(), nil, status)
+		return
+	}
+
 	// Check for duplicate upload before processing
 	ctx, duplicateSpan := StartSpan(ctx, "duplicate.check")
 	fileHash := calculateFileHash(fileContent)
@@ -624,7 +642,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		logWarn(ctx, "Using fallback calculation configuration", "error", err)
 	}
 	format := "html"
-	if strings.HasSuffix(strings.ToLower(handler.Filename), ".csv") {
+	if strings.HasSuffix(strings.ToLower(uploadFilename), ".csv") {
 		format = "csv"
 	}
 	parseTimer := CreateParseTimerWithContext(ctx, "file_parsing")

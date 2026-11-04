@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -100,6 +101,29 @@ func GetShortPositionKeyFromRoleName(roleFullName string) string {
 		return strings.TrimSpace(parts[0])
 	}
 	return "" // Or handle error/log if appropriate
+}
+
+// fmPositionWithRole matches an FM position string optionally followed by a role
+// name, e.g. "DM, M (C) Central Midfielder" or "GK Goalkeeper". The FM27 CSV
+// export mod appends the player's best role to the Position column; FM's own
+// exports do not. Longer tokens precede their prefixes (DM before D) so the
+// leftmost-first alternation consumes whole tokens.
+var fmPositionWithRole = func() *regexp.Regexp {
+	token := `(?:DM|WB|AM|GK|SW|ST|D|M)\b`
+	group := token + `(?:/` + token + `)*(?: \([RLC]+\))?`
+	return regexp.MustCompile(`^(` + group + `(?:, ` + group + `)*)(?:\s+(\S.*))?$`)
+}()
+
+// SplitPositionAndRole separates an FM position list from a trailing role name.
+// Strings without a recognisable role suffix are returned unchanged with an
+// empty role.
+func SplitPositionAndRole(value string) (position, role string) {
+	value = strings.TrimSpace(value)
+	match := fmPositionWithRole.FindStringSubmatch(value)
+	if match == nil {
+		return value, ""
+	}
+	return match[1], strings.TrimSpace(match[2])
 }
 
 // ParsePlayerPositionsGo processes a raw position string (e.g., "D/M (RLC), AM (C), ST (C)")

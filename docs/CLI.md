@@ -27,7 +27,7 @@ fmdash parse bench --manifest testdata/cli/corpus.json --iterations 10 --baselin
 
 The example manifest is relative to `src/api`. Fixture and golden paths inside a manifest resolve relative to that manifest; absolute paths are also supported. A baseline is never updated automatically. Use `--overwrite` to deliberately replace an output artifact.
 
-CSV inputs use semicolons and support quoted delimiters, quoted multiline values, UTF-8 BOMs and large records. HTML reads the first nonempty table and supports both `th` and `td` headers. Full CSV header names are normalized using the same aliases as uploads. The GUI upload path uses the same decoder and parsing service.
+CSV inputs may be semicolon-delimited (FM's own export) or comma-delimited (the FM27 CSV export mod); the delimiter is detected from the header line. CSV supports quoted delimiters, quoted multiline values, UTF-8 BOMs and large records. HTML reads the first nonempty table and supports both `th` and `td` headers. Full CSV header names are normalized using the same aliases as uploads. The GUI upload path uses the same decoder and parsing service.
 
 `--stage parsed` decodes and normalizes fields without calculating ratings. `enhanced` adds individual ratings and derived statistics. The default, `complete`, also normalizes Dataset-wide MBR and calculates percentiles. `rawAttributes` preserves the original attribute values; it is aligned with `players` and `sourceRows`. Source rows are one-based logical table records, with the header at row 1; quoted multiline CSV records count as one record.
 
@@ -148,7 +148,7 @@ fmdash api /api/shortlists
 fmdash api /api/shortlists --method PUT --id '<etag>' --body @shortlists.json
 ```
 
-`datasets upload` returns the backend's Dataset ID; a local workspace Dataset ID is not automatically available on that backend. `api /api/...` exposes existing backend query/body contracts, including full player details/percentiles, team and league analysis, exports, configuration, profile documents, legacy wishlists, progression and club mapping. For multipart endpoints use `--method POST --upload <path>` (`playerFile`, or `saveFile` on `/api/fm-save-import`).
+`datasets upload` returns the backend's Dataset ID; a local workspace Dataset ID is not automatically available on that backend. `api /api/...` exposes existing backend query/body contracts, including full player details/percentiles, team and league analysis, exports, configuration, profile documents, legacy wishlists, progression and club mapping. For multipart endpoints use `--method POST --upload <path>` (sent as `playerFile`; `.csv.gz` uploads are inflated server-side).
 
 Named backend operations also include `scout stars` (query `playerUid` and `position`), `recruitment who-to-sign`, `cache status/clear`, `debug player`, and `club-match resolve/overrides`. Use `api` with an explicit method for report reads/deletes or other variations. Headers are repeatable; `NAME:@ENVIRONMENT_VARIABLE` reads the value without placing it in shell arguments. The same `X-OpenAI-Base-URL` and `X-OpenAI-Model` headers as the GUI are supported. Credentials are not included in provenance. Responses include HTTP status, ETag and data; event-stream/text responses are preserved as strings. Redirects are not followed automatically.
 

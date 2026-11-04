@@ -312,8 +312,9 @@ var csvHeaderNormalize = map[string]string{
 	"Punching":               "Pun",
 }
 
-// ParseCSVPlayerTable parses a semicolon-delimited CSV player export (as produced by FM's
-// "Export to CSV" view option) and feeds rows into the same worker pipeline used by
+// ParseCSVPlayerTable parses a CSV player export — semicolon-delimited from FM's own
+// "Export to CSV" view option, or comma-delimited from the FM27 CSV export mod — and
+// feeds rows into the same worker pipeline used by
 // ParseHTMLPlayerTable. The first non-empty line is treated as the header row.
 func ParseCSVPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) error {
 	return parseLegacyTable(file, "csv", headersSnapshot, rowCellsChan, numWorkers, resultsChan, wg)

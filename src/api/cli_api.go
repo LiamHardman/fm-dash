@@ -74,11 +74,7 @@ func cliAPI(ctx context.Context, args []string, o cliOptions, stdin io.Reader) (
 		}
 		var buffer bytes.Buffer
 		writer := multipart.NewWriter(&buffer)
-		field := "playerFile"
-		if relative.Path == "/api/fm-save-import" {
-			field = "saveFile"
-		}
-		part, err := writer.CreateFormFile(field, filepath.Base(o.upload))
+		part, err := writer.CreateFormFile("playerFile", filepath.Base(o.upload))
 		if err != nil {
 			return nil, err
 		}

@@ -97,13 +97,13 @@ func (r contextReader) Read(p []byte) (int, error) {
 // scanExport is the sole CSV/HTML row decoder used by both transports and legacy
 // parser entry points. emit receives immutable cells and one-based table rows.
 func scanExport(ctx context.Context, input io.Reader, format string, emit func(int, []string, bool) error) error {
-	r := bufio.NewReader(contextReader{ctx, input})
+	r := bufio.NewReaderSize(contextReader{ctx, input}, 64*1024)
 	if prefix, _ := r.Peek(3); string(prefix) == "\xef\xbb\xbf" {
 		_, _ = r.Discard(3)
 	}
 	if format == "csv" {
 		decoder := csv.NewReader(r)
-		decoder.Comma = ';'
+		decoder.Comma = sniffCSVDelimiter(r)
 		decoder.FieldsPerRecord = -1
 		row := 0
 		for {
@@ -230,6 +230,33 @@ func scanExport(ctx context.Context, input io.Reader, format string, emit func(i
 			}
 		}
 	}
+}
+
+// sniffCSVDelimiter picks the field separator from the header line without
+// consuming input. FM's built-in "Export to CSV" view uses semicolons; the FM27
+// CSV export mod uses commas. Delimiters inside quoted fields are ignored, and
+// semicolons win ties because that is the long-standing default.
+func sniffCSVDelimiter(r *bufio.Reader) rune {
+	peeked, _ := r.Peek(r.Size())
+	semicolons, commas, quoted := 0, 0, false
+scan:
+	for _, b := range peeked {
+		switch {
+		case b == '"':
+			quoted = !quoted
+		case quoted:
+		case b == ';':
+			semicolons++
+		case b == ',':
+			commas++
+		case b == '\n' && semicolons+commas > 0:
+			break scan
+		}
+	}
+	if commas > semicolons {
+		return ','
+	}
+	return ';'
 }
 
 // ParsePlayers performs a complete, deterministic parse without persisting a

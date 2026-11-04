@@ -133,7 +133,13 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			}
 			isAnAttributeField = false
 		case "Position":
-			player.Position = cellValue
+			// The FM27 CSV mod appends the best role ("D (C) Centre-Back");
+			// keep the role as an attribute so position parsing sees only codes.
+			position, role := SplitPositionAndRole(cellValue)
+			player.Position = position
+			if role != "" {
+				player.Attributes["Role"] = role
+			}
 			isAnAttributeField = false
 		case "Age":
 			player.Age = cellValue

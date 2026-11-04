@@ -362,9 +362,11 @@ export default {
       const content = await file.text()
       if (file.name.toLowerCase().endsWith('.csv')) {
         const headerLine = content.split(/\r?\n/).find((line) => line.trim())
+        // FM's own CSV export uses ';'; the FM27 CSV export mod uses ','.
+        const countOf = (char) => headerLine.split(char).length - 1
         return headerLine
           ? headerLine
-              .split(';')
+              .split(countOf(',') > countOf(';') ? ',' : ';')
               .map((header) => header.trim())
               .filter(Boolean)
           : []

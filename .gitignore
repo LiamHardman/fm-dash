@@ -118,3 +118,4 @@ codeql-databases/
 
 # Docker security scanning results
 docker-security-results/
+.scratch/
