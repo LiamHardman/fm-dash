@@ -23,7 +23,7 @@
             <div v-else>
                 <PageHeader
                     title="Save Analysis"
-                    :subtitle="`CA vs. Overall across ${formatNumber(filteredPlayers.length)} of ${formatNumber(allPlayersData.length)} players`"
+                    :subtitle="`${caLabelText} vs. Overall across ${formatNumber(filteredPlayers.length)} of ${formatNumber(allPlayersData.length)} players`"
                     icon="insights"
                 >
                     <template #actions>
@@ -59,6 +59,7 @@
                 <SectionCard class="q-mb-md">
                     <SaveAnalysisScatter
                         :players="filteredPlayers"
+                        :ca-label="caLabelText"
                         :is-dark-mode="isDarkMode"
                         @player-click="openPlayerDetail"
                     />
@@ -148,6 +149,7 @@ import { useDynamicComponents } from '../composables/useDynamicComponents.js'
 import { fetchPerformanceData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
+import { caLabel, caSourceOf } from '../utils/caSource.js'
 // biome-ignore lint/correctness/noUnusedImports: used in template
 import { formatNumber } from '../utils/currencyUtils.js'
 
@@ -279,8 +281,10 @@ const roleDistribution = computed(() => {
     .sort((a, b) => b.count - a.count)
 })
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const tableColumns = [
+// 'CA' for save imports (true CA), 'Est. CA' for CSV/HTML imports.
+const caLabelText = computed(() => caLabel(caSourceOf(allPlayersData.value)))
+
+const baseTableColumns = [
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   { name: 'club', label: 'Club', field: 'club', align: 'left', sortable: true },
   {
@@ -327,8 +331,7 @@ const tableColumns = [
   },
 ]
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const outlierColumns = [
+const baseOutlierColumns = [
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   {
     name: 'positions',
@@ -340,6 +343,17 @@ const outlierColumns = [
   { name: 'overall', label: 'Overall', field: getOverall, align: 'right', sortable: true },
   { name: 'ratingDiff', label: 'Δ', field: getRatingDiff, align: 'right', sortable: true },
 ]
+
+const withCaLabel = (columns) =>
+  computed(() =>
+    columns.map((column) =>
+      column.name === 'ca' ? { ...column, label: caLabelText.value } : column
+    )
+  )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const tableColumns = withCaLabel(baseTableColumns)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const outlierColumns = withCaLabel(baseOutlierColumns)
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const roleDistributionColumns = [

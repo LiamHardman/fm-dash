@@ -4,9 +4,10 @@
 // injuries, suspensions or roles). See ./THIRD_PARTY.md.
 
 import { MISSING_U32, parseError, readI16, readU8, readU16, readU32 } from './bytes.js'
-import { ClubIndex } from './clubs.js'
+import { ClubIndex, clubDisplayName } from './clubs.js'
 import { SaveFile } from './container.js'
 import { ContractDecoder } from './contracts.js'
+import { readInjuredPindexes } from './injuries.js'
 import {
   ATTRIBUTE_KEYS,
   decodeDate,
@@ -22,6 +23,7 @@ import { NamePools } from './names.js'
 import { NationIndex } from './nations.js'
 import { PersonDecoder } from './persons.js'
 import { closingPersonHeader, locatePlayerRecords } from './playerScan.js'
+import { readOverallLines, readSeasonStatsBody } from './seasonStats.js'
 
 const DEFAULT_CLOCK = '2026-07-01'
 
@@ -36,13 +38,62 @@ export async function parseSave(source, onProgress = () => {}) {
   const save = await SaveFile.open(source)
   const metadata = await readMetadata(save)
   onProgress({ stage: 'decompressing' })
-  const gameDb = await save.readSection('game_db')
-  const result = parseGameDb(gameDb, metadata.gameDate ?? DEFAULT_CLOCK, onProgress)
+  let gameDb = await save.readSection('game_db')
+  const clock = metadata.gameDate ?? DEFAULT_CLOCK
+  const result = parseGameDb(gameDb, clock, onProgress)
+  await attachInjuries(save, result.players, clock, result.report.warnings)
+  // Drop game_db (~227 MB) before the stats frame (~73 MB) is decompressed.
+  gameDb = undefined
+  onProgress({ stage: 'stats' })
+  Object.assign(
+    result.report,
+    await attachSeasonStats(save, result.players, result.report.warnings, onProgress)
+  )
   return {
     metadata: { ...metadata, saveName: save.saveName },
     ...result,
     report: { ...result.report, elapsedMs: Math.round(performance.now() - started) },
   }
+}
+
+/**
+ * Mark players injured on the game date (`player.injured`). A missing or unreadable
+ * injury_manager adds a warning and leaves every player uninjured.
+ */
+export async function attachInjuries(save, players, clock, warnings) {
+  try {
+    const injured = readInjuredPindexes(await save.readSection('injury_manager'), clock)
+    for (const player of players) player.injured = injured.has(player.pindex)
+  } catch (error) {
+    warnings.push(`injuries unavailable: ${error.message}`)
+  }
+}
+
+/**
+ * Join each player's current-season Overall line. Afterwards `player.seasonStats` is the
+ * summed line, or null when the player has no Overall line (all zeros). When the stats
+ * can't be read it stays undefined (blank cells), a warning is added, and the import goes on.
+ */
+export async function attachSeasonStats(save, players, warnings, onProgress = () => {}) {
+  const started = performance.now()
+  let statsFrameBytes = 0
+  let withStats = 0
+  try {
+    let body = await readSeasonStatsBody(save)
+    statsFrameBytes = body.length
+    onProgress({ stage: 'stats', current: 1, total: 2 })
+    const overall = readOverallLines(body)
+    body = undefined
+    for (const player of players) {
+      const line = overall.get(player.pindex + 1)
+      player.seasonStats = line ?? null
+      if (line) withStats++
+    }
+  } catch (error) {
+    for (const player of players) player.seasonStats = undefined
+    warnings.push(`season stats unavailable: ${error.message}`)
+  }
+  return { withStats, statsMs: Math.round(performance.now() - started), statsFrameBytes }
 }
 
 /**
@@ -71,9 +122,11 @@ export function parseGameDb(gameDb, clock, onProgress = () => {}) {
     clubs = undefined
     warnings.push(`club table unavailable: ${error.message}`)
   }
+  let division = { divisionClubs: 0, divisionMs: 0 }
   if (clubs) {
     try {
-      resolveClubLeagues(gameDb, clubs, nations)
+      const { divisionClubs, divisionMs } = resolveClubLeagues(gameDb, clubs, nations, clock)
+      division = { divisionClubs, divisionMs }
     } catch (error) {
       warnings.push(`club leagues unavailable: ${error.message}`)
     }
@@ -90,21 +143,13 @@ export function parseGameDb(gameDb, clock, onProgress = () => {}) {
     const record = index.records[position]
     const offset = record.offset
     const windowEnd = index.windowEnd(position, gameDb.length)
-    const nextUid = index.records[position + 1]?.uid
 
     const teamIdRaw = readU32(gameDb, offset + L.TEAM_ID_OFFSET) ?? MISSING_U32
     const teamId = teamIdRaw === MISSING_U32 ? undefined : teamIdRaw
     const club = teamId === undefined ? undefined : clubs?.teamFields(teamId)
     if (club) withClub++
 
-    const closing = closingPersonHeader(
-      gameDb,
-      record.pindex,
-      offset + L.DECODE_EXTENT,
-      windowEnd,
-      record.uid,
-      nextUid
-    )
+    const closing = closingPersonHeader(gameDb, record.pindex, offset + L.DECODE_EXTENT, windowEnd)
     const person = personDecoder.decode(gameDb, offset + 100, closing ? closing[0] : windowEnd)
     if (person) withPerson++
 
@@ -140,6 +185,7 @@ export function parseGameDb(gameDb, clock, onProgress = () => {}) {
 
     players.push({
       uid: record.uid,
+      pindex: record.pindex, // internal: the season-stats key is pindex + 1; not exported
       uniqueId: closing?.[1],
       name: person?.name,
       firstName: person?.firstName,
@@ -159,9 +205,12 @@ export function parseGameDb(gameDb, clock, onProgress = () => {}) {
       pa: rawPa < 0 ? undefined : rawPa,
       teamId,
       clubUid: club?.uid,
-      clubName: club?.name,
+      clubName: clubDisplayName(club),
+      clubLongName: club?.name,
       clubNationName: club?.nationName,
       leagueName: club?.leagueName,
+      // internal: the Division's competition database id (scripts/fm27-division-names.mjs)
+      leagueDatabaseId: club?.leagueCompetition?.databaseId,
       gender: club?.gender,
       clubJoinDate: decodeDate(gameDb, offset + L.CLUB_JOIN_DATE_OFFSET),
       attributes,
@@ -171,6 +220,8 @@ export function parseGameDb(gameDb, clock, onProgress = () => {}) {
       transferValue,
       wage: contract?.wage,
       contractEnd: contract?.end,
+      listingFlags: contract?.listingFlags,
+      listingCode: contract?.listingCode,
     })
   }
 
@@ -178,12 +229,15 @@ export function parseGameDb(gameDb, clock, onProgress = () => {}) {
   onProgress({ stage: 'done', current: players.length, total: players.length })
   return {
     players,
+    clubs, // the ClubIndex (undefined when unreadable), for the managed-club lookup
     report: {
       players: players.length,
       markerless: index.markerless,
       withPerson,
       withClub,
       withContract: players.filter((player) => player.wage !== undefined).length,
+      withDivision: players.filter((player) => player.leagueName).length,
+      ...division,
       warnings,
     },
   }

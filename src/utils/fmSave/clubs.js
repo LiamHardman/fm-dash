@@ -85,6 +85,11 @@ const AFTER_FINANCE = [
 
 const inRange = (value, [lo, hi]) => value >= lo && value <= hi
 
+/** The club name FM's exports print: the short name, else the full registered name. */
+export function clubDisplayName(club) {
+  return club ? club.shortName || club.name : undefined
+}
+
 export class ClubIndex {
   static read(gameDb) {
     const [anchorRecords, anchorScanEnd] = scanClubRecords(gameDb)

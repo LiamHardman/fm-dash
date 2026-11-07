@@ -21,6 +21,7 @@ const descriptor = {
             roleName: {
               type: 'string',
               id: 1,
+              protoName: 'role_name',
             },
             score: {
               type: 'int32',
@@ -57,6 +58,7 @@ const descriptor = {
             transferValue: {
               type: 'string',
               id: 7,
+              protoName: 'transfer_value',
             },
             wage: {
               type: 'string',
@@ -69,6 +71,7 @@ const descriptor = {
             mediaHandling: {
               type: 'string',
               id: 10,
+              protoName: 'media_handling',
             },
             nationality: {
               type: 'string',
@@ -81,10 +84,12 @@ const descriptor = {
             nationalityFifaCode: {
               type: 'string',
               id: 13,
+              protoName: 'nationality_fifa_code',
             },
             attributeMasked: {
               type: 'bool',
               id: 14,
+              protoName: 'attribute_masked',
             },
             pac: {
               type: 'int32',
@@ -146,37 +151,45 @@ const descriptor = {
               rule: 'repeated',
               type: 'string',
               id: 29,
+              protoName: 'parsed_positions',
             },
             shortPositions: {
               rule: 'repeated',
               type: 'string',
               id: 30,
+              protoName: 'short_positions',
             },
             positionGroups: {
               rule: 'repeated',
               type: 'string',
               id: 31,
+              protoName: 'position_groups',
             },
             essentialAttributes: {
               keyType: 'string',
               type: 'string',
               id: 32,
+              protoName: 'essential_attributes',
             },
             bestRoleOverall: {
               type: 'string',
               id: 33,
+              protoName: 'best_role_overall',
             },
             transferValueAmount: {
               type: 'int64',
               id: 34,
+              protoName: 'transfer_value_amount',
             },
             wageAmount: {
               type: 'int64',
               id: 35,
+              protoName: 'wage_amount',
             },
             totalStats: {
               type: 'int32',
               id: 36,
+              protoName: 'total_stats',
             },
             mbr: {
               type: 'int32',
@@ -200,16 +213,43 @@ const descriptor = {
               keyType: 'string',
               type: 'int32',
               id: 41,
+              protoName: 'numeric_attributes',
             },
             performanceStatsNumeric: {
               keyType: 'string',
               type: 'double',
               id: 42,
+              protoName: 'performance_stats_numeric',
             },
             performancePercentiles: {
               keyType: 'string',
               type: 'PerformancePercentileMap',
               id: 43,
+              protoName: 'performance_percentiles',
+            },
+            basedIn: {
+              type: 'string',
+              id: 44,
+              protoName: 'based_in',
+            },
+            saveCa: {
+              type: 'int32',
+              id: 45,
+              protoName: 'save_ca',
+            },
+            pa: {
+              type: 'int32',
+              id: 46,
+            },
+            hiddenAttributes: {
+              keyType: 'string',
+              type: 'int32',
+              id: 47,
+              protoName: 'hidden_attributes',
+            },
+            inf: {
+              type: 'string',
+              id: 48,
             },
           },
         },
@@ -232,10 +272,12 @@ const descriptor = {
             currencySymbol: {
               type: 'string',
               id: 2,
+              protoName: 'currency_symbol',
             },
             cacheData: {
               type: 'string',
               id: 3,
+              protoName: 'cache_data',
             },
           },
         },
@@ -255,18 +297,22 @@ const descriptor = {
             apiVersion: {
               type: 'string',
               id: 2,
+              protoName: 'api_version',
             },
             fromCache: {
               type: 'bool',
               id: 3,
+              protoName: 'from_cache',
             },
             requestId: {
               type: 'string',
               id: 4,
+              protoName: 'request_id',
             },
             totalCount: {
               type: 'int32',
               id: 5,
+              protoName: 'total_count',
             },
           },
         },
@@ -279,22 +325,27 @@ const descriptor = {
             perPage: {
               type: 'int32',
               id: 2,
+              protoName: 'per_page',
             },
             totalPages: {
               type: 'int32',
               id: 3,
+              protoName: 'total_pages',
             },
             totalCount: {
               type: 'int32',
               id: 4,
+              protoName: 'total_count',
             },
             hasNext: {
               type: 'bool',
               id: 5,
+              protoName: 'has_next',
             },
             hasPrevious: {
               type: 'bool',
               id: 6,
+              protoName: 'has_previous',
             },
           },
         },
@@ -308,6 +359,7 @@ const descriptor = {
             currencySymbol: {
               type: 'string',
               id: 2,
+              protoName: 'currency_symbol',
             },
             metadata: {
               type: 'ResponseMetadata',
@@ -384,6 +436,7 @@ const descriptor = {
             errorCode: {
               type: 'string',
               id: 1,
+              protoName: 'error_code',
             },
             message: {
               type: 'string',

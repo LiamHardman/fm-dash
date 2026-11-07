@@ -1,7 +1,17 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { CSV_HEADERS, formatMoney, formatPositions, playersToCsv } from './exportCsv.js'
+import { clubDisplayName } from './clubs.js'
+import {
+  CSV_HEADERS,
+  formatMoney,
+  formatPositions,
+  playersToCsv,
+  SAVE_ONLY_HEADERS,
+} from './exportCsv.js'
 import { ATTRIBUTE_KEYS, POSITION_NAMES } from './layout.js'
+import { NATION_FIFA_CODES } from './nation-codes.js'
+import { NationIndex, nationName } from './nations.js'
+import { statLine } from './seasonStats.js'
 
 const ratings = (overrides) =>
   Object.fromEntries(POSITION_NAMES.map((name) => [name, overrides[name] ?? 1]))
@@ -22,6 +32,31 @@ const samplePlayer = (overrides = {}) => ({
   rightFoot: 6,
   positions: ratings({ DC: 20, DR: 18, DM: 15, MC: 12 }),
   attributes: Object.fromEntries(ATTRIBUTE_KEYS.map((key, i) => [key, (i % 20) + 1])),
+  // Ambition 18, loyalty 9: Ambitious. Temperament 5: Volatile; loyalty < 11: Media-friendly.
+  personality: {
+    adaptability: 10,
+    ambition: 18,
+    loyalty: 9,
+    pressure: 10,
+    professionalism: 12,
+    sportsmanship: 12,
+    temperament: 5,
+    controversy: 10,
+  },
+  gender: 0,
+  ca: 152,
+  pa: 171,
+  seasonStats: statLine({
+    minutes: 1800,
+    starts: 20,
+    rated: 20,
+    ratingSum: 1400,
+    goals: 5,
+    passesAttempted: 900,
+    passesCompleted: 810,
+    distanceTenths: 2000,
+    possessionLost: 90,
+  }),
   ...overrides,
 })
 
@@ -88,7 +123,8 @@ describe('playersToCsv', () => {
 
   it('matches the Go round-trip fixture', () => {
     // src/api/fm_save_csv_roundtrip_test.go parses this file with the real backend parser.
-    const fixture = readFileSync('src/api/testdata/fmsave/save_export.csv', 'utf8')
+    // Refresh it after an intended export change with UPDATE_FMSAVE_FIXTURE=1.
+    const fixturePath = 'src/api/testdata/fmsave/save_export.csv'
     const { csv } = playersToCsv([
       samplePlayer(),
       samplePlayer({
@@ -101,8 +137,112 @@ describe('playersToCsv', () => {
         transferValue: undefined,
         wage: undefined,
         positions: ratings({ GK: 20 }),
+        // Advanced block missing (distance and possession lost 0): those cells are blank.
+        seasonStats: statLine({ minutes: 900, starts: 10, rated: 0, conceded: 9 }),
       }),
     ])
-    expect(csv).toBe(fixture)
+    if (process.env.UPDATE_FMSAVE_FIXTURE) writeFileSync(fixturePath, csv)
+    expect(csv).toBe(readFileSync(fixturePath, 'utf8'))
+  })
+})
+
+describe('Tier 0 port fixes', () => {
+  const cellsOf = (player) => {
+    const [header, row] = playersToCsv([player]).csv.trim().split('\n')
+    return Object.fromEntries(header.split(';').map((h, i) => [h, row.split(';')[i]]))
+  }
+
+  it('Club prefers the short name and falls back to the long one', () => {
+    expect(
+      clubDisplayName({ name: 'Profesionalen Futbolen Klub Montana', shortName: 'PFK Montana' })
+    ).toBe('PFK Montana')
+    expect(clubDisplayName({ name: 'Arsenal FC', shortName: '' })).toBe('Arsenal FC')
+    expect(clubDisplayName({ name: 'Arsenal FC' })).toBe('Arsenal FC')
+    expect(clubDisplayName(undefined)).toBeUndefined()
+    expect(cellsOf(samplePlayer({ clubName: 'PFK Montana' })).Club).toBe('PFK Montana')
+  })
+
+  it('uses FM short nation names, which reach Based In and the Nationality fallback', () => {
+    expect(nationName(799)).toBe('Türkiye')
+    expect(nationName(390)).toBe('U.S.A.')
+    expect(nationName(53)).toBe('DR Congo')
+    expect(nationName(49)).toBe('Congo')
+    expect(nationName(765)).toBe('England') // not overridden
+    // parse.js routes Based In and Nationality through NationIndex.nameFor -> nationName.
+    const nations = new NationIndex([
+      { nationId: 0, databaseId: 785, name: nationName(785) },
+      { nationId: 1, databaseId: 17, name: nationName(17) },
+    ])
+    expect(nations.nameFor(0)).toBe('N.Ireland')
+    const cells = cellsOf(
+      samplePlayer({
+        nationDatabaseId: 999_999, // no FIFA code -> Nationality carries the name
+        nationName: nations.nameFor(1),
+        clubNationName: nations.nameFor(0),
+      })
+    )
+    expect(cells.Nationality).toBe('Eq. Guinea')
+    expect(cells['Based In']).toBe('N.Ireland')
+  })
+
+  it('codes Congo (49) as CGO and DR Congo (53) as COD', () => {
+    expect(NATION_FIFA_CODES[49]).toBe('CGO')
+    expect(NATION_FIFA_CODES[53]).toBe('COD')
+    expect(cellsOf(samplePlayer({ nationDatabaseId: 53 })).Nation).toBe('COD')
+  })
+})
+
+describe('save-only columns', () => {
+  const cellsOf = (player) => {
+    const [header, row] = playersToCsv([player]).csv.trim().split('\n')
+    return Object.fromEntries(header.split(';').map((h, i) => [h, row.split(';')[i]]))
+  }
+
+  it('appends CA, PA, the 13 hidden attributes and Inf, in order, at the end', () => {
+    expect(SAVE_ONLY_HEADERS).toEqual([
+      'CA',
+      'PA',
+      'Consistency',
+      'Dirtiness',
+      'Important Matches',
+      'Injury Proneness',
+      'Versatility',
+      'Adaptability',
+      'Ambition',
+      'Controversy',
+      'Loyalty',
+      'Pressure',
+      'Professionalism',
+      'Sportsmanship',
+      'Temperament',
+      'Inf',
+    ])
+    expect(CSV_HEADERS.slice(-16)).toEqual(SAVE_ONLY_HEADERS)
+  })
+
+  it('fills the values from the port', () => {
+    const cells = cellsOf(
+      samplePlayer({
+        attributes: { ...samplePlayer().attributes, consistency: 14, injury_proneness: 3 },
+        personality: { ...samplePlayer().personality, ambition: 18, temperament: 5 },
+        injured: true,
+      })
+    )
+    expect(cells).toMatchObject({
+      CA: '152',
+      PA: '171',
+      Consistency: '14',
+      'Injury Proneness': '3',
+      Ambition: '18',
+      Temperament: '5',
+      Inf: 'Inj',
+    })
+  })
+
+  it('blanks missing values', () => {
+    const cells = cellsOf(samplePlayer({ ca: 0, pa: undefined, personality: undefined }))
+    for (const header of ['CA', 'PA', 'Adaptability', 'Temperament', 'Inf']) {
+      expect(cells[header], header).toBe('')
+    }
   })
 })

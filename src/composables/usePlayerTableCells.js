@@ -1,6 +1,7 @@
 import { toValue } from 'vue'
 import { getUnifiedRatingClass } from '../utils/colourSets'
 import { formatCurrency } from '../utils/currencyUtils'
+import { HIDDEN_FIELD_PREFIX } from '../utils/playerSorting.js'
 import { memoize } from './useMemoization'
 
 export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGeneration) {
@@ -68,6 +69,9 @@ export function usePlayerTableCells(isGoalkeeperView, currencySymbol, cacheGener
 
   // Main player value getter for both display and sorting
   const getPlayerValue = (player, fieldKey, _columnName = null) => {
+    if (typeof fieldKey === 'string' && fieldKey.startsWith(HIDDEN_FIELD_PREFIX)) {
+      return player.hiddenAttributes?.[fieldKey.slice(HIDDEN_FIELD_PREFIX.length)]
+    }
     // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
     if (!toValue(isGoalkeeperView) && player.position && player.position.includes('GK')) {
       const mappedStat = gkStatMapping[fieldKey]

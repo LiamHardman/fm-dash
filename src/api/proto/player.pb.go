@@ -131,9 +131,14 @@ type Player struct {
 	PerformanceStatsNumeric map[string]float64                   `protobuf:"bytes,42,rep,name=performance_stats_numeric,json=performanceStatsNumeric,proto3" json:"performance_stats_numeric,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	PerformancePercentiles  map[string]*PerformancePercentileMap `protobuf:"bytes,43,rep,name=performance_percentiles,json=performancePercentiles,proto3" json:"performance_percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Country/region the club is based in (from FM "Based In" column)
-	BasedIn       string `protobuf:"bytes,44,opt,name=based_in,json=basedIn,proto3" json:"based_in,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BasedIn string `protobuf:"bytes,44,opt,name=based_in,json=basedIn,proto3" json:"based_in,omitempty"`
+	// Save-only fields (FM27 save imports; Inf also from FM27 CSV-mod exports).
+	SaveCa           int32            `protobuf:"varint,45,opt,name=save_ca,json=saveCa,proto3" json:"save_ca,omitempty"`
+	Pa               int32            `protobuf:"varint,46,opt,name=pa,proto3" json:"pa,omitempty"`
+	HiddenAttributes map[string]int32 `protobuf:"bytes,47,rep,name=hidden_attributes,json=hiddenAttributes,proto3" json:"hidden_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Inf              string           `protobuf:"bytes,48,opt,name=inf,proto3" json:"inf,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
@@ -474,6 +479,34 @@ func (x *Player) GetBasedIn() string {
 	return ""
 }
 
+func (x *Player) GetSaveCa() int32 {
+	if x != nil {
+		return x.SaveCa
+	}
+	return 0
+}
+
+func (x *Player) GetPa() int32 {
+	if x != nil {
+		return x.Pa
+	}
+	return 0
+}
+
+func (x *Player) GetHiddenAttributes() map[string]int32 {
+	if x != nil {
+		return x.HiddenAttributes
+	}
+	return nil
+}
+
+func (x *Player) GetInf() string {
+	if x != nil {
+		return x.Inf
+	}
+	return ""
+}
+
 type PerformancePercentileMap struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Percentiles   map[string]float64     `protobuf:"bytes,1,rep,name=percentiles,proto3" json:"percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
@@ -586,7 +619,7 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\xab\x0f\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\xfe\x10\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -636,7 +669,11 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12numeric_attributes\x18) \x03(\v2%.player.Player.NumericAttributesEntryR\x11numericAttributes\x12g\n" +
 	"\x19performance_stats_numeric\x18* \x03(\v2+.player.Player.PerformanceStatsNumericEntryR\x17performanceStatsNumeric\x12c\n" +
 	"\x17performance_percentiles\x18+ \x03(\v2*.player.Player.PerformancePercentilesEntryR\x16performancePercentiles\x12\x19\n" +
-	"\bbased_in\x18, \x01(\tR\abasedIn\x1aF\n" +
+	"\bbased_in\x18, \x01(\tR\abasedIn\x12\x17\n" +
+	"\asave_ca\x18- \x01(\x05R\x06saveCa\x12\x0e\n" +
+	"\x02pa\x18. \x01(\x05R\x02pa\x12Q\n" +
+	"\x11hidden_attributes\x18/ \x03(\v2$.player.Player.HiddenAttributesEntryR\x10hiddenAttributes\x12\x10\n" +
+	"\x03inf\x180 \x01(\tR\x03inf\x1aF\n" +
 	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
@@ -651,7 +688,10 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1ak\n" +
 	"\x1bPerformancePercentilesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .player.PerformancePercentileMapR\x05value:\x028\x01\"\xaf\x01\n" +
+	"\x05value\x18\x02 \x01(\v2 .player.PerformancePercentileMapR\x05value:\x028\x01\x1aC\n" +
+	"\x15HiddenAttributesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xaf\x01\n" +
 	"\x18PerformancePercentileMap\x12S\n" +
 	"\vpercentiles\x18\x01 \x03(\v21.player.PerformancePercentileMap.PercentilesEntryR\vpercentiles\x1a>\n" +
 	"\x10PercentilesEntry\x12\x10\n" +
@@ -675,7 +715,7 @@ func file_proto_player_proto_rawDescGZIP() []byte {
 	return file_proto_player_proto_rawDescData
 }
 
-var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_proto_player_proto_goTypes = []any{
 	(*RoleOverallScore)(nil),         // 0: player.RoleOverallScore
 	(*Player)(nil),                   // 1: player.Player
@@ -686,23 +726,25 @@ var file_proto_player_proto_goTypes = []any{
 	nil,                              // 6: player.Player.NumericAttributesEntry
 	nil,                              // 7: player.Player.PerformanceStatsNumericEntry
 	nil,                              // 8: player.Player.PerformancePercentilesEntry
-	nil,                              // 9: player.PerformancePercentileMap.PercentilesEntry
+	nil,                              // 9: player.Player.HiddenAttributesEntry
+	nil,                              // 10: player.PerformancePercentileMap.PercentilesEntry
 }
 var file_proto_player_proto_depIdxs = []int32{
-	4, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
-	0, // 1: player.Player.roleSpecificOveralls:type_name -> player.RoleOverallScore
-	5, // 2: player.Player.attributes:type_name -> player.Player.AttributesEntry
-	6, // 3: player.Player.numeric_attributes:type_name -> player.Player.NumericAttributesEntry
-	7, // 4: player.Player.performance_stats_numeric:type_name -> player.Player.PerformanceStatsNumericEntry
-	8, // 5: player.Player.performance_percentiles:type_name -> player.Player.PerformancePercentilesEntry
-	9, // 6: player.PerformancePercentileMap.percentiles:type_name -> player.PerformancePercentileMap.PercentilesEntry
-	1, // 7: player.DatasetData.players:type_name -> player.Player
-	2, // 8: player.Player.PerformancePercentilesEntry.value:type_name -> player.PerformancePercentileMap
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	4,  // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
+	0,  // 1: player.Player.roleSpecificOveralls:type_name -> player.RoleOverallScore
+	5,  // 2: player.Player.attributes:type_name -> player.Player.AttributesEntry
+	6,  // 3: player.Player.numeric_attributes:type_name -> player.Player.NumericAttributesEntry
+	7,  // 4: player.Player.performance_stats_numeric:type_name -> player.Player.PerformanceStatsNumericEntry
+	8,  // 5: player.Player.performance_percentiles:type_name -> player.Player.PerformancePercentilesEntry
+	9,  // 6: player.Player.hidden_attributes:type_name -> player.Player.HiddenAttributesEntry
+	10, // 7: player.PerformancePercentileMap.percentiles:type_name -> player.PerformancePercentileMap.PercentilesEntry
+	1,  // 8: player.DatasetData.players:type_name -> player.Player
+	2,  // 9: player.Player.PerformancePercentilesEntry.value:type_name -> player.PerformancePercentileMap
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_proto_player_proto_init() }
@@ -716,7 +758,7 @@ func file_proto_player_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_player_proto_rawDesc), len(file_proto_player_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

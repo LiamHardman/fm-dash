@@ -419,7 +419,7 @@ func IsTop5League(division, basedIn string) bool {
 	case "England":
 		return division == "Premier League"
 	case "Spain":
-		return division == "La Liga" || division == "Primera División" || division == "Primera Division"
+		return division == "La Liga" || division == "LaLiga" || division == "Primera División" || division == "Primera Division"
 	case "Germany":
 		return division == "Bundesliga" || division == "1. Bundesliga"
 	case "France":
@@ -429,7 +429,7 @@ func IsTop5League(division, basedIn string) bool {
 	default:
 		// basedIn absent or unrecognised: match by name only
 		return division == "Premier League" ||
-			division == "La Liga" || division == "Primera División" || division == "Primera Division" ||
+			division == "La Liga" || division == "LaLiga" || division == "Primera División" || division == "Primera Division" ||
 			division == "Bundesliga" || division == "1. Bundesliga" ||
 			strings.HasPrefix(division, "Ligue 1") ||
 			division == "Serie A"

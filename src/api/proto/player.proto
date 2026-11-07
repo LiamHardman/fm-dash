@@ -77,6 +77,12 @@ message Player {
 
   // Country/region the club is based in (from FM "Based In" column)
   string based_in = 44;
+
+  // Save-only fields (FM27 save imports; Inf also from FM27 CSV-mod exports).
+  int32 save_ca = 45;
+  int32 pa = 46;
+  map<string, int32> hidden_attributes = 47;
+  string inf = 48;
 }
 
 message PerformancePercentileMap {

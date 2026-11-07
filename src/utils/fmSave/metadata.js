@@ -2,12 +2,13 @@
 // Translated from fm27-scout-code (MIT, Copyright (c) 2026 FM27 Scout contributors),
 // crates/fm27-core/src/metadata.rs. See ./THIRD_PARTY.md.
 
-import { decodeUtf8, readU32, SaveParseError } from './bytes.js'
+import { decodeUtf8, MISSING_U32, readU32, SaveParseError } from './bytes.js'
 import { decodeDate, GAME } from './layout.js'
 
 /**
  * @param {import('./container.js').SaveFile} save
- * @returns {Promise<{game: string, build: string, dbVersion: string, gameDate?: string}>}
+ * @returns {Promise<{game: string, build: string, dbVersion: string, gameDate?: string,
+ *   managedClubUid?: number}>}
  */
 export async function readMetadata(save) {
   const summary = await save.readSection('save_game_summary')
@@ -24,11 +25,17 @@ export async function readMetadata(save) {
 
   const gameInfo = await save.readSection('game_info')
   const dbVersion = readLengthString(gameInfo, 8, 64)?.[0] ?? 'unknown'
-  const gameDate = readGameInfoDate(gameInfo) ?? readSummaryClock(summary, build)
-  return { game: GAME, build, dbVersion, gameDate }
+  const tail = readSummaryTail(summary, build)
+  const gameDate = readGameInfoDate(gameInfo) ?? tail?.clock
+  return { game: GAME, build, dbVersion, gameDate, managedClubUid: tail?.managedClubUid }
 }
 
-function readSummaryClock(summary, build) {
+/**
+ * The summary after the build string: division names, the manager's name, the managed
+ * club's short name, then a u32 club uid (FM-Dash's own decode, verified on one save)
+ * and the clock. With several humans this is the manager who saved.
+ */
+export function readSummaryTail(summary, build) {
   let read = readLengthString(summary, 8, 65_536)
   if (!read) return undefined
   let offset = read[1]
@@ -47,7 +54,11 @@ function readSummaryClock(summary, build) {
   if (!read) return undefined
   read = readLengthString(summary, read[1], 1024)
   if (!read) return undefined
-  return decodeDate(summary, read[1] + 4)
+  const uid = readU32(summary, read[1])
+  return {
+    managedClubUid: uid && uid !== MISSING_U32 ? uid : undefined,
+    clock: decodeDate(summary, read[1] + 4),
+  }
 }
 
 function readGameInfoDate(gameInfo) {

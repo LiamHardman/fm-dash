@@ -26,6 +26,9 @@ const TAIL_SENTINEL_WORD_VALUE = 4
 const TAIL_END_OFFSET = 28
 const TAIL_EVENT_COUNT_OFFSET = 42
 const TAIL_STRUCT_END = 46
+// Listing state in the tail (FM-Dash's own decode): +39 bit flags, +40 a listing code.
+const TAIL_LISTING_FLAGS_OFFSET = 39
+const TAIL_LISTING_CODE_OFFSET = 40
 
 export class ContractDecoder {
   /**
@@ -37,7 +40,10 @@ export class ContractDecoder {
     this.clock = clock
   }
 
-  /** @returns {{clubUid?: number, wage?: number, start?: string, end?: string} | undefined} */
+  /**
+   * @returns {{clubUid?: number, wage?: number, start?: string, end?: string,
+   *   listingFlags?: number, listingCode?: number} | undefined}
+   */
   decode(gameDb, recordOffset, recordWindowEnd, isLastRecord, pindex, playerClubUid) {
     const records = this.findChainRecords(
       gameDb,
@@ -54,6 +60,8 @@ export class ContractDecoder {
       wage: selected.wage,
       start: selected.start,
       end: selected.end,
+      listingFlags: selected.listingFlags,
+      listingCode: selected.listingCode,
     }
   }
 
@@ -98,6 +106,8 @@ export class ContractDecoder {
       start,
       end: tail === undefined ? undefined : decodeDate(gameDb, tail + TAIL_END_OFFSET),
       hasTerms: tail !== undefined,
+      listingFlags: tail === undefined ? undefined : gameDb[tail + TAIL_LISTING_FLAGS_OFFSET],
+      listingCode: tail === undefined ? undefined : gameDb[tail + TAIL_LISTING_CODE_OFFSET],
     }
   }
 

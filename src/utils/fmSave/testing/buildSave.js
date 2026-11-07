@@ -43,14 +43,15 @@ function encodeEntry(entry) {
 }
 
 /**
- * @param {Array<[string, Uint8Array]>} top top-level sections
+ * @param {Array<[string, Uint8Array, Uint8Array[]?]>} top top-level sections; an optional third
+ *   element is raw bytes (e.g. zstd frames) placed after the section's frame but not listed
  * @param {Array<[string, Uint8Array]>} group sections in the `rgman` group
  * @returns {Uint8Array} a complete .fm file
  */
 export function buildSave(top, group = [], saveName = 'test save') {
   const frames = []
   let frameBytes = 0
-  const append = ([name, data], entries) => {
+  const append = ([name, data, unlisted = []], entries) => {
     const compressed = new Uint8Array(zstdCompressSync(data))
     entries.push({
       name,
@@ -61,6 +62,10 @@ export function buildSave(top, group = [], saveName = 'test save') {
     })
     frames.push(compressed)
     frameBytes += compressed.length
+    for (const raw of unlisted) {
+      frames.push(raw)
+      frameBytes += raw.length
+    }
   }
   const topEntries = []
   const groupEntries = []

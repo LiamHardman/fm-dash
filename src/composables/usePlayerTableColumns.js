@@ -1,6 +1,23 @@
 import { computed, toValue } from 'vue'
+import { caLabel } from '../utils/caSource.js'
+import { HIDDEN_ATTRIBUTES } from '../utils/hiddenAttributes.js'
+import { HIDDEN_FIELD_PREFIX } from '../utils/playerSorting.js'
 
-export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) {
+/**
+ * @param caSource getter/ref of 'save' | 'estimated' (see utils/caSource.js); labels the CA
+ *   column and adds PA for save Datasets.
+ * @param hiddenAttributesAvailable getter/ref: the Settings toggle is on and the Dataset has
+ *   hidden attributes; adds 13 optional columns (`optional: true`, hidden until picked).
+ * @param infAvailable getter/ref: some player carries Inf flags; adds the Inf chip column.
+ */
+export function usePlayerTableColumns(
+  isGoalkeeperView,
+  showValueScore,
+  showCA,
+  caSource,
+  hiddenAttributesAvailable,
+  infAvailable
+) {
   // Column styles
   const nameColumnStyle = 'width: 220px; min-width: 220px; max-width: 220px; overflow: hidden;'
   const ageColumnStyle =
@@ -92,6 +109,17 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
       name: 'CA',
       label: 'CA',
       field: 'ca',
+      sortable: true,
+      align: 'center',
+      isOverallStat: true,
+      gaugeMax: 200,
+      style: overallColumnStyle,
+      headerStyle: overallColumnStyle,
+    },
+    PA: {
+      name: 'PA',
+      label: 'PA',
+      field: 'pa',
       sortable: true,
       align: 'center',
       isOverallStat: true,
@@ -311,7 +339,10 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
     // Add CA column if enabled in settings
     const caEnabled = typeof showCA === 'object' && showCA !== null ? showCA.value : showCA
     if (caEnabled) {
-      newOrderBase.push(baseColumnDefinitions.CA)
+      const source = toValue(caSource)
+      newOrderBase.push({ ...baseColumnDefinitions.CA, label: caLabel(source) })
+      // True PA exists only in save imports.
+      if (source === 'save') newOrderBase.push(baseColumnDefinitions.PA)
     }
 
     const fifaColumnsInOrder = toValue(isGoalkeeperView)
@@ -334,8 +365,38 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) 
           allFifaStatDefinitions.MBR,
         ]
 
-    return [...newOrderBase, ...fifaColumnsInOrder]
+    // FM info flags (Inj, Loa, ...) right after the name, shown by default when present.
+    if (toValue(infAvailable)) newOrderBase.splice(1, 0, infColumn)
+    const hiddenColumns = toValue(hiddenAttributesAvailable) ? hiddenAttributeColumns : []
+    return [...newOrderBase, ...fifaColumnsInOrder, ...hiddenColumns]
   })
+
+  const infColumn = {
+    name: 'inf',
+    label: 'Inf',
+    field: 'inf',
+    sortable: true, // by code string
+    align: 'left',
+    isInfFlags: true,
+    style: 'width: 90px; min-width: 70px;',
+    headerStyle: 'width: 90px; min-width: 70px;',
+  }
+
+  // Hidden-attribute columns: opt-in (`optional`), shown as "Hidden: <name>" in the picker.
+  const hiddenAttributeColumns = HIDDEN_ATTRIBUTES.map((name) => ({
+    name: HIDDEN_FIELD_PREFIX + name,
+    label: name,
+    pickerLabel: `Hidden: ${name}`,
+    pickerIcon: 'visibility',
+    field: HIDDEN_FIELD_PREFIX + name,
+    sortable: true,
+    align: 'center',
+    isOverallStat: true,
+    gaugeMax: 20,
+    optional: true,
+    style: overallColumnStyle,
+    headerStyle: overallColumnStyle,
+  }))
 
   const getColumnLabel = (fieldName) => {
     const col = currentColumns.value.find((c) => c.name === fieldName)

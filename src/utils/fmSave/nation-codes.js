@@ -51,7 +51,7 @@ export const NATION_FIFA_CODES = Object.freeze({
   50: 'TOG',
   51: 'TUN',
   52: 'UGA',
-  53: 'CGO',
+  53: 'COD', // DR Congo (49 is Congo)
   54: 'ZAM',
   55: 'ZIM',
   106: 'AFG',

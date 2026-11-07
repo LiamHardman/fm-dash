@@ -93,12 +93,22 @@ func fastDeepCopyPlayer(original *Player) Player {
 		CA:                  original.CA,
 		BestRoleOverall:     original.BestRoleOverall,
 		BasedIn:             original.BasedIn,
+		SaveCA:              original.SaveCA,
+		PA:                  original.PA,
+		Inf:                 original.Inf,
 
 		// Initialize new mutex
 		mu: sync.RWMutex{},
 	}
 
 	// Efficiently copy maps only if they exist
+	if original.HiddenAttributes != nil {
+		player.HiddenAttributes = make(map[string]int, len(original.HiddenAttributes))
+		for k, v := range original.HiddenAttributes {
+			player.HiddenAttributes[k] = v
+		}
+	}
+
 	if original.NumericAttributes != nil {
 		player.NumericAttributes = make(map[string]int, len(original.NumericAttributes))
 		for k, v := range original.NumericAttributes {

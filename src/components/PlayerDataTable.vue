@@ -145,9 +145,9 @@
             title="Customize columns"
             hint="Reorder or hide player table columns. The Name column always stays first and can't be hidden."
             :items="columnPickerItems"
-            :hidden-ids="uiStore.playerTableHiddenColumns"
+            :hidden-ids="effectiveHiddenColumnIds"
             :order-ids="uiStore.playerTableColumnOrder"
-            @update:hidden="uiStore.setPlayerTableHiddenColumns"
+            @update:hidden="updateHiddenColumns"
             @update:order="uiStore.setPlayerTableColumnOrder"
             @reset="resetColumnCustomization"
         />
@@ -166,6 +166,9 @@ import { useComparisonStore } from '../stores/comparisonStore'
 import { usePlayerStore } from '../stores/playerStore'
 import { useShortlistStore } from '../stores/shortlistStore'
 import { useUiStore } from '../stores/uiStore'
+import { caSourceOf } from '../utils/caSource.js'
+import { hasHiddenAttributes } from '../utils/hiddenAttributes.js'
+import { hasInfFlags } from '../utils/infFlags.js'
 import { explainPlayerMatch } from '../utils/savedSearch'
 import CustomizeListDialog from './layout/CustomizeListDialog.vue'
 import PlayerTableContextMenu from './player-table/PlayerTableContextMenu.vue'
@@ -231,10 +234,23 @@ export default {
     const cacheGeneration = ref(0)
 
     // Initialize composables
+    // 'save' when the Dataset carries true CA (save import), else 'estimated'.
+    const caSource = computed(() => caSourceOf(props.players))
+    // Hidden-attribute columns exist only with the Settings toggle on and a save Dataset.
+    const hiddenAttributesAvailable = computed(
+      () => uiStore.showHiddenAttributes && hasHiddenAttributes(props.players)
+    )
+    // The Inf chip column appears whenever any player in the Dataset carries flags.
+    const infAvailable = computed(
+      () => hasInfFlags(props.players) || hasInfFlags(playerStore.allPlayers)
+    )
     const { currentColumns, getColumnLabel, getSortFieldKey } = usePlayerTableColumns(
       () => props.isGoalkeeperView,
       () => props.showValueScore,
-      showCA
+      showCA,
+      caSource,
+      hiddenAttributesAvailable,
+      infAvailable
     )
 
     // Column visibility/order customization (ticket 11 of the UI redesign map).
@@ -246,13 +262,41 @@ export default {
     const columnPickerItems = computed(() =>
       currentColumns.value
         .filter((c) => c.name !== 'name')
-        .map((c) => ({ id: c.name, label: c.label, icon: 'view_column' }))
+        .map((c) => ({
+          id: c.name,
+          label: c.pickerLabel || c.label,
+          icon: c.pickerIcon || 'view_column',
+        }))
     )
+
+    // Optional columns (hidden attributes) start hidden: they are visible only when listed
+    // in playerTableShownOptionalColumns. Other columns are visible unless hidden.
+    const optionalColumnIds = computed(() =>
+      currentColumns.value.filter((c) => c.optional).map((c) => c.name)
+    )
+    const effectiveHiddenColumnIds = computed(() => {
+      const shown = new Set(uiStore.playerTableShownOptionalColumns)
+      return [
+        ...uiStore.playerTableHiddenColumns,
+        ...optionalColumnIds.value.filter((id) => !shown.has(id)),
+      ]
+    })
+    const updateHiddenColumns = (ids) => {
+      const hidden = new Set(ids)
+      const optional = new Set(optionalColumnIds.value)
+      uiStore.setPlayerTableHiddenColumns(ids.filter((id) => !optional.has(id)))
+      // Keep opt-ins for optional columns not currently listed (e.g. another Dataset's).
+      const keep = uiStore.playerTableShownOptionalColumns.filter((id) => !optional.has(id))
+      uiStore.setPlayerTableShownOptionalColumns([
+        ...keep,
+        ...optionalColumnIds.value.filter((id) => !hidden.has(id)),
+      ])
+    }
 
     const displayedColumns = computed(() => {
       const nameCol = currentColumns.value.find((c) => c.name === 'name')
       const rest = currentColumns.value.filter((c) => c.name !== 'name')
-      const hidden = new Set(uiStore.playerTableHiddenColumns)
+      const hidden = new Set(effectiveHiddenColumnIds.value)
       const order = uiStore.playerTableColumnOrder
 
       let visible = rest.filter((c) => !hidden.has(c.name))
@@ -272,6 +316,7 @@ export default {
 
     const resetColumnCustomization = () => {
       uiStore.setPlayerTableHiddenColumns([])
+      uiStore.setPlayerTableShownOptionalColumns([])
       uiStore.setPlayerTableColumnOrder([])
     }
 
@@ -668,6 +713,8 @@ export default {
       virtualScrollItemSize,
       displayedColumns,
       showColumnCustomizeDialog,
+      effectiveHiddenColumnIds,
+      updateHiddenColumns,
       columnPickerItems,
       resetColumnCustomization,
     }

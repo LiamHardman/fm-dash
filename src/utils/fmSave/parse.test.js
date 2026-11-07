@@ -134,12 +134,41 @@ describe('closingPersonHeader', () => {
   it('only searches inside its window', () => {
     const { gameDb, recordOffset } = buildGameDb()
     const end = recordOffset + 232
-    expect(closingPersonHeader(gameDb, 41, recordOffset + 122, end, 500)).toEqual([
+    expect(closingPersonHeader(gameDb, 41, recordOffset + 122, end)).toEqual([
       recordOffset + 220,
       2_002_330_039,
     ])
-    expect(
-      closingPersonHeader(gameDb, 41, recordOffset + 122, recordOffset + 223, 500)
-    ).toBeUndefined()
+    expect(closingPersonHeader(gameDb, 41, recordOffset + 122, recordOffset + 223)).toBeUndefined()
+  })
+
+  // pindex 41 -> needle 42, then uid twice.
+  const header = (uid) => [42, 0, 0, 0, ...u32(uid), ...u32(uid)]
+  const u32 = (v) => [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, v >>> 24]
+  const window = (...parts) => new Uint8Array([0, 0, 0, 0, ...parts.flat(), 0, 0, 0, 0])
+
+  it('accepts unique ids outside the old record-uid ordering', () => {
+    // Formerly rejected: below the record uid (floor) and above the next record uid (ceiling).
+    const low = window(header(7))
+    expect(closingPersonHeader(low, 41, 0, low.length)).toEqual([4, 7])
+    const high = window(header(4_000_000_000))
+    expect(closingPersonHeader(high, 41, 0, high.length)).toEqual([4, 4_000_000_000])
+  })
+
+  it('accepts a repeated identical uid and keeps the first hit', () => {
+    const bytes = window(header(123_456), [9, 9], header(123_456))
+    expect(closingPersonHeader(bytes, 41, 0, bytes.length)).toEqual([4, 123_456])
+  })
+
+  it('rejects two distinct uids', () => {
+    const bytes = window(header(123_456), header(654_321))
+    expect(closingPersonHeader(bytes, 41, 0, bytes.length)).toBeUndefined()
+  })
+
+  it('ignores pairs whose copy differs or that are 0 / missing', () => {
+    const bad = [42, 0, 0, 0, ...u32(5), ...u32(6)]
+    const zero = header(0)
+    const missing = header(0xffffffff)
+    const bytes = window(bad, zero, missing, header(77))
+    expect(closingPersonHeader(bytes, 41, 0, bytes.length)).toEqual([4 + 36, 77])
   })
 })

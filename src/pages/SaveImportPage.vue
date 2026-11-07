@@ -60,13 +60,16 @@
                     <div><dt>With a wage</dt><dd>{{ percent(summary.withWage) }}</dd></div>
                     <div><dt>With a transfer value</dt><dd>{{ percent(summary.withValue) }}</dd></div>
                     <div><dt>With a division</dt><dd>{{ percent(summary.withDivision) }}</dd></div>
+                    <div v-if="summary.withStats !== undefined"><dt>With season stats</dt><dd>{{ percent(summary.withStats) }}</dd></div>
+                    <div v-if="summary.managedClub"><dt>Managed club</dt><dd>{{ summary.managedClub.club }} · {{ summary.managedClub.division }} (detected)</dd></div>
                     <div><dt>Read in</dt><dd>{{ (summary.elapsedMs / 1000).toFixed(1) }} s</dd></div>
                 </dl>
 
                 <ul class="caveats">
                     <li>Attributes are exact for every player in the database: no scouting fog.</li>
-                    <li>Personality, media handling and match statistics aren't in the save yet, so Moneyball ratings use a neutral mentality and the performance pages stay empty.</li>
-                    <li>Division is only known for some top leagues; other players' division is blank.</li>
+                    <li>Personality and media handling are derived from the hidden personality attributes; current-season statistics come from the save. Advanced statistics FM didn't record for a player are left blank rather than zero.</li>
+                    <li>Division is derived from each club's league matches; clubs that haven't played a league match recently have no division.</li>
+                    <li v-if="summary.managedClub">The managed club is set for the new dataset unless one is already stored; you can change it on the dataset page.</li>
                     <li>Game build {{ summary.build }}. Saves from other FM27 builds may decode partially.</li>
                 </ul>
 
@@ -101,6 +104,7 @@ import PageHeader from '../components/layout/PageHeader.vue'
 import SectionCard from '../components/layout/SectionCard.vue'
 import playerService from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
+import { setManagedClubIfAbsent } from '../utils/managedClubImport.js'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -221,6 +225,7 @@ async function importPlayers() {
   try {
     await playerStore.uploadPlayerFile(formData, maxUploadBytes.value)
     if (playerStore.error) throw new Error(playerStore.error)
+    await setManagedClubIfAbsent(playerStore.currentDatasetId, summary.value.managedClub)
     Notify.create({
       type: 'positive',
       message: 'Save imported. Opening the dataset…',

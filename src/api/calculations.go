@@ -688,6 +688,7 @@ func getAgeModifier(age int) int {
 }
 
 // getMentalityModifier returns the mentality modifier based on personality
+// FM27 spells "Resilient" and "Low Self Belief"; the older spellings are still accepted.
 func getMentalityModifier(personality string) int {
 	// Elite personalities
 	switch personality {
@@ -700,8 +701,8 @@ func getMentalityModifier(personality string) int {
 	// Very Good personalities
 	switch personality {
 	case "Perfectionist", "Resolute", "Professional", "Fairly Professional",
-		"Iron Willed", "Resillient", "Spirited", "Driven", "Determined",
-		"Fairly Determined", "Charismatic Leader", "Born Leader", "Leader",
+		"Iron Willed", "Resilient", "Resillient", "Spirited", "Driven", "Determined",
+		"Fairly Determined", "Charismatic Leader", "Natural Leader", "Born Leader", "Leader",
 		"Very Ambitious", "Ambitious", "Fairly Ambitious":
 		return 15
 	}
@@ -713,7 +714,8 @@ func getMentalityModifier(personality string) int {
 		return 8
 	}
 
-	// Okay personalities (neutral)
+	// Okay personalities (neutral). Known issue: this repeats the +8 list above, so it never
+	// matches; fixing it would change ratings for every existing Dataset, so it is left alone.
 	switch personality {
 	case "Balanced", "Light-Hearted", "Jovial", "Very Loyal", "Loyal",
 		"Fairly Loyal", "Honest", "Sporting", "Fairly Sporting":
@@ -728,7 +730,7 @@ func getMentalityModifier(personality string) int {
 
 	// Very Poor personalities
 	switch personality {
-	case "Slack", "Casual", "Temperamental", "Spineless", "Low Self-Belief",
+	case "Slack", "Casual", "Temperamental", "Spineless", "Low Self Belief", "Low Self-Belief",
 		"Easily Discouraged", "Low Determination":
 		return -35
 	}

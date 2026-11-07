@@ -458,11 +458,32 @@
                                                     <q-icon name="psychology" size="1.5rem" class="option-icon" />
                                                     <div class="option-text">
                                                         <div class="option-title">Current Ability (CA) Column</div>
-                                                        <div class="option-description">Show the estimated Current Ability score (0–200) in the player table and detail view. Based on the fm21-cas algorithm.</div>
+                                                        <div class="option-description">Show Current Ability (estimated for CSV imports, true for save imports) in the player table and detail view. Save imports also show Potential Ability.</div>
                                                     </div>
                                                 </div>
                                                 <q-toggle
                                                     v-model="showCA"
+                                                    color="teal"
+                                                    size="lg"
+                                                />
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+
+                                    <!-- Hidden attributes Toggle -->
+                                    <q-card flat bordered class="option-card">
+                                        <q-card-section class="option-content">
+                                            <div class="option-header">
+                                                <div class="option-info">
+                                                    <q-icon name="visibility" size="1.5rem" class="option-icon" />
+                                                    <div class="option-text">
+                                                        <div class="option-title">Hidden attributes</div>
+                                                        <div class="option-description">Show hidden and personality attributes (save imports only)</div>
+                                                        <div v-if="showHiddenAttributes && hiddenAttributesUnavailable" class="option-description text-warning">Not available for this Dataset (CSV import)</div>
+                                                    </div>
+                                                </div>
+                                                <q-toggle
+                                                    v-model="showHiddenAttributes"
                                                     color="teal"
                                                     size="lg"
                                                 />
@@ -633,6 +654,7 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useUiStore } from '@/stores/uiStore'
 import playerService from '../services/playerService'
+import { hasHiddenAttributes } from '../utils/hiddenAttributes.js'
 import AttributeWeightsDialog from './AttributeWeightsDialog.vue'
 import ColourSetEditor from './ColourSetEditor.vue'
 import ProfileBackupDialog from './ProfileBackupDialog.vue'
@@ -697,6 +719,14 @@ export default defineComponent({
       set: (_value) => uiStore.toggleAttributeMasks(),
     })
 
+    const showHiddenAttributes = computed({
+      get: () => uiStore.showHiddenAttributes,
+      set: (value) => uiStore.setHiddenAttributesDisplay(value),
+    })
+    // A loaded Dataset without hidden attributes (CSV/HTML import) can't show them.
+    const hiddenAttributesUnavailable = computed(
+      () => playerStore.allPlayers.length > 0 && !hasHiddenAttributes(playerStore.allPlayers)
+    )
     const showCA = computed({
       get: () => uiStore.showCA,
       set: (value) => uiStore.setCADisplay(value),
@@ -827,6 +857,8 @@ export default defineComponent({
       showLogoCorrections,
       showAttributeMasks,
       showCA,
+      showHiddenAttributes,
+      hiddenAttributesUnavailable,
       openaiApiKey,
       openaiBaseUrl,
       openaiModel,

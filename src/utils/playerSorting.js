@@ -16,7 +16,14 @@ const positions = [
   'ST',
 ]
 
+// Hidden-attribute columns use the field 'hidden:<FM name>' (save imports only).
+export const HIDDEN_FIELD_PREFIX = 'hidden:'
+
 export function playerSortValue(player, field, goalkeeper = false) {
+  if (field.startsWith(HIDDEN_FIELD_PREFIX)) {
+    // Worker rows carry the flattened key; full players carry the nested map.
+    return player[field] ?? player.hiddenAttributes?.[field.slice(HIDDEN_FIELD_PREFIX.length)]
+  }
   const mapped = gkFields[field.toLowerCase()]
   if (mapped && (goalkeeper || String(player.position || '').includes('GK'))) {
     const value = player[mapped] ?? player[mapped.toUpperCase()]
@@ -51,6 +58,10 @@ export function comparePlayers(a, b, spec) {
   let right = playerSortValue(b, spec.field, spec.goalkeeper)
   const sign = spec.direction === 'asc' ? 1 : -1
   if (left == null && right == null) return 0
+  // Hidden attributes: players without a value sort last in both directions.
+  if (spec.field.startsWith(HIDDEN_FIELD_PREFIX) && (left == null || right == null)) {
+    return left == null ? 1 : -1
+  }
   if (left == null) return sign
   if (right == null) return -sign
   if (spec.field === 'position') return sign * (positionRank(left) - positionRank(right))
@@ -63,15 +74,21 @@ export function comparePlayers(a, b, spec) {
 // Table sort fields are scalars. Nested attributes, percentiles, and player
 // metadata stay on the UI thread; a worker needs only the sortable projection.
 export function projectSortRows(players) {
-  return players.map((player) =>
-    Object.fromEntries(
+  return players.map((player) => {
+    const row = Object.fromEntries(
       Object.entries(player).filter(
         ([key, value]) =>
           !['__proto__', 'constructor', 'prototype'].includes(key) &&
           (value == null || ['string', 'number', 'boolean'].includes(typeof value))
       )
     )
-  )
+    if (player.hiddenAttributes) {
+      for (const [name, value] of Object.entries(player.hiddenAttributes)) {
+        row[HIDDEN_FIELD_PREFIX + name] = value
+      }
+    }
+    return row
+  })
 }
 export function sortPlayerIndices(rows, spec) {
   return rows

@@ -3725,6 +3725,14 @@ func deepCopyPlayers(players []Player) []Player {
 			}
 		}
 
+		// Deep copy HiddenAttributes map (save imports)
+		if players[i].HiddenAttributes != nil {
+			playersCopy[i].HiddenAttributes = make(map[string]int, len(players[i].HiddenAttributes))
+			for key, value := range players[i].HiddenAttributes {
+				playersCopy[i].HiddenAttributes[key] = value
+			}
+		}
+
 		// Deep copy PerformanceStatsNumeric map
 		if players[i].PerformanceStatsNumeric != nil {
 			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)

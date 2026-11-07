@@ -206,6 +206,23 @@
                         :disable="isLoading"
                     />
                 </div>
+                <!-- FM info flags (save imports, FM27 CSV-mod exports with an Inf column) -->
+                <div v-if="infAvailable" class="col-12 col-sm-6 col-md-3 inf-filters">
+                    <q-toggle
+                        v-model="filters.hideInjured"
+                        label="Hide injured"
+                        dense
+                        :disable="isLoading"
+                        @update:model-value="applyFilters"
+                    />
+                    <q-toggle
+                        v-model="filters.loanListedOnly"
+                        label="Listed for loan only"
+                        dense
+                        :disable="isLoading"
+                        @update:model-value="applyFilters"
+                    />
+                </div>
             </div>
 
             <q-btn
@@ -837,6 +854,47 @@
                                             </q-list>
                                         </q-card>
                                     </div>
+                                    <div v-if="hiddenAttributesAvailable" class="col-12 col-lg-3 col-md-6">
+                                        <q-card flat bordered class="attribute-category-card">
+                                            <q-card-section class="attribute-category-header-styled">
+                                                <div class="text-subtitle1 text-weight-medium text-center">
+                                                    Hidden
+                                                </div>
+                                            </q-card-section>
+                                            <q-list separator dense class="attribute-list-column-styled">
+                                                <q-item v-for="attr in hiddenAttributeKeys" :key="attr" class="attribute-item-column-styled">
+                                                    <q-item-section class="attribute-name-column-styled">
+                                                        {{ attr }}{{ lowerIsBetter.has(attr) ? ' (max)' : '' }}
+                                                    </q-item-section>
+                                                    <q-item-section side class="attribute-value-column-styled">
+                                                        <span
+                                                            v-if="inlineEditingAttributeKey !== attr"
+                                                            :class="getUnifiedRatingClass(hiddenFilterColourValue(attr), 20)"
+                                                            class="clickable-attribute attribute-badge-styled"
+                                                            @click="startInlineEdit(attr)"
+                                                        >
+                                                            {{ filters[filterKeyFor(attr)] ?? 0 }}
+                                                        </span>
+                                                        <q-input
+                                                            v-else
+                                                            :ref="(el) => (attributeInputRefs[attr] = el)"
+                                                            v-model.number="inlineEditingValue"
+                                                            type="number"
+                                                            min="0"
+                                                            max="20"
+                                                            step="1"
+                                                            dense
+                                                            filled
+                                                            autofocus
+                                                            class="inline-attribute-input"
+                                                            @keyup.enter="finishInlineEdit"
+                                                            @blur="finishInlineEdit"
+                                                        />
+                                                    </q-item-section>
+                                                </q-item>
+                                            </q-list>
+                                        </q-card>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -881,6 +939,13 @@ import {
   getAllEuropeanCountries,
   getAllSouthAmericanCountries,
 } from '../../utils/countryMapping'
+import {
+  defaultHiddenFilters,
+  HIDDEN_ATTRIBUTES,
+  hiddenAttributeColorValue,
+  hiddenFilterKey,
+  LOWER_IS_BETTER,
+} from '../../utils/hiddenAttributes.js'
 
 // Define attribute keys (ensure these match keys in player.attributes)
 // These are the raw keys from the data.
@@ -1036,6 +1101,10 @@ export default defineComponent({
     uniqueMediaHandlings: { type: Array, default: () => [] },
     uniquePersonalities: { type: Array, default: () => [] },
     isLoading: { type: Boolean, default: false },
+    // Settings toggle on and the Dataset has hidden attributes (save imports)
+    hiddenAttributesAvailable: { type: Boolean, default: false },
+    // Some player carries FM info flags (save imports, FM27 CSV-mod exports)
+    infAvailable: { type: Boolean, default: false },
   },
   emits: ['filter-changed'],
   setup(props, { emit }) {
@@ -1067,6 +1136,9 @@ export default defineComponent({
       minMEN: 0,
       minGK: 0,
       minMBR: 0,
+      ...defaultHiddenFilters(),
+      hideInjured: false,
+      loanListedOnly: false,
     })
 
     const showMinimumStatsModal = ref(false)
@@ -1084,6 +1156,18 @@ export default defineComponent({
     }
 
     const getUnifiedRatingClass = (value, maxScale = 20) => ratingColourClass(value, maxScale)
+
+    // Hidden attributes write minHidden<Key>, or maxHidden<Key> where lower is better.
+    // Badge colour for a hidden filter: neutral while off (min 0 / max 20), else the inverted scale.
+    const hiddenFilterColourValue = (attr) => {
+      const value = filters.value[filterKeyFor(attr)]
+      if (LOWER_IS_BETTER.has(attr) ? value >= 20 : !value) return 0
+      return hiddenAttributeColorValue(attr, value)
+    }
+    const filterKeyFor = (attrKey) =>
+      HIDDEN_ATTRIBUTES.includes(attrKey)
+        ? hiddenFilterKey(attrKey)
+        : `min${formatAttrKey(attrKey)}`
 
     const technicalAttributeKeys = rawTechnicalAttributeKeys
     const mentalAttributeKeys = rawMentalAttributeKeys
@@ -1643,6 +1727,9 @@ export default defineComponent({
       for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
       }
+      Object.assign(filters.value, defaultHiddenFilters())
+      filters.value.hideInjured = false
+      filters.value.loanListedOnly = false
       selectedPreset.value = null
       activeStarterPreset.value = null
       applyFilters()
@@ -1760,6 +1847,7 @@ export default defineComponent({
       for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
       }
+      Object.assign(filters.value, defaultHiddenFilters())
     }
 
     const applyMinimumStats = () => {
@@ -1771,8 +1859,8 @@ export default defineComponent({
     const startInlineEdit = (attrKey) => {
       finishInlineEdit() // Save any previous edit first
       inlineEditingAttributeKey.value = attrKey
-      const filterKey = `min${formatAttrKey(attrKey)}`
-      inlineEditingValue.value = filters.value[filterKey] || 0
+      const filterKey = filterKeyFor(attrKey)
+      inlineEditingValue.value = filters.value[filterKey] ?? 0
       nextTick(() => {
         const inputEl = attributeInputRefs.value[attrKey]
         if (inputEl?.focus) {
@@ -1784,9 +1872,11 @@ export default defineComponent({
     const finishInlineEdit = () => {
       if (inlineEditingAttributeKey.value) {
         const attrKey = inlineEditingAttributeKey.value
-        const filterKey = `min${formatAttrKey(attrKey)}`
+        const filterKey = filterKeyFor(attrKey)
         let val = Number.parseInt(inlineEditingValue.value, 10)
-        if (Number.isNaN(val) || val < 0) val = 0
+        // Lower-is-better hidden attributes take a maximum; blank resets it to 20 (off).
+        if (Number.isNaN(val)) val = LOWER_IS_BETTER.has(attrKey) ? 20 : 0
+        if (val < 0) val = 0
         if (val > 20) val = 20
         filters.value[filterKey] = val
         inlineEditingAttributeKey.value = null
@@ -1912,6 +2002,10 @@ export default defineComponent({
       physicalAttributeKeys,
       goalkeeperAttributeKeys,
       resetMinimumStats,
+      hiddenAttributeKeys: HIDDEN_ATTRIBUTES,
+      lowerIsBetter: LOWER_IS_BETTER,
+      hiddenFilterColourValue,
+      filterKeyFor,
       applyMinimumStats,
       startInlineEdit,
       finishInlineEdit, // Inline editing methods

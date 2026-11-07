@@ -21,6 +21,18 @@
       ) }}
   </span>
 
+  <!-- FM info flags: one chip per code, tooltip from the code table -->
+  <div v-else-if="column.isInfFlags" class="inf-cell">
+    <span
+      v-for="code in splitInfCodes(player.inf)"
+      :key="code"
+      :class="['inf-chip', `inf-chip--${code.toLowerCase()}`]"
+    >
+      {{ code }}<sup v-if="unconfirmedInfCodes.has(code)">?</sup>
+      <q-tooltip>{{ describeInfCode(code) }}</q-tooltip>
+    </span>
+  </div>
+
   <!-- Name cell: flag inline + personality/media subtitle -->
   <div v-else-if="column.name === 'name'" class="name-cell">
     <div class="name-primary">
@@ -106,6 +118,7 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed } from 'vue'
+import { describeInfCode, splitInfCodes, UNCONFIRMED_INF_CODES } from '../../utils/infFlags.js'
 import TeamLogo from '../TeamLogo.vue'
 import StatGauge from './StatGauge.vue'
 
@@ -158,12 +171,45 @@ export default {
   setup() {
     const $q = useQuasar()
     const isDark = computed(() => $q.dark.isActive)
-    return { isDark }
+    return {
+      isDark,
+      splitInfCodes,
+      describeInfCode,
+      unconfirmedInfCodes: UNCONFIRMED_INF_CODES,
+    }
   },
 }
 </script>
 
 <style lang="scss" scoped>
+.inf-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.inf-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  opacity: 0.9;
+}
+
+.inf-chip--inj {
+  color: #d9534f;
+}
+
+.inf-chip--loa {
+  color: #3b82f6;
+}
+
+.inf-chip--wnt {
+  color: #a16207;
+}
+
 @import './PlayerTableStyles.scss';
 
 .modern-stat-badge {

@@ -704,6 +704,15 @@
                                                             :label="displayPlayer?.media_handling"
                                                             class="player-media-badge"
                                                         />
+                                                        <q-badge
+                                                            v-if="showCA && displayPlayer?.saveCa > 0"
+                                                            outline
+                                                            color="blue-grey"
+                                                            :label="`CA ${displayPlayer.saveCa} / PA ${displayPlayer.pa > 0 ? displayPlayer.pa : '–'}`"
+                                                            class="player-ca-pa-badge"
+                                                        >
+                                                            <q-tooltip>True Current / Potential Ability from the save</q-tooltip>
+                                                        </q-badge>
                                                     </div>
                                                 </div>
                                                 
@@ -1090,6 +1099,8 @@
                                             </q-card-section>
                                         </q-card>
                                     </div>
+
+                                    <HiddenAttributesCard :player="displayPlayer" />
                                     
                                     <div class="col-12" v-if="displayPlayer && displayPlayer.roleSpecificOveralls && displayPlayer.roleSpecificOveralls.length > 0">
                                         <q-card flat bordered class="attribute-card modern-attribute-card role-ratings-card">
@@ -1195,6 +1206,7 @@ import logger from '../utils/logger.js'
 import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
 import { deriveShortPositionsFromPositionString } from '../utils/playerUtils'
 import { ATTRIBUTE_NAME_TO_KEY, PLAYSTYLE_TAGLINES } from '../utils/playstyleTaglines.js'
+import HiddenAttributesCard from './HiddenAttributesCard.vue'
 import EmptyState from './layout/EmptyState.vue'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
@@ -1553,6 +1565,7 @@ const detailedGroupToShortPositionsMap = {
 export default defineComponent({
   name: 'PlayerDetailDialog',
   components: {
+    HiddenAttributesCard,
     TeamLogo,
     PlayerCards,
     ProsCons,
@@ -3353,6 +3366,7 @@ export default defineComponent({
       handleFaceImageLoad,
       playerFaceImageUrl,
       showFaces: computed(() => uiStore.showFaces),
+      showCA: computed(() => uiStore.showCA),
       getDisplayAttribute,
       shouldShowTeamLogo,
       showLogoCorrections,

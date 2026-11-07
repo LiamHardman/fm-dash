@@ -2,11 +2,16 @@
 // "Export to CSV" view, so FM-Dash's existing /api/upload pipeline (csvHeaderNormalize ->
 // parseCellsToPlayer) ingests it unchanged.
 //
-// Deliberately blank or absent: Personality (not stored in the save; MBR then uses its
-// neutral modifier), Media Handling, performance stats, and CA/PA and hidden attributes
-// (out of scope). Division is blank wherever the league can't be proven.
+// Current-season stats come from the season-stats frame (seasonStats.js) and use FM's own
+// cell formats; cells FM shows as zero only because the advanced block is missing are blank,
+// which the Go parser stores as missing. Personality and Media Handling are derived from the
+// hidden personality bytes (personality.js). Media Description is absent (FM generates it at
+// runtime, it is not in the save). Division is blank wherever the league can't be derived.
 
+import { infCell } from './inf.js'
 import { NATION_FIFA_CODES } from './nation-codes.js'
+import { personalityLabels } from './personality.js'
+import { SEASON_STAT_HEADERS, seasonStatCells } from './seasonStats.js'
 
 // fm27-scout-code attribute key -> FM's CSV header (src/api/parsing.go csvHeaderNormalize).
 export const ATTRIBUTE_HEADERS = {
@@ -76,8 +81,40 @@ const IDENTITY_HEADERS = [
   'Unique ID',
   'Left Foot',
   'Right Foot',
+  'Personality',
+  'Media Handling',
 ]
-export const CSV_HEADERS = [...IDENTITY_HEADERS, ...Object.values(ATTRIBUTE_HEADERS)]
+
+// Save-only columns: true CA/PA, the 5 hidden and 8 personality attributes (1-20), and the
+// Inf flags. Go parses them into SaveCA, PA, HiddenAttributes and Inf, never into the
+// attributes that feed ratings. [header, read(player)]
+const SAVE_ONLY_COLUMNS = [
+  ['CA', (p) => (p.ca > 0 ? p.ca : undefined)],
+  ['PA', (p) => (p.pa > 0 ? p.pa : undefined)],
+  ['Consistency', (p) => p.attributes.consistency],
+  ['Dirtiness', (p) => p.attributes.dirtiness],
+  ['Important Matches', (p) => p.attributes.important_matches],
+  ['Injury Proneness', (p) => p.attributes.injury_proneness],
+  ['Versatility', (p) => p.attributes.versatility],
+  ['Adaptability', (p) => p.personality?.adaptability],
+  ['Ambition', (p) => p.personality?.ambition],
+  ['Controversy', (p) => p.personality?.controversy],
+  ['Loyalty', (p) => p.personality?.loyalty],
+  ['Pressure', (p) => p.personality?.pressure],
+  ['Professionalism', (p) => p.personality?.professionalism],
+  ['Sportsmanship', (p) => p.personality?.sportsmanship],
+  ['Temperament', (p) => p.personality?.temperament],
+  ['Inf', (p) => infCell(p)],
+]
+export const SAVE_ONLY_HEADERS = SAVE_ONLY_COLUMNS.map(([header]) => header)
+
+export const CSV_HEADERS = [
+  ...IDENTITY_HEADERS,
+  ...Object.values(ATTRIBUTE_HEADERS),
+  ...SEASON_STAT_HEADERS,
+  ...SAVE_ONLY_HEADERS,
+]
+const BLANK_STATS = SEASON_STAT_HEADERS.map(() => '')
 
 // Positions a player is at least accomplished in (rating 15+, fm27-scout-code's threshold).
 const POSITION_THRESHOLD = 15
@@ -140,13 +177,14 @@ function escapeCell(value) {
 /** One CSV row (array of cells, in CSV_HEADERS order). */
 export function playerRow(player) {
   const nationCode = NATION_FIFA_CODES[player.nationDatabaseId]
+  const position = formatPositions(player.positions)
   const identity = [
     player.name,
     nationCode ? '' : (player.nationName ?? ''),
     nationCode ?? '',
     player.clubName ?? '',
     player.leagueName ?? '',
-    formatPositions(player.positions),
+    position,
     player.clubNationName ?? '',
     player.age ?? '',
     formatDob(player.birthDate),
@@ -155,9 +193,16 @@ export function playerRow(player) {
     player.uniqueId ?? '',
     player.leftFoot,
     player.rightFoot,
+    ...personalityLabels(player),
   ]
   const attributes = Object.keys(ATTRIBUTE_HEADERS).map((key) => player.attributes[key])
-  return [...identity, ...attributes]
+  // seasonStats: undefined = stats unreadable (blank), null = no Overall line (zeros).
+  const stats =
+    player.seasonStats === undefined
+      ? BLANK_STATS
+      : seasonStatCells(player.seasonStats ?? undefined, position.startsWith('GK'))
+  const saveOnly = SAVE_ONLY_COLUMNS.map(([, read]) => read(player) ?? '')
+  return [...identity, ...attributes, ...stats, ...saveOnly]
 }
 
 /**

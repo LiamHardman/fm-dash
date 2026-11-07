@@ -187,6 +187,10 @@ func (amo *AdvancedMemoryOptimizer) ConvertToOptimizedAdvanced(player *Player) *
 			MediaHandling:           amo.clubPool.Intern(player.MediaHandling),
 			PerformanceStatsNumeric: player.PerformanceStatsNumeric,
 			PerformancePercentiles:  player.PerformancePercentiles,
+			SaveCA:                  player.SaveCA,
+			PA:                      player.PA,
+			HiddenAttributes:        player.HiddenAttributes,
+			Inf:                     amo.clubPool.Intern(player.Inf),
 		}
 	}
 

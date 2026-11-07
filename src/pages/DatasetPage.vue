@@ -156,6 +156,8 @@
                         :unique-divisions="uniqueDivisions"
                         :unique-media-handlings="uniqueMediaHandlings"
                         :unique-personalities="uniquePersonalities"
+                        :hidden-attributes-available="hiddenAttributesAvailable"
+                        :inf-available="infAvailable"
                         :transfer-value-range="transferValueRangeForFilters"
                         :initial-dataset-range="initialDatasetTransferValueRangeForFilters"
                         :salary-range="salaryRangeForFilters"
@@ -352,6 +354,13 @@ import { useSavedSearchStore } from '../stores/savedSearchStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
+import {
+  activeHiddenFilters,
+  defaultHiddenFilters,
+  hasHiddenAttributes,
+  passesHiddenFilters,
+} from '../utils/hiddenAttributes.js'
+import { hasInfFlags, passesInfFilters } from '../utils/infFlags.js'
 import {
   deriveShortPositionsFromPositionString,
   getFifaWeightedOverallByPosition,
@@ -555,6 +564,7 @@ export default {
     for (const attrKey of allRawFmAttributeKeys) {
       currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0
     }
+    Object.assign(currentFilters.value, defaultHiddenFilters())
 
     // Seeds the free-text search from ?search= whenever it changes (ticket 04,
     // .scratch/llm-refinements/issues/04-chat-query-rewrite-and-navigation.md) — the
@@ -676,13 +686,27 @@ export default {
     }
 
     // Filter players based on current filters
+    // Hidden attributes (save imports): the UI exists only with the Settings toggle on and
+    // a Dataset that carries them; otherwise their filters are inactive.
+    const hiddenAttributesAvailable = computed(
+      () => uiStore.showHiddenAttributes && hasHiddenAttributes(allPlayersData.value)
+    )
+
+    const infAvailable = computed(() => hasInfFlags(allPlayersData.value))
+
     const filteredPlayers = computed(() => {
       if (!allPlayersData.value || allPlayersData.value.length === 0) {
         return []
       }
+      const hiddenFilters = hiddenAttributesAvailable.value
+        ? activeHiddenFilters(currentFilters.value)
+        : []
 
       return allPlayersData.value
         .filter((player) => {
+          if (hiddenFilters.length && !passesHiddenFilters(player, hiddenFilters)) return false
+          if (infAvailable.value && !passesInfFilters(player, currentFilters.value)) return false
+
           // Name filter
           if (
             currentFilters.value.name &&
@@ -1409,6 +1433,9 @@ export default {
           if (key === 'ageRange' || key === 'transferValueRangeLocal')
             return value?.min > 0 || value?.max > 0
           if (Array.isArray(value)) return value.length > 0
+          // Hidden-attribute maximums are off at 20; Inf toggles are off when false.
+          if (key.startsWith('maxHidden')) return value < 20
+          if (value === false) return false
           return (
             value !== null && value !== undefined && value !== '' && value !== 0 && value !== 'all'
           )
@@ -1481,6 +1508,8 @@ export default {
     }
 
     return {
+      hiddenAttributesAvailable,
+      infAvailable,
       pageLoading,
       pageLoadingError,
       allPlayersData,

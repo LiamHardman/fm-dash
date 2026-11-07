@@ -81,6 +81,12 @@ type PlayerExtendedData struct {
 	PerformanceStatsNumeric map[string]float64            `json:"performanceStatsNumeric,omitempty"`
 	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles,omitempty"`
 
+	// Save-only fields (see Player)
+	SaveCA           int            `json:"saveCa,omitempty"`
+	PA               int            `json:"pa,omitempty"`
+	HiddenAttributes map[string]int `json:"hiddenAttributes,omitempty"`
+	Inf              string         `json:"inf,omitempty"` // Interned
+
 	// Raw attributes map (for unknown/custom attributes)
 	CustomAttributes map[string]string `json:"customAttributes,omitempty"`
 }

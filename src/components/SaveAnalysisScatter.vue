@@ -26,6 +26,8 @@ ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale)
 const props = defineProps({
   players: { type: Array, required: true },
   isDarkMode: { type: Boolean, default: false },
+  // 'CA' (true CA, save imports) or 'Est. CA' (CSV/HTML estimate)
+  caLabel: { type: String, default: 'Est. CA' },
 })
 
 const emit = defineEmits(['player-click'])
@@ -97,7 +99,8 @@ const chartOptions = computed(() => ({
     x: {
       title: {
         display: true,
-        text: 'CA (Current Ability)',
+        text:
+          props.caLabel === 'CA' ? 'CA (Current Ability)' : 'Est. CA (estimated Current Ability)',
         color: theme.value.text,
         font: { size: 12, weight: 'bold' },
       },

@@ -103,9 +103,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		PerformancePercentiles:  make(map[string]map[string]float64),
 	}
 
-	// Headers that are known not to be player attributes (e.g., "Inf", "Rec" for recommendations).
+	// Headers that are known not to be player attributes (e.g., "Rec" for recommendations).
 	knownNonAttributeHeaders := map[string]bool{
-		"Inf": true, "Rec": true, "Salary": true, // "Salary" is often "Wage"
+		"Rec": true, "Salary": true, // "Salary" is often "Wage"
 	}
 	foundName := false
 
@@ -220,6 +220,26 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 					}
 				}
 			}
+		case "CA":
+			player.SaveCA = parseBoundedInt(cellValue, 1, 200)
+			isAnAttributeField = false
+		case "PA":
+			player.PA = parseBoundedInt(cellValue, 1, 200)
+			isAnAttributeField = false
+		case "Inf":
+			player.Inf = cellValue
+			isAnAttributeField = false
+		case "Consistency", "Dirtiness", "Important Matches", "Injury Proneness", "Versatility",
+			"Adaptability", "Ambition", "Controversy", "Loyalty", "Pressure", "Professionalism",
+			"Sportsmanship", "Temperament":
+			// Hidden attributes stay out of NumericAttributes, which feeds ratings and the CA estimate.
+			if value := parseBoundedInt(cellValue, 1, 20); value != 0 {
+				if player.HiddenAttributes == nil {
+					player.HiddenAttributes = make(map[string]int, len(HiddenAttributeHeaders))
+				}
+				player.HiddenAttributes[headerNameClean] = value
+			}
+			isAnAttributeField = false
 		case "Left Foot", "Right Foot":
 			// These are often descriptive (e.g., "Very Strong") or ratings.
 			// Treat as attributes if not empty.
@@ -683,8 +703,9 @@ func enhancePlayerWithCalculations(player *Player) (processingErr error) {
 	// Calculate Moneyball Rating (MBR) - AFTER Overall is calculated
 	player.MBR = CalculateMoneyballRating(player)
 
-	// Calculate fm21-cas Current Ability (CA) estimate - AFTER ShortPositions are derived
-	player.CA = CalculateCAS(player)
+	// Current Ability: the save's true CA when the import carries one (the CA source is then
+	// "save"), otherwise the fm21-cas estimate - AFTER ShortPositions are derived.
+	player.CA = currentAbility(player)
 
 	// --- END: Overall Calculation ---
 
@@ -905,4 +926,29 @@ func RecalculateAllPlayersRatings(players []Player) []Player {
 	}
 
 	return players
+}
+
+// HiddenAttributeHeaders are the hidden and personality attribute columns of a save
+// export, in export order. They parse into Player.HiddenAttributes.
+var HiddenAttributeHeaders = []string{
+	"Consistency", "Dirtiness", "Important Matches", "Injury Proneness", "Versatility",
+	"Adaptability", "Ambition", "Controversy", "Loyalty", "Pressure", "Professionalism",
+	"Sportsmanship", "Temperament",
+}
+
+// parseBoundedInt parses an integer cell in [minimum, maximum]; anything else is 0 (absent).
+func parseBoundedInt(cell string, minimum, maximum int) int {
+	value, err := strconv.Atoi(cell)
+	if err != nil || value < minimum || value > maximum {
+		return 0
+	}
+	return value
+}
+
+// currentAbility is the CA every consumer reads: SaveCA when present, else the estimate.
+func currentAbility(player *Player) int {
+	if player.SaveCA > 0 {
+		return player.SaveCA
+	}
+	return CalculateCAS(player)
 }

@@ -18,6 +18,8 @@ export const useUiStore = defineStore('ui', () => {
   const showAttributeMasks = ref(true) // Default to showing attribute masks
   const showLogoCorrections = ref(true) // Default to showing logo correction buttons
   const showCA = ref(false) // Default to hiding Current Ability (CA) column
+  // Hidden and personality attributes (save imports only); off by default
+  const showHiddenAttributes = ref(false)
 
   // Tutorial state
   const showFirstTimeTutorial = ref(false) // Control tutorial modal visibility
@@ -45,6 +47,8 @@ export const useUiStore = defineStore('ui', () => {
   // column is expressed by simply ordering it to the front of this list (right
   // after 'name'); there's no separate pinned-ids array, see ticket 11's Answer.
   const playerTableHiddenColumns = ref([])
+  // Optional (default-hidden) columns the user chose to show, e.g. hidden attributes
+  const playerTableShownOptionalColumns = ref([])
   const playerTableColumnOrder = ref([])
 
   // User's own OpenAI API key for the "Who to Sign" scouting feature (bring-your-own-key)
@@ -192,6 +196,25 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {}
   }
 
+  // Hidden attributes display (save imports only)
+  function toggleHiddenAttributes() {
+    setHiddenAttributesDisplay(!showHiddenAttributes.value)
+  }
+
+  function setHiddenAttributesDisplay(enabled) {
+    showHiddenAttributes.value = enabled
+    try {
+      localStorage.setItem('showHiddenAttributes', enabled ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
+  function initHiddenAttributesDisplay() {
+    try {
+      const stored = localStorage.getItem('showHiddenAttributes')
+      if (stored !== null) showHiddenAttributes.value = stored === 'true'
+    } catch (_e) {}
+  }
+
   // Apply the current accent color to the document root as a CSS custom
   // property. tokens.scss's --accent falls back to the brand default via
   // var(--accent-user, <default>), so an empty string here is a valid
@@ -315,6 +338,11 @@ export const useUiStore = defineStore('ui', () => {
     _saveJsonArray('playerTableHiddenColumns', playerTableHiddenColumns.value)
   }
 
+  function setPlayerTableShownOptionalColumns(ids) {
+    playerTableShownOptionalColumns.value = ids || []
+    _saveJsonArray('playerTableShownOptionalColumns', playerTableShownOptionalColumns.value)
+  }
+
   function setPlayerTableColumnOrder(ids) {
     playerTableColumnOrder.value = ids || []
     _saveJsonArray('playerTableColumnOrder', playerTableColumnOrder.value)
@@ -323,6 +351,7 @@ export const useUiStore = defineStore('ui', () => {
   function initPlayerTableColumnCustomization() {
     playerTableHiddenColumns.value = _loadJsonArray('playerTableHiddenColumns')
     playerTableColumnOrder.value = _loadJsonArray('playerTableColumnOrder')
+    playerTableShownOptionalColumns.value = _loadJsonArray('playerTableShownOptionalColumns')
   }
 
   // Initialize dark mode from localStorage or system preference
@@ -477,6 +506,7 @@ export const useUiStore = defineStore('ui', () => {
     initLogoCorrections()
     initAttributeMasksDisplay()
     initCADisplay()
+    initHiddenAttributesDisplay()
     initOpenaiApiKey()
     initOpenaiBaseUrl()
     initOpenaiModel()
@@ -527,6 +557,10 @@ export const useUiStore = defineStore('ui', () => {
     toggleCA,
     setCADisplay,
     initCADisplay,
+    showHiddenAttributes,
+    toggleHiddenAttributes,
+    setHiddenAttributesDisplay,
+    initHiddenAttributesDisplay,
     openaiApiKey,
     setOpenaiApiKey,
     initOpenaiApiKey,
@@ -559,6 +593,8 @@ export const useUiStore = defineStore('ui', () => {
     initDashboardCustomization,
     playerTableHiddenColumns,
     setPlayerTableHiddenColumns,
+    playerTableShownOptionalColumns,
+    setPlayerTableShownOptionalColumns,
     playerTableColumnOrder,
     setPlayerTableColumnOrder,
     initPlayerTableColumnCustomization,

@@ -138,6 +138,33 @@ export class SaveFile {
   sectionNames() {
     return [...this.sections.keys()].sort()
   }
+
+  /**
+   * The region after a named top-level directory entry, up to the next top-level entry
+   * or the trailer: `[start, end)` file offsets. As in fm27-scout-code's
+   * `unlisted_after_*` regions, group frames (e.g. `rgman`) inside it are walked too.
+   */
+  regionAfter(name) {
+    const entries = this.directory.topEntries // sorted by frameOffset in parseDirectory
+    const index = entries.findIndex((entry) => entry.name === name)
+    if (index === -1) throw corrupt(`the save directory has no "${name}" entry`)
+    const entry = entries[index]
+    const start = entry.frameOffset + entry.compressedSize
+    const end = entries[index + 1]?.frameOffset ?? this.trailerOffset
+    return [start, end]
+  }
+
+  /** Frame spans in the unlisted gap after a named directory entry (headers only). */
+  async unlistedFrames(name) {
+    const [start, end] = this.regionAfter(name)
+    return listFrames(this.source, start, end)
+  }
+
+  /** Decompress one unlisted frame (its content size is not declared). */
+  async readFrame(span, what = 'an unlisted frame') {
+    const compressed = await this.source.read(span.offset, span.compressedSize)
+    return decompressFrame(compressed, undefined, DEFAULT_FRAME_CAP, what)
+  }
 }
 
 function readLengthPrefixedString(bytes, offset, maxLen) {
@@ -282,4 +309,91 @@ function decompressFrame(compressed, expectedSize, cap, what) {
     throw corrupt(`${what} decompressed to ${decoded.length} bytes, expected ${expectedSize}`)
   }
   return decoded
+}
+
+// --- Unlisted frames -------------------------------------------------------------------
+// Some sections (e.g. season statistics) live in frames the directory does not list, in
+// the gap between one listed entry and the next. They are found by walking zstd frame and
+// block headers only (RFC 8878); nothing is decompressed here.
+
+const ZSTD_MAGIC = 0xfd2fb528
+const SKIPPABLE_MASK = 0xfffffff0
+const SKIPPABLE_MAGIC = 0x184d2a50
+const GAP_READ_WINDOW = 1024 * 1024
+
+/** Buffered little-endian reads from a source, one window at a time. */
+class WindowReader {
+  constructor(source, end) {
+    this.source = source
+    this.end = end
+    this.start = 0
+    this.bytes = new Uint8Array(0)
+  }
+
+  async bytesAt(offset, length) {
+    if (offset < this.start || offset + length > this.start + this.bytes.length) {
+      const readLength = Math.min(Math.max(GAP_READ_WINDOW, length), this.end - offset)
+      if (readLength < length) throw corrupt('an unlisted frame runs past its region')
+      this.start = offset
+      this.bytes = await this.source.read(offset, readLength)
+    }
+    return this.bytes.subarray(offset - this.start, offset - this.start + length)
+  }
+
+  async u8(offset) {
+    return (await this.bytesAt(offset, 1))[0]
+  }
+
+  async u24(offset) {
+    const b = await this.bytesAt(offset, 3)
+    return b[0] | (b[1] << 8) | (b[2] << 16)
+  }
+
+  async u32(offset) {
+    return readU32(await this.bytesAt(offset, 4), 0)
+  }
+}
+
+/**
+ * List the zstd frames in `[start, end)` of a source by their headers.
+ * Skippable frames are stepped over and not listed.
+ * @returns {Promise<Array<{offset:number, compressedSize:number}>>}
+ */
+export async function listFrames(source, start, end) {
+  const reader = new WindowReader(source, end)
+  const frames = []
+  let position = start
+  while (position < end) {
+    const magic = await reader.u32(position)
+    if ((magic & SKIPPABLE_MASK) >>> 0 === SKIPPABLE_MAGIC) {
+      position += 8 + (await reader.u32(position + 4))
+      continue
+    }
+    if (magic !== ZSTD_MAGIC) throw corrupt(`no zstd frame starts at byte ${position}`)
+    const descriptor = await reader.u8(position + 4)
+    const contentSizeFlag = descriptor >> 6
+    const singleSegment = (descriptor >> 5) & 1
+    const hasChecksum = (descriptor >> 2) & 1
+    const dictionaryFlag = descriptor & 3
+    let cursor =
+      position +
+      5 +
+      (singleSegment ? 0 : 1) +
+      [0, 1, 2, 4][dictionaryFlag] +
+      [singleSegment ? 1 : 0, 2, 4, 8][contentSizeFlag]
+    for (;;) {
+      const blockHeader = await reader.u24(cursor)
+      const last = blockHeader & 1
+      const type = (blockHeader >> 1) & 3
+      const size = blockHeader >>> 3
+      if (type === 3) throw corrupt(`a zstd block at byte ${cursor} has the reserved type`)
+      cursor += 3 + (type === 1 ? 1 : size) // RLE blocks store one byte
+      if (cursor > end) throw corrupt('an unlisted frame runs past its region')
+      if (last) break
+    }
+    if (hasChecksum) cursor += 4
+    frames.push({ offset: position, compressedSize: cursor - position })
+    position = cursor
+  }
+  return frames
 }

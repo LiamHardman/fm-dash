@@ -142,17 +142,12 @@ function acceptCandidate(gameDb, recordOffset, checkPattern) {
 
 /**
  * The closing person header after a player record pairs `pindex + 1` with the
- * player's unique id (twice). A unique hit within the window wins.
- * Translated from `closing_person_header` in parse.rs.
+ * player's unique id (twice). The hit wins when exactly one distinct uid appears in the
+ * window; repeats of that uid are fine, two different uids are ambiguous.
+ * Adapted from `closing_person_header` in parse.rs, minus its uid-ordering bounds:
+ * unique ids are not ordered by record uid, and the bounds rejected 7.9% of players.
  */
-export function closingPersonHeader(
-  gameDb,
-  personId,
-  searchStart,
-  searchEnd,
-  uidFloor,
-  uidCeiling
-) {
+export function closingPersonHeader(gameDb, personId, searchStart, searchEnd) {
   if (personId === MISSING_U32 || searchStart > searchEnd || searchEnd > gameDb.length) {
     return undefined
   }
@@ -167,10 +162,9 @@ export function closingPersonHeader(
     const uid = readU32(gameDb, hit + 4)
     const uidCopy = readU32(gameDb, hit + 8)
     if (uid === undefined || uidCopy === undefined) continue
-    if (uid !== uidCopy || uid === 0 || uid === MISSING_U32 || uid <= uidFloor) continue
-    if (uidCeiling !== undefined && uid > uidCeiling) continue
-    if (found) return undefined
-    found = [hit, uid]
+    if (uid !== uidCopy || uid === 0 || uid === MISSING_U32) continue
+    if (!found) found = [hit, uid]
+    else if (found[1] !== uid) return undefined
   }
   return found
 }

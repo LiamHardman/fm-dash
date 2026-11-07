@@ -56,6 +56,13 @@ type Player struct {
 	TransferValueAmount     int64                         `json:"transferValueAmount"`
 	WageAmount              int64                         `json:"wageAmount"`
 
+	// Save-only fields (FM27 save imports; FM27 CSV-mod exports also carry Inf). They never
+	// enter NumericAttributes, so role ratings, Overall, MBR and the CA estimate can't see them.
+	SaveCA           int            `json:"saveCa,omitempty"`           // true CA from the save (1-200); 0 = absent
+	PA               int            `json:"pa,omitempty"`               // true PA from the save (1-200); 0 = absent
+	HiddenAttributes map[string]int `json:"hiddenAttributes,omitempty"` // keyed by FM name, 1-20
+	Inf              string         `json:"inf,omitempty"`              // FM info flags, e.g. "Inj, Loa"
+
 	// Mutex to protect concurrent access to maps
 	mu sync.RWMutex `json:"-"`
 }

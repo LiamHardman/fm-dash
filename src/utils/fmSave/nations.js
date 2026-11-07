@@ -8,14 +8,16 @@
 
 import { findBytes, parseError, readU8, readU16, readU32 } from './bytes.js'
 import { NATION_NAMES } from './nation-names.js'
+import { NATION_SHORT_NAMES } from './nation-short-names.js'
 
 const NATION_ROW_COUNT = 251
 const NATION_TABLE_HEAD = new Uint8Array([0xfb, 0x00, 0x00, 0x00, 0x00])
 const MAX_STRING_BYTES = 1024
 const MAX_ENTRIES = 100_000
 
+/** The name FM27 prints for a nation: its short name where it has one, else the bundled name. */
 export function nationName(databaseId) {
-  return NATION_NAMES[databaseId]
+  return NATION_SHORT_NAMES[databaseId] ?? NATION_NAMES[databaseId]
 }
 
 export class NationIndex {

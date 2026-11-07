@@ -223,6 +223,11 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 
 		Ca:      safeIntToInt32(p.CA),
 		BasedIn: p.BasedIn,
+
+		SaveCa:           safeIntToInt32(p.SaveCA),
+		Pa:               safeIntToInt32(p.PA),
+		HiddenAttributes: hiddenAttributesToProto(p.HiddenAttributes),
+		Inf:              p.Inf,
 	}
 
 	return protoPlayer, nil
@@ -355,6 +360,11 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		}(),
 
 		BasedIn: protoPlayer.GetBasedIn(),
+
+		SaveCA:           int(protoPlayer.GetSaveCa()),
+		PA:               int(protoPlayer.GetPa()),
+		HiddenAttributes: hiddenAttributesFromProto(protoPlayer.GetHiddenAttributes()),
+		Inf:              protoPlayer.GetInf(),
 	}
 
 	// Use cached CA from protobuf
@@ -510,4 +520,28 @@ func (d *PlayerDataWithCurrency) ToProtoOptimized(ctx context.Context) (*proto.D
 // DatasetDataFromProtoOptimized converts a protobuf DatasetData to the native struct with optimizations
 func DatasetDataFromProtoOptimized(ctx context.Context, protoDataset *proto.DatasetData) (*PlayerDataWithCurrency, error) {
 	return DatasetDataFromProto(ctx, protoDataset)
+}
+
+// hiddenAttributesToProto copies a player's hidden attributes for the wire (nil when empty).
+func hiddenAttributesToProto(hidden map[string]int) map[string]int32 {
+	if len(hidden) == 0 {
+		return nil
+	}
+	out := make(map[string]int32, len(hidden))
+	for key, value := range hidden {
+		out[key] = safeIntToInt32(value)
+	}
+	return out
+}
+
+// hiddenAttributesFromProto is the inverse of hiddenAttributesToProto.
+func hiddenAttributesFromProto(hidden map[string]int32) map[string]int {
+	if len(hidden) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(hidden))
+	for key, value := range hidden {
+		out[key] = int(value)
+	}
+	return out
 }
