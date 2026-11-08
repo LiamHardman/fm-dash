@@ -360,7 +360,7 @@ import {
   hasHiddenAttributes,
   passesHiddenFilters,
 } from '../utils/hiddenAttributes.js'
-import { hasInfFlags, passesInfFilters } from '../utils/infFlags.js'
+import { infFlagsAvailable, passesInfFilters } from '../utils/infFlags.js'
 import {
   deriveShortPositionsFromPositionString,
   getFifaWeightedOverallByPosition,
@@ -692,7 +692,7 @@ export default {
       () => uiStore.showHiddenAttributes && hasHiddenAttributes(allPlayersData.value)
     )
 
-    const infAvailable = computed(() => hasInfFlags(allPlayersData.value))
+    const infAvailable = computed(() => infFlagsAvailable(allPlayersData.value))
 
     const filteredPlayers = computed(() => {
       if (!allPlayersData.value || allPlayersData.value.length === 0) {

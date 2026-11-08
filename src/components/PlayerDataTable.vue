@@ -168,7 +168,7 @@ import { useShortlistStore } from '../stores/shortlistStore'
 import { useUiStore } from '../stores/uiStore'
 import { caSourceOf } from '../utils/caSource.js'
 import { hasHiddenAttributes } from '../utils/hiddenAttributes.js'
-import { hasInfFlags } from '../utils/infFlags.js'
+import { infFlagsAvailable } from '../utils/infFlags.js'
 import { explainPlayerMatch } from '../utils/savedSearch'
 import CustomizeListDialog from './layout/CustomizeListDialog.vue'
 import PlayerTableContextMenu from './player-table/PlayerTableContextMenu.vue'
@@ -240,9 +240,9 @@ export default {
     const hiddenAttributesAvailable = computed(
       () => uiStore.showHiddenAttributes && hasHiddenAttributes(props.players)
     )
-    // The Inf chip column appears whenever any player in the Dataset carries flags.
+    // The Inf chip column appears only for a save import where some player carries flags.
     const infAvailable = computed(
-      () => hasInfFlags(props.players) || hasInfFlags(playerStore.allPlayers)
+      () => infFlagsAvailable(props.players) || infFlagsAvailable(playerStore.allPlayers)
     )
     const { currentColumns, getColumnLabel, getSortFieldKey } = usePlayerTableColumns(
       () => props.isGoalkeeperView,

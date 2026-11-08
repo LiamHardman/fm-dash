@@ -1,7 +1,13 @@
 import { expect, it } from 'vitest'
 import { ref } from 'vue'
 import { usePlayerTableColumns } from '../composables/usePlayerTableColumns'
-import { describeInfCode, hasInfFlags, passesInfFilters, splitInfCodes } from './infFlags.js'
+import {
+  describeInfCode,
+  hasInfFlags,
+  infFlagsAvailable,
+  passesInfFilters,
+  splitInfCodes,
+} from './infFlags.js'
 
 it('splits codes on commas and whitespace', () => {
   expect(splitInfCodes('Inj, Loa')).toEqual(['Inj', 'Loa'])
@@ -34,6 +40,16 @@ it('adds the Inf column only when some player has flags', () => {
   expect(column.optional).toBeFalsy() // shown by default
   expect(hasInfFlags([{ inf: '' }, { inf: 'Loa' }])).toBe(true)
   expect(hasInfFlags([{ inf: '' }, {}])).toBe(false)
+})
+
+it('makes Inf available only for save imports with flags', () => {
+  // A save import: true CA is present.
+  expect(infFlagsAvailable([{ saveCa: 140, inf: 'Inj' }, { saveCa: 120 }])).toBe(true)
+  // An FM27 CSV-mod export: flags, but no true CA.
+  expect(infFlagsAvailable([{ saveCa: 0, inf: 'Inj' }, { inf: 'Loa' }])).toBe(false)
+  // A save import where nobody is flagged.
+  expect(infFlagsAvailable([{ saveCa: 140, inf: '' }])).toBe(false)
+  expect(infFlagsAvailable(undefined)).toBe(false)
 })
 
 it('filters out injured players and keeps only loan-listed ones', () => {

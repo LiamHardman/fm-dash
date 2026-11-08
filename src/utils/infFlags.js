@@ -1,5 +1,7 @@
 // FM's "Inf" (information) flags, e.g. "Inj, Loa". Carried by save imports and by FM27
-// CSV-mod exports that include an Inf column (player.inf).
+// CSV-mod exports that include an Inf column (player.inf), but only shown for save imports.
+
+import { caSourceOf } from './caSource.js'
 
 export const INF_CODE_DESCRIPTIONS = {
   Inj: 'Injured',
@@ -26,6 +28,11 @@ export function describeInfCode(code) {
 
 export function hasInfFlags(players) {
   return Array.isArray(players) && players.some((player) => splitInfCodes(player?.inf).length > 0)
+}
+
+/** Whether the Inf column and filters apply: a save import with at least one flagged player. */
+export function infFlagsAvailable(players) {
+  return caSourceOf(players) === 'save' && hasInfFlags(players)
 }
 
 /** The Inf filters: hide injured players, and/or only players listed for loan. */
